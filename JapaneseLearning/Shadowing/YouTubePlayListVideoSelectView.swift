@@ -53,7 +53,7 @@ struct YouTubePlayListVideoSelectView: View {
         .task {
             isLoading = true
             videos = await store.fetchPlaylistVideos(playlistID: playlistID)
-            try? await Task.sleep(nanoseconds: 200_000_000)
+            try? await Task.sleep(nanoseconds: 150_000_000)
             isLoading = false
         }
     }
