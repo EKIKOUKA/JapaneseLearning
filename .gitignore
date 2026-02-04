@@ -1,3 +1,6 @@
 .DS_Store
 **/.DS_Store
 Config.plist
+JapaneseLearning.xcodeproj/xcuserdata/
+JapaneseLearning.xcodeproj/project.xcworkspace/xcuserdata/
+JapaneseLearning.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
