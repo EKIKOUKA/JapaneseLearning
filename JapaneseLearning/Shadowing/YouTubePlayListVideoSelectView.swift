@@ -25,28 +25,23 @@ struct YouTubePlayListVideoSelectView: View {
 
         NavigationStack {
 
-            if isLoading {
-                ProgressView()
-                    .frame(maxWidth: .infinity)
-            } else {
-                List(videos) { video in
-                    playlistRow(video)
-                }
-                .navigationTitle(listTitle)
-                .toolbar {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Button {
-                            let selected = videos.filter {
-                                selectedIDs.contains($0.id)
-                            }
-                            onAdd(selected)
-                            dismiss()
-                            dismiss()
-                        } label: {
-                            Image(systemName: "checkmark")
+            List(videos) { video in
+                playlistRow(video)
+            }
+            .navigationTitle(listTitle)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        let selected = videos.filter {
+                            selectedIDs.contains($0.id)
                         }
-                        .disabled(selectedIDs.isEmpty)
+                        onAdd(selected)
+                        dismiss()
+                        dismiss()
+                    } label: {
+                        Image(systemName: "checkmark")
                     }
+                    .disabled(selectedIDs.isEmpty)
                 }
             }
         }
@@ -84,11 +79,11 @@ struct YouTubePlayListVideoSelectView: View {
             } placeholder: {
                 Color.gray.opacity(0.3)
             }
-            .frame(width: 120, height: 68)
+            .frame(width: 100, height: 57)
             .cornerRadius(8)
 
             Text(video.title)
-                .lineLimit(2)
+                .lineLimit(3)
         }
         .contentShape(Rectangle())
         .onTapGesture {

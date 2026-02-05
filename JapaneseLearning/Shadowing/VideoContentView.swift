@@ -56,21 +56,21 @@ struct VideoContentView: View {
 
                             AVPlayerControllerView(player: playerVM.player)
                                 .frame(height: 201)
-                                .cornerRadius(15)
+                                .cornerRadius(25)
                                 .opacity(playerVM.isVideoLoading ? 0 : 1)
                                 .padding(.horizontal, 18)
                                 .padding(.top, 0)
-                                .padding(.bottom, 4)
+                                .padding(.bottom, 2)
 
                             if let image = playerVM.nowPlayingArtwork, playerVM.isVideoLoading {
                                 Image(uiImage: image)
                                     .resizable()
                                     .scaledToFill()
                                     .frame(height: 201)
-                                    .cornerRadius(15)
+                                    .cornerRadius(25)
                                     .padding(.horizontal, 18)
                                     .padding(.top, 0)
-                                    .padding(.bottom, 4)
+                                    .padding(.bottom, 2)
                                     .clipped()
                                     .opacity(playerVM.isVideoLoading ? 1 : 0)
                             }

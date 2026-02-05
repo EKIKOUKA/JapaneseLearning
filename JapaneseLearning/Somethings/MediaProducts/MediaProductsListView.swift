@@ -154,7 +154,6 @@ struct MediaProductsListView: View {
         .sheet(isPresented: $showSettingSheet) {
             SettingsSheetView(store: store)
                 .presentationDetents([.medium])
-                .presentationDragIndicator(.visible)
         }
         .navigationTitle("映像作品リスト")
         .task {

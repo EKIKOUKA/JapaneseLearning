@@ -156,7 +156,6 @@ struct IdiomsListView: View {
         .sheet(isPresented: $showSettingSheet) {
             SettingsSheetView(store: store)
                 .presentationDetents([.medium])
-                .presentationDragIndicator(.visible)
         }
         .task {
             if store.IdiomsList.isEmpty {

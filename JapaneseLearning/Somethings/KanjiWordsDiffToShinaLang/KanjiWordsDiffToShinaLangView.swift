@@ -156,7 +156,6 @@ struct KanjiWordsDiffToShinaLangView: View {
         .sheet(isPresented: $showSettingSheet) {
             SettingsSheetView(store: store)
                 .presentationDetents([.medium])
-                .presentationDragIndicator(.visible)
         }
         .task {
             if store.KanjiWordsList.isEmpty {

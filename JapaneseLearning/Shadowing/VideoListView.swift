@@ -113,18 +113,19 @@ struct VideoListView: View {
             }
             .frame(maxWidth: .infinity)
             .frame(height: 160)
-            .cornerRadius(15)
+            .cornerRadius(20)
             .clipped()
 
             Text(video.title)
                 .font(.body)
                 .lineLimit(2)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.leading, 5)
+                .padding(.leading, 8)
+                .padding(.bottom, 2)
         }
         .padding(10)
         .background(Color(.secondarySystemBackground))
-        .cornerRadius(20)
+        .cornerRadius(25)
         .onLongPressGesture {
             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
             pendingDeleteVideo = video
