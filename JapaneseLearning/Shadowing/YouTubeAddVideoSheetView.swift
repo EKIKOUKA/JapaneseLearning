@@ -94,7 +94,7 @@ struct URLInputView: View {
                 }
                 TextEditor(text: $inputURL)
                     .scrollContentBackground(.hidden)
-                    .frame(height: 83)
+                    .frame(minHeight: 83)
             }
         }
     }

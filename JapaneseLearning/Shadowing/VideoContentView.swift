@@ -11,7 +11,6 @@ import MediaPlayer
 import AVKit
 import Combine
 
-
 struct VideoContentView: View {
     let videoID: String
     var video: VideoItem? {
@@ -184,15 +183,16 @@ struct SubtitlesContentView: View {
                 .animation(.easeInOut(duration: 1.0), value: playerVM.captions)
                 .padding(.horizontal, 18)
             }
-            .onChange(of: playerVM.currentLineID) { _, newID in
-                guard let newID = newID else { return }
+            .onChange(of: playerVM.currentLineID) { old, new in
+                guard old != new else { return }
+                guard let newID = new else { return }
 
                 if settingsStore.settings.videoSubtitleLineWithAnimation == .easeInOut {
                     withAnimation(.easeInOut(duration: 0.4)) {
                         proxy.scrollTo(newID, anchor: .subtitleAnchor)
                     }
                 } else {
-                    withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
+                    withAnimation(.spring(response: 0.5, dampingFraction: 0.65)) {
                         proxy.scrollTo(newID, anchor: .subtitleAnchor)
                     }
                 }
@@ -205,7 +205,7 @@ struct SubtitlesContentView: View {
                             proxy.scrollTo(currentLineId, anchor: .subtitleAnchor)
                         }
                     } else {
-                        withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
+                        withAnimation(.spring(response: 0.5, dampingFraction: 0.65)) {
                             proxy.scrollTo(currentLineId, anchor: .subtitleAnchor)
                         }
                     }
@@ -226,11 +226,14 @@ struct SubtitlesRowView: View {
 
     var body: some View {
         let ruby_show = (settingsStore.settings.showShadowingSubtitlesRuby ? line.ruby : [])!
+        let font_size = settingsStore.settings.videoSubtitleFontSizeScale
+        let blur_opacity = settingsStore.settings.videoSubtitleDimInactiveLines
 
         VStack(alignment: .leading) {
             RubyLabel(
                 text: line.text,
                 rubyWords: ruby_show,
+                fontSizeScale: font_size,
                 onTapWordAtIndex: { index in
                     let isNowActive = (currentLineID() == line.id)
                     if isNowActive {
@@ -244,8 +247,8 @@ struct SubtitlesRowView: View {
             )
             .id(settingsStore.settings.showShadowingSubtitlesRuby)
             .fixedSize(horizontal: false, vertical: true)
-            .blur(radius: isActive ? 0 : 1.5)
-            .opacity(isActive ? 1.0 : 0.4)
+            .blur(radius: isActive || blur_opacity ? 0 : 1.5)
+            .opacity(isActive || blur_opacity ? 1.0 : 0.4)
             .scaleEffect(isActive ? 1.02 : 1.0, anchor: .leading)
             .animation(.easeInOut(duration: 0.3), value: isActive)
         }
@@ -319,6 +322,33 @@ struct VideoControlView: View {
     }
 }
 
+struct VideoSubtitleFontSizeSliderView: View {
+    @Environment(SettingsStore.self) private var settingsStore
+
+    var body: some View {
+        @Bindable var settingsStoreBindable = settingsStore
+
+        HStack {
+
+            Image(systemName: "textformat.size.smaller")
+                .foregroundColor(.secondary)
+            Slider(
+                value: $settingsStoreBindable.settings.videoSubtitleFontSizeScale,
+                in: 0.80...1.20,
+                step: 0.05
+            )
+            Image(systemName: "textformat.size.larger")
+                .foregroundColor(.secondary)
+
+            Text(String(format: "%.2fx", settingsStoreBindable.settings.videoSubtitleFontSizeScale))
+                .font(.caption.monospacedDigit())
+                .foregroundStyle(.secondary)
+                .onTapGesture {
+                    settingsStoreBindable.settings.videoSubtitleFontSizeScale = 1.0
+                }
+        }
+    }
+}
 
 struct WordIdentifiable: Identifiable {
     let id = UUID()

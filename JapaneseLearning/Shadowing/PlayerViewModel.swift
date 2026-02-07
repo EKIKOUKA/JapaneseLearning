@@ -19,7 +19,6 @@ final class PlayerViewModel: ObservableObject {
     var videoStore: VideoStore!
     var settingsStore: SettingsStore?
     private let fetchVideoService = FetchVideoService()
-//    private let furiganaServerce = FuriganaService()
     private var loadStartTime: Date?
 
     // Data Source (Runtime Only)
@@ -110,7 +109,6 @@ final class PlayerViewModel: ObservableObject {
                     if videoStore.videos[index].firstLoad {
                         videoStore.videos[index].firstLoad = false
                         videoStore.saveVideo()
-
                         self.currentVideoItem?.firstLoad = false
                     }
                 }
@@ -435,39 +433,6 @@ final class PlayerViewModel: ObservableObject {
         }
     }
 
-    private func setupAudioSession() {
-        do {
-            let session = AVAudioSession.sharedInstance()
-            try session.setCategory(
-                .playback,
-                mode: .spokenAudio,
-                options: []
-            )
-            try session.setActive(true)
-        } catch {
-            print("Audio Session 設定失敗: \(error)")
-        }
-    }
-
-    private func setupRemoteCommand() {
-        let center = MPRemoteCommandCenter.shared()
-
-        center.playCommand.isEnabled = true
-        center.pauseCommand.isEnabled = true
-
-        center.playCommand.addTarget { [weak self] _ in
-            guard let self = self else { return .commandFailed }
-            self.player.rate = self.rate
-            return .success
-        }
-
-        center.pauseCommand.addTarget { [weak self] _ in
-            self?.player.pause()
-            self?.isPlaying = false
-            return .success
-        }
-    }
-
     private func observePlaybackState() {
         timeControlObserver = player.observe(\.timeControlStatus, options: [.initial, .new]) { [weak self] player, _ in
             guard let self else { return }
@@ -494,32 +459,6 @@ final class PlayerViewModel: ObservableObject {
                 }
             }
         }
-    }
-
-    func setupNowPlaying() {
-        var info: [String: Any] = [:]
-
-        // title
-        info[MPMediaItemPropertyTitle] = nowPlayingTitle
-
-        // duration
-        if let duration = player.currentItem?.duration.seconds,
-           duration.isFinite {
-            info[MPMediaItemPropertyPlaybackDuration] = duration
-        }
-
-        // current time
-        info[MPNowPlayingInfoPropertyElapsedPlaybackTime] = player.currentTime().seconds
-
-        // rate
-        info[MPNowPlayingInfoPropertyPlaybackRate] = player.rate
-
-        // artwork
-        if let image = nowPlayingArtwork {
-            info[MPMediaItemPropertyArtwork] = MPMediaItemArtwork(boundsSize: image.size) { _ in image }
-        }
-
-        MPNowPlayingInfoCenter.default().nowPlayingInfo = info
     }
 
     func setRate(_ newRate: Float) {
@@ -555,11 +494,6 @@ final class PlayerViewModel: ObservableObject {
         }
     }
 
-    private func updateNowPlayingPlaybackRate(_ rate: Float) {
-        MPNowPlayingInfoCenter.default().nowPlayingInfo?[
-            MPNowPlayingInfoPropertyPlaybackRate
-        ] = rate
-    }
 
     func playLine(_ line: CaptionLine) {
         seek(to: line.start + 0.01)
@@ -614,6 +548,88 @@ final class PlayerViewModel: ObservableObject {
         }
     }
 
+    func seek(to seconds: Double) {
+        let time = CMTime(seconds: seconds, preferredTimescale: 600)
+        isSeeking = true
+        player.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero) { [weak self] finished in
+            guard let self, finished else { return }
+
+            Task { @MainActor in
+                self.updateCaptionIndex(for: seconds, forceSearch: true)
+                self.isSeeking = false
+            }
+        }
+    }
+
+    func currentLineText() -> String? {
+        guard let id = currentLineID, let line = captions.first(where: { $0.id == id }) else { return nil }
+        return line.text
+    }
+
+
+    private func setupAudioSession() {
+        do {
+            let session = AVAudioSession.sharedInstance()
+            try session.setCategory(
+                .playback,
+                mode: .spokenAudio,
+                options: []
+            )
+            try session.setActive(true)
+        } catch {
+            print("Audio Session 設定失敗: \(error)")
+        }
+    }
+    private func setupRemoteCommand() {
+        let center = MPRemoteCommandCenter.shared()
+
+        center.playCommand.isEnabled = true
+        center.pauseCommand.isEnabled = true
+
+        center.playCommand.addTarget { [weak self] _ in
+            guard let self = self else { return .commandFailed }
+            self.player.rate = self.rate
+            return .success
+        }
+
+        center.pauseCommand.addTarget { [weak self] _ in
+            self?.player.pause()
+            self?.isPlaying = false
+            return .success
+        }
+    }
+    func setupNowPlaying() {
+        var info: [String: Any] = [:]
+
+        // title
+        info[MPMediaItemPropertyTitle] = nowPlayingTitle
+
+        // duration
+        if let duration = player.currentItem?.duration.seconds,
+           duration.isFinite {
+            info[MPMediaItemPropertyPlaybackDuration] = duration
+        }
+
+        // current time
+        info[MPNowPlayingInfoPropertyElapsedPlaybackTime] = player.currentTime().seconds
+
+        // rate
+        info[MPNowPlayingInfoPropertyPlaybackRate] = player.rate
+
+        // artwork
+        if let image = nowPlayingArtwork {
+            info[MPMediaItemPropertyArtwork] = MPMediaItemArtwork(boundsSize: image.size) { _ in image }
+        }
+
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = info
+    }
+    private func updateNowPlayingPlaybackRate(_ rate: Float) {
+        MPNowPlayingInfoCenter.default().nowPlayingInfo?[
+            MPNowPlayingInfoPropertyPlaybackRate
+        ] = rate
+    }
+
+
     private func rubyWord(in line: CaptionLine, at charIndex: Int) -> RubyWord? {
         guard let rubyWords = line.ruby else { return nil }
 
@@ -622,7 +638,6 @@ final class PlayerViewModel: ObservableObject {
             charIndex < ($0.start + $0.length)
         }
     }
-
     func handleWordLookup(_ lineID: String, _ charIndex: Int) {
         guard let line = captions.first(where: { $0.id == lineID }),
            let rubyWord = rubyWord(in: line, at: charIndex) else { return }
@@ -643,24 +658,6 @@ final class PlayerViewModel: ObservableObject {
         } else {
             print("⚠️ 系統詞典未找到定義: \(word)")
         }
-    }
-
-    func seek(to seconds: Double) {
-        let time = CMTime(seconds: seconds, preferredTimescale: 600)
-        isSeeking = true
-        player.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero) { [weak self] finished in
-            guard let self, finished else { return }
-
-            Task { @MainActor in
-                self.updateCaptionIndex(for: seconds, forceSearch: true)
-                self.isSeeking = false
-            }
-        }
-    }
-
-    func currentLineText() -> String? {
-        guard let id = currentLineID, let line = captions.first(where: { $0.id == id }) else { return nil }
-        return line.text
     }
 }
 

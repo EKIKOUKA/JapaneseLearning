@@ -49,6 +49,21 @@ struct ShadowingSettingsSheetView: View {
                     }
                 }
 
+                Section(header: Text("ビデオテキストサイズ")) {
+                    VideoSubtitleFontSizeSliderView()
+                }
+
+                Section(header: Text("ビデオテキストの表示")) {
+                    Toggle(isOn: $settingsStoreBindable.settings.videoSubtitleDimInactiveLines) {
+                        VStack(alignment: .leading) {
+                            Text("非表示行を目立たせない")
+                            Text("再生中の行を見やすい強調して表示する、他の字幕を弱めます")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+
                 Section(header: Text("スクロールのアニメーション")) {
                     Picker("アニメーション", selection: $settingsStoreBindable.settings.videoSubtitleLineWithAnimation) {
                         ForEach(VideoSubtitleLineWithAnimation.allCases, id: \.self) { animation in

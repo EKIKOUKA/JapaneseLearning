@@ -21,6 +21,8 @@ struct AppSettings: Codable {
     var showShadowingSubtitlesRuby: Bool = false
 //    var showVideoResolveStrategyPicker: VideoResolveStrategy = .YouTubeKit
     var videoSubtitleLineWithAnimation: VideoSubtitleLineWithAnimation = .spring
+    var videoSubtitleFontSizeScale: Double = 1.0
+    var videoSubtitleDimInactiveLines: Bool = false
 
     // Somethings
     var showKanjiWordsDiffToShinaLangListCount: Bool = false

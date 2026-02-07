@@ -15,7 +15,18 @@
 		0ED6102D2F29C45A009564C2 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 0ED6102C2F29C45A009564C2 /* Supabase */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		0EFF48002F378D38008832D6 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 7FF22E862ED7EC6600603529 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 7FF22E8D2ED7EC6600603529;
+			remoteInfo = JapaneseLearning;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
+		0EFF47FC2F378D38008832D6 /* JapaneseLearningTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = JapaneseLearningTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		7FF22E8E2ED7EC6600603529 /* JapaneseLearning.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = JapaneseLearning.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -30,6 +41,11 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		0EFF47FD2F378D38008832D6 /* JapaneseLearningTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = JapaneseLearningTests;
+			sourceTree = "<group>";
+		};
 		7FF22E902ED7EC6600603529 /* JapaneseLearning */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
@@ -41,6 +57,13 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		0EFF47F92F378D38008832D6 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		7FF22E8B2ED7EC6600603529 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -61,6 +84,7 @@
 			isa = PBXGroup;
 			children = (
 				7FF22E902ED7EC6600603529 /* JapaneseLearning */,
+				0EFF47FD2F378D38008832D6 /* JapaneseLearningTests */,
 				7FF22E8F2ED7EC6600603529 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -69,6 +93,7 @@
 			isa = PBXGroup;
 			children = (
 				7FF22E8E2ED7EC6600603529 /* JapaneseLearning.app */,
+				0EFF47FC2F378D38008832D6 /* JapaneseLearningTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -76,6 +101,29 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		0EFF47FB2F378D38008832D6 /* JapaneseLearningTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 0EFF48022F378D38008832D6 /* Build configuration list for PBXNativeTarget "JapaneseLearningTests" */;
+			buildPhases = (
+				0EFF47F82F378D38008832D6 /* Sources */,
+				0EFF47F92F378D38008832D6 /* Frameworks */,
+				0EFF47FA2F378D38008832D6 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				0EFF48012F378D38008832D6 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				0EFF47FD2F378D38008832D6 /* JapaneseLearningTests */,
+			);
+			name = JapaneseLearningTests;
+			packageProductDependencies = (
+			);
+			productName = JapaneseLearningTests;
+			productReference = 0EFF47FC2F378D38008832D6 /* JapaneseLearningTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 		7FF22E8D2ED7EC6600603529 /* JapaneseLearning */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 7FF22E992ED7EC6B00603529 /* Build configuration list for PBXNativeTarget "JapaneseLearning" */;
@@ -111,9 +159,13 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
-				LastSwiftUpdateCheck = 2600;
+				LastSwiftUpdateCheck = 2620;
 				LastUpgradeCheck = 2610;
 				TargetAttributes = {
+					0EFF47FB2F378D38008832D6 = {
+						CreatedOnToolsVersion = 26.2;
+						TestTargetID = 7FF22E8D2ED7EC6600603529;
+					};
 					7FF22E8D2ED7EC6600603529 = {
 						CreatedOnToolsVersion = 26.0;
 					};
@@ -137,11 +189,19 @@
 			projectRoot = "";
 			targets = (
 				7FF22E8D2ED7EC6600603529 /* JapaneseLearning */,
+				0EFF47FB2F378D38008832D6 /* JapaneseLearningTests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		0EFF47FA2F378D38008832D6 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		7FF22E8C2ED7EC6600603529 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -152,6 +212,13 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		0EFF47F82F378D38008832D6 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		7FF22E8A2ED7EC6600603529 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -161,7 +228,59 @@
 		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		0EFF48012F378D38008832D6 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 7FF22E8D2ED7EC6600603529 /* JapaneseLearning */;
+			targetProxy = 0EFF48002F378D38008832D6 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
+		0EFF48032F378D38008832D6 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 8YG68RBKNK;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = makoto.JapaneseLearningTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/JapaneseLearning.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/JapaneseLearning";
+			};
+			name = Debug;
+		};
+		0EFF48042F378D38008832D6 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 8YG68RBKNK;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = makoto.JapaneseLearningTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/JapaneseLearning.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/JapaneseLearning";
+			};
+			name = Release;
+		};
 		7FF22E972ED7EC6B00603529 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -380,6 +499,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		0EFF48022F378D38008832D6 /* Build configuration list for PBXNativeTarget "JapaneseLearningTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				0EFF48032F378D38008832D6 /* Debug */,
+				0EFF48042F378D38008832D6 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		7FF22E892ED7EC6600603529 /* Build configuration list for PBXProject "JapaneseLearning" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

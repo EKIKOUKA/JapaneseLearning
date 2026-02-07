@@ -11,6 +11,7 @@ import CoreText
 struct RubyLabel: UIViewRepresentable {
     let text: String
     let rubyWords: [RubyWord]
+    let fontSizeScale: Double
     let onTapWordAtIndex: (Int) -> Void
 
     func makeUIView(context: Context) -> RubyUIView {
@@ -22,10 +23,12 @@ struct RubyLabel: UIViewRepresentable {
     }
 
     func updateUIView(_ uiView: RubyUIView, context: Context) {
-        let attributedText = buildAttributedString()
+        let key = "\(text)|\(fontSizeScale)"
+
         // 只有内容変了才更新，避免循環刷新
-        if uiView.attributedText?.string != attributedText.string {
-            uiView.attributedText = attributedText
+        if uiView.contentKey != key {
+            uiView.contentKey = key
+            uiView.attributedText = buildAttributedString()
         }
     }
 
@@ -34,7 +37,8 @@ struct RubyLabel: UIViewRepresentable {
         style.lineSpacing = 8
         style.alignment = .left
 
-        let baseFont = UIFont.systemFont(ofSize: 28, weight: .medium)
+        let baseFontSize: CGFloat = 28
+        let baseFont = UIFont.systemFont(ofSize: baseFontSize * fontSizeScale, weight: .medium)
 
         let cleanText = text.trimmingCharacters(in: .whitespacesAndNewlines)
 
@@ -94,12 +98,19 @@ struct RubyLabel: UIViewRepresentable {
 
 class RubyUIView: UIView {
     var onTap: ((Int) -> Void)?
+    var contentKey: String?
+
+    private var cachedFramesetter: CTFramesetter?
+    private var cachedFrame: CTFrame?
 
     // 当文字改変時，自動触発重新佈局和繪製
     var attributedText: NSAttributedString? {
         didSet {
             invalidateIntrinsicContentSize() // 告訴 SwiftUI 我的尺寸変了
             setNeedsDisplay()               // 告訴系統需要重新繪製
+
+            cachedFramesetter = CTFramesetterCreateWithAttributedString(attributedText! as CFAttributedString)
+            cachedFrame = nil
         }
     }
 
@@ -120,9 +131,8 @@ class RubyUIView: UIView {
         // 技巧：給予一個稍微寬裕的預估寬度，減少佈局計算的辺界錯誤
         let width = self.bounds.width > 0 ? self.bounds.width : (UIScreen.main.bounds.width - 36)
 
-        let framesetter = CTFramesetterCreateWithAttributedString(attributedText as CFAttributedString)
         let constraints = CGSize(width: width, height: .greatestFiniteMagnitude)
-        let size = CTFramesetterSuggestFrameSizeWithConstraints(framesetter, CFRangeMake(0, attributedText.length), nil, constraints, nil)
+        let size = CTFramesetterSuggestFrameSizeWithConstraints(cachedFramesetter!, CFRangeMake(0, attributedText.length), nil, constraints, nil)
 
         // 向上取整，避免浮点数導致的線条抖動
         return CGSize(width: width, height: ceil(size.height))
@@ -139,8 +149,7 @@ class RubyUIView: UIView {
         let path = CGMutablePath()
         path.addRect(bounds)
 
-        let framesetter = CTFramesetterCreateWithAttributedString(attributedText as CFAttributedString)
-        let frame = CTFramesetterCreateFrame(framesetter, CFRangeMake(0, attributedText.length), path, nil)
+        let frame = CTFramesetterCreateFrame(cachedFramesetter!, CFRangeMake(0, attributedText.length), path, nil)
 
         CTFrameDraw(frame, context)
     }
@@ -149,8 +158,7 @@ class RubyUIView: UIView {
         guard let attributedText = attributedText else { return }
         let point = gesture.location(in: self)
 
-        let framesetter = CTFramesetterCreateWithAttributedString(attributedText as CFAttributedString)
-        let frame = CTFramesetterCreateFrame(framesetter, CFRangeMake(0, attributedText.length), CGMutablePath(rect: bounds, transform: nil), nil)
+        let frame = CTFramesetterCreateFrame(cachedFramesetter!, CFRangeMake(0, attributedText.length), CGMutablePath(rect: bounds, transform: nil), nil)
 
         let lines = CTFrameGetLines(frame) as! [CTLine]
         var origins = [CGPoint](repeating: .zero, count: lines.count)
