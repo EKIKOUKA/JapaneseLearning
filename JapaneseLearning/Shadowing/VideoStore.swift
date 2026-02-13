@@ -18,7 +18,7 @@ class VideoStore {
         if let dataVideo = UserDefaults.standard.data(forKey: "saved_videos"),
            let decodedVideo = try? JSONDecoder().decode([VideoItem].self, from: dataVideo) {
             self.videos = decodedVideo
-            print("videos: \(decodedVideo.map { "\($0.id): \($0.title): \($0.firstLoad)" })")
+            print("videos: \(decodedVideo.map { "\($0)" })")
         }
 
         if let dataVideoList = UserDefaults.standard.data(forKey: "saved_video_list"),
@@ -55,10 +55,8 @@ class VideoStore {
             videos.append(
                 VideoItem(
                     id: item.id,
-                    url: "https://www.youtube.com/watch?v=\(item.id)",
                     title: item.title,
-                    thumbnailURL: item.thumbnailURL,
-                    firstLoad: true
+                    thumbnailURL: item.thumbnailURL
                 )
             )
         }
@@ -84,13 +82,12 @@ class VideoStore {
                 videos.append(
                     VideoItem(
                         id: videoID,
-                        url: "https://www.youtube.com/watch?v=\(videoID)",
                         title: title,
-                        thumbnailURL: thumbURL,
-                        firstLoad: true
+                        thumbnailURL: thumbURL
                     )
                 )
                 saveVideo()
+
                 return .addedVideo
 
             case .playlist:
@@ -287,7 +284,7 @@ class VideoStore {
             let response = try JSONDecoder().decode(PlaylistListResponse.self, from: data)
 
             guard let item = response.items.first,
-                  let thumb = item.snippet.thumbnails.medium?.url
+              let thumb = item.snippet.thumbnails.medium?.url
             else {
                 throw URLError(.badServerResponse)
             }

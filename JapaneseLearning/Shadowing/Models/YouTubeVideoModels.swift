@@ -53,11 +53,9 @@ struct PlayListContentDetails: Decodable {
 
 struct VideoItem: Identifiable, Hashable, Codable {
     let id: String
-    let url: String
     let title: String
     let thumbnailURL: URL?
 
-    var firstLoad: Bool = true
     var currentTime: Double? = nil
     var rate: Float? = nil
 }

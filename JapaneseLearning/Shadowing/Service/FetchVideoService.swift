@@ -35,7 +35,6 @@ final class FetchVideoService {
             let streamUrlString = json["url"] as? String,
             let videoURL = URL(string: streamUrlString),
             let rawCaptions = json["captions"] as? [[String: Any]] else {
-
               throw URLError(.cannotParseResponse)
         }
 
@@ -78,7 +77,6 @@ final class FetchVideoService {
             captions: captions
         )
     }
-
 
 
 //    func fetchCaptionURL(videoID: String) async throws -> String? {

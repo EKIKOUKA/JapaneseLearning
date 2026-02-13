@@ -6,10 +6,8 @@
 //
 
 import SwiftUI
-import AVFoundation
-import MediaPlayer
 import AVKit
-import Combine
+import WebKit
 
 struct VideoContentView: View {
     let videoID: String
@@ -21,14 +19,15 @@ struct VideoContentView: View {
     @StateObject private var playerVM = PlayerViewModel()
     @Environment(\.scenePhase) private var scenePhase
     @State private var showSettingSheet = false
+    @State private var drawerOffset: CGFloat = 0
+    @State private var lastDragOffset: CGFloat = 0
+    let maxDrawerOffset: CGFloat = 201
 
     var body: some View {
 
-        let isLoading = video == nil || video?.firstLoad == true
-
         Group {
 
-            if isLoading {
+            if video == nil {
                 ProgressLoadingView()
             } else {
 
@@ -44,7 +43,7 @@ struct VideoContentView: View {
                                 .blur(radius: 70, opaque: true)
                                 .overlay(Color.black.opacity(0.2))
                         } else {
-                            Color.black.opacity(0.5)
+                            Color.black.opacity(0.1)
                         }
                     }
                     .ignoresSafeArea()
@@ -53,30 +52,61 @@ struct VideoContentView: View {
 
                         ZStack {
 
-                            AVPlayerControllerView(player: playerVM.player)
-                                .frame(height: 201)
-                                .cornerRadius(25)
-                                .opacity(playerVM.isVideoLoading ? 0 : 1)
-                                .padding(.horizontal, 18)
-                                .padding(.top, 0)
-                                .padding(.bottom, 2)
-
-                            if let image = playerVM.nowPlayingArtwork, playerVM.isVideoLoading {
+                            if playerVM.isVideoLoading, let image = playerVM.nowPlayingArtwork {
                                 Image(uiImage: image)
                                     .resizable()
                                     .scaledToFill()
-                                    .frame(height: 201)
-                                    .cornerRadius(25)
-                                    .padding(.horizontal, 18)
-                                    .padding(.top, 0)
-                                    .padding(.bottom, 2)
                                     .clipped()
                                     .opacity(playerVM.isVideoLoading ? 1 : 0)
                             }
+
+                            AVPlayerControllerView(player: playerVM.player)
+                                .opacity(playerVM.isVideoLoading ? 0 : 1)
                         }
-                        .animation(.easeInOut(duration: 0.5), value: playerVM.isVideoLoading)
+                        .animation(.easeInOut(duration: 0.75), value: playerVM.isVideoLoading)
+                        .frame(height: maxDrawerOffset)
+                        .cornerRadius(30)
+                        .frame(
+                            height: maxDrawerOffset - drawerOffset,
+                            alignment: .bottom
+                        )
+                        .background(Color.clear)
+                        .clipped()
+                        .padding(.bottom, 2)
+                        .padding(.horizontal, 18)
+                        .highPriorityGesture(
+                            DragGesture()
+                                .onChanged { value in
+                                    let offset = lastDragOffset - value.translation.height
+                                    drawerOffset = min(max(offset, 0), maxDrawerOffset)
+                                }
+                                .onEnded { _ in
+                                    let shouldCollapse = drawerOffset > maxDrawerOffset * 0.35
+
+                                    withAnimation(.interactiveSpring(
+                                        response: 0.35,
+                                        dampingFraction: 0.85
+                                    )) {
+                                        drawerOffset = shouldCollapse ? maxDrawerOffset : 0
+                                    }
+
+                                    lastDragOffset = drawerOffset
+                                }
+                        )
 
                         SubtitlesContentView(playerVM: playerVM)
+                    }
+
+                    if drawerOffset >= maxDrawerOffset {
+                        playResumeVideoView(
+                            drawerOffset: $drawerOffset,
+                            lastDragOffset: $lastDragOffset
+                        )
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                        .padding(.top, 5)
+                        .opacity(drawerOffset >= maxDrawerOffset ? 1 : 0)
+                        .offset(y: drawerOffset >= maxDrawerOffset ? 0 : -20)
+                        .animation(.easeOut(duration: 0.5), value: drawerOffset)
                     }
                 }
             }
@@ -85,7 +115,7 @@ struct VideoContentView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbarColorScheme(.dark, for: .navigationBar)
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
+            ToolbarItemGroup(placement: .topBarTrailing) {
                 Button {
                     showSettingSheet = true
                 } label: {
@@ -93,8 +123,7 @@ struct VideoContentView: View {
                 }
             }
         }
-        .toolbar(isLoading ? .hidden : .visible, for: .navigationBar)
-        .toolbar(.hidden, for: .tabBar)
+        .toolbarVisibility(.hidden, for: .tabBar)
         .task(id: video?.id) {
             guard let video else { return }
             playerVM.nowPlayingTitle = video.title
@@ -151,6 +180,42 @@ struct VideoContentView: View {
     }
 }
 
+struct playResumeVideoView: View {
+    @Binding var drawerOffset: CGFloat
+    @Binding var lastDragOffset: CGFloat
+
+    var body: some View {
+
+        Button {
+            withAnimation(.easeInOut(duration: 0.25)) {
+                drawerOffset = 0
+                lastDragOffset = 0
+            }
+        } label: {
+            Label {
+                Text("ビデオを表示")
+                    .font(.system(size: 15, weight: .medium))
+            } icon: {
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 13, weight: .semibold))
+            }
+            .foregroundColor(.primary)
+            .labelStyle(.titleAndIcon)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
+        }
+        .background {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(.ultraThinMaterial)
+        }
+        .overlay {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(.white.opacity(0.14), lineWidth: 0.5)
+        }
+        .shadow(color: .black.opacity(0.12), radius: 10, y: 4)
+    }
+}
+
 struct SubtitlesContentView: View {
     @ObservedObject var playerVM: PlayerViewModel
     @Environment(SettingsStore.self) private var settingsStore
@@ -183,6 +248,8 @@ struct SubtitlesContentView: View {
                 .animation(.easeInOut(duration: 1.0), value: playerVM.captions)
                 .padding(.horizontal, 18)
             }
+            .scrollContentBackground(.hidden)
+            .background(Color.clear)
             .onChange(of: playerVM.currentLineID) { old, new in
                 guard old != new else { return }
                 guard let newID = new else { return }
@@ -332,13 +399,23 @@ struct VideoSubtitleFontSizeSliderView: View {
 
             Image(systemName: "textformat.size.smaller")
                 .foregroundColor(.secondary)
+                .onTapGesture {
+                    if settingsStoreBindable.settings.videoSubtitleFontSizeScale <= 0.70 { return }
+                    settingsStoreBindable.settings.videoSubtitleFontSizeScale -= 0.05
+                }
+
             Slider(
                 value: $settingsStoreBindable.settings.videoSubtitleFontSizeScale,
                 in: 0.80...1.20,
                 step: 0.05
             )
+
             Image(systemName: "textformat.size.larger")
                 .foregroundColor(.secondary)
+                .onTapGesture {
+                    if settingsStoreBindable.settings.videoSubtitleFontSizeScale >= 1.40 { return }
+                    settingsStoreBindable.settings.videoSubtitleFontSizeScale += 0.05
+                }
 
             Text(String(format: "%.2fx", settingsStoreBindable.settings.videoSubtitleFontSizeScale))
                 .font(.caption.monospacedDigit())
@@ -370,14 +447,21 @@ struct AVPlayerControllerView: UIViewControllerRepresentable {
     func makeUIViewController(context: Context) -> AVPlayerViewController {
         let vc = AVPlayerViewController()
         vc.player = player
+        player.allowsExternalPlayback = false
         vc.showsPlaybackControls = true
-        vc.allowsPictureInPicturePlayback = false  // !!
+        vc.allowsPictureInPicturePlayback = true
+        vc.canStartPictureInPictureAutomaticallyFromInline = true
+        vc.entersFullScreenWhenPlaybackBegins = false
+        vc.exitsFullScreenWhenPlaybackEnds = false
+//        vc.requiresLinearPlayback = true
         vc.videoGravity = .resizeAspect
         return vc
     }
 
     func updateUIViewController(_ uiViewController: AVPlayerViewController, context: Context) {
-        uiViewController.player = player
+        if uiViewController.player != player {
+            uiViewController.player = player
+        }
     }
 }
 

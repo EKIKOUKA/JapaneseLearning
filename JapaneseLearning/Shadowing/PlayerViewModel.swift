@@ -29,7 +29,7 @@ final class PlayerViewModel: ObservableObject {
 
     // Playback State
     @Published var isPlaying = false
-    @Published var isVideoLoading = false
+    @Published var isVideoLoading = true
     @Published var rate: Float = 1.0
     @Published var tempRate: Float = 1.0
 
@@ -38,6 +38,7 @@ final class PlayerViewModel: ObservableObject {
     @Published private(set) var isLoopingSingleLine = false
     private(set) var lockedLoopLine: CaptionLine?
     private var currentCaptionIndex: Int = 0
+    private var currentLoopEndTime: CMTime?
 
     // UI about
     @Published var nowPlayingTitle: String = ""
@@ -56,6 +57,8 @@ final class PlayerViewModel: ObservableObject {
     private var timeControlObserver: NSKeyValueObservation?
     private var rateObserver: NSKeyValueObservation?
     private var isSeeking = false
+    private var boundaryObserver: Any?
+    private var loopObserver: Any?
 
 
     init() {
@@ -85,16 +88,15 @@ final class PlayerViewModel: ObservableObject {
         lockedLoopLine = nil
 
         self.currentVideoItem = item
-        self.isVideoLoading = true
         self.nowPlayingTitle = item.title
 
         Task {
             await loadVideoProcess(for: item)
         }
     }
+
     // 入り口
     func loadVideoProcess(for videoItem: VideoItem) async {
-        isVideoLoading = true
         print("isVideoLoading: \(isVideoLoading)")
         loadStartTime = Date()
         self.currentVideoItem = videoItem
@@ -103,15 +105,6 @@ final class PlayerViewModel: ObservableObject {
 
             do {
                 let videoData = try await fetchVideoService.fetchVideoDataFromServer(videoItem.id)
-
-                if let videoItem = self.currentVideoItem,
-                   let index = videoStore.videos.firstIndex(where: { $0.id == videoItem.id }) {
-                    if videoStore.videos[index].firstLoad {
-                        videoStore.videos[index].firstLoad = false
-                        videoStore.saveVideo()
-                        self.currentVideoItem?.firstLoad = false
-                    }
-                }
 
                 await MainActor.run {
                     self.setupPlayer(with: videoData.videoURL)
@@ -133,23 +126,15 @@ final class PlayerViewModel: ObservableObject {
     // Player Setup & Restoration
     private func setupPlayer(with url: URL) {
         print("setupPlaye()")
-        let asset = AVURLAsset(url: url, options: [
-            "AVURLAssetHTTPHeaderFieldsKey": [
-                "User-Agent": "com.google.ios.youtube/19.29.1 (iPhone16,2; U; CPU iOS 17_5_1 like Mac OS X;)",
-                "Referer": "https://www.youtube.com/",
-                "Origin": "https://www.youtube.com"
-            ],
-            "AVURLAssetAllowsCellularAccessKey": true,
-            "AVURLAssetAllowsExpensiveNetworkAccessKey": true
-        ])
+        let asset = AVURLAsset(url: url)
         let item = AVPlayerItem(asset: asset)
         item.audioTimePitchAlgorithm = .timeDomain
 
-        item.preferredForwardBufferDuration = 1.0
+        item.preferredForwardBufferDuration = 6
         item.canUseNetworkResourcesForLiveStreamingWhilePaused = true
 
         player.replaceCurrentItem(with: item)
-        player.automaticallyWaitsToMinimizeStalling = false
+        player.automaticallyWaitsToMinimizeStalling = true
 
         playerItemObservation = item.observe(\.status, options: [.new]) { [weak self] item, _ in
             guard let self else { return }
@@ -198,15 +183,12 @@ final class PlayerViewModel: ObservableObject {
             let seekTime = CMTime(seconds: videoProgress, preferredTimescale: 600)
             player.seek(to: seekTime, toleranceBefore: .zero, toleranceAfter: .zero) { [weak self] _ in
                 guard let self = self else { return }
-//                DispatchQueue.main.async {
                     self.player.rate = videoRate
                     self.tempRate = videoRate
                     self.isVideoLoading = false
                     print("🎯 進度恢復成功: \(videoProgress)s, 語速: \(videoRate)x")
-//                }
             }
         } else {
-            player.rate = videoRate
             isVideoLoading = false
         }
     }
@@ -267,7 +249,7 @@ final class PlayerViewModel: ObservableObject {
     }
 
     @MainActor
-    private func updateCaptionIndex(for time: Double, forceSearch: Bool = false) {
+    func updateCaptionIndex(for time: Double, forceSearch: Bool = false) {
         guard !captions.isEmpty else { return }
 
         // --- 1. 熱路径 (Hot Path): 播放中最常命中的邏輯 ---
@@ -380,49 +362,13 @@ final class PlayerViewModel: ObservableObject {
         updateCaptionIndex(for: currentTime)
         let line = captions[currentCaptionIndex]
 
-        if isLoopingSingleLine, let loopLine = lockedLoopLine {
-            let loopEnd = CMTime(seconds: loopLine.end, preferredTimescale: 600)
-
-            if currentTime >= loopLine.end {
-                print("🔄 觸發回跳: \(loopLine)")
-                isSeeking = true
-
-                let seekTime = CMTime(
-                    seconds: loopLine.start,
-                    preferredTimescale: 600
-                )
-
-                player.seek(
-                    to: seekTime,
-                    toleranceBefore: .zero,
-                    toleranceAfter: .zero
-                ) { [weak self] _ in
-                    guard let self else { return }
-
-                    Task { @MainActor in
-                        self.player.rate = self.rate
-                        try? await Task.sleep(nanoseconds: 50_000_000)
-                        self.isSeeking = false
-                    }
-                }
-            }
-
-            if currentTime >= loopLine.start && currentTime < (loopLine.end + 0.5) {
-                if currentLineID != loopLine.id {
-                    currentLineID = loopLine.id
-                }
-
-                return
-            }
-        }
-
         if currentLineID != line.id {
             currentLineID = line.id
         }
     }
     private func setupTimeObserver() {
         timeObserver = player.addPeriodicTimeObserver(
-            forInterval: CMTime(seconds: 0.1, preferredTimescale: 600),
+            forInterval: CMTime(seconds: 0.15, preferredTimescale: 600),
             queue: .main
         ) { [weak self] time in
             guard let self = self else { return }
@@ -441,19 +387,13 @@ final class PlayerViewModel: ObservableObject {
                 switch player.timeControlStatus {
                     case .playing:
                         self.isPlaying = true
-
-                        if abs(player.rate - self.rate) > 0.01 && self.rate > 0 {
-                            self.player.rate = self.rate
-                            print("▶️ 恢復播放，自動應用倍速: \(self.rate)")
-                        }
-
                         self.updateNowPlayingPlaybackRate(self.rate)
                         self.setupNowPlaying()
                     case .paused:
                         self.isPlaying = false
                         self.updateNowPlayingPlaybackRate(0)
                     case .waitingToPlayAtSpecifiedRate:
-                        break
+                        print("⏳ 等待緩衝，自動恢復播放")
                     @unknown default:
                         break
                 }
@@ -483,28 +423,53 @@ final class PlayerViewModel: ObservableObject {
                 }
                 return
             }
-
-            if abs(self.rate - newRate) > 0.01 {
-                print("✅ 用戶手動同步倍速: \(newRate)")
-                DispatchQueue.main.async {
-                    self.rate = newRate
-                    self.tempRate = newRate
-                }
-            }
         }
     }
 
 
     func playLine(_ line: CaptionLine) {
-        seek(to: line.start + 0.01)
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
-        self.player.rate = self.rate
+        let start = CMTime(seconds: line.start, preferredTimescale: 600)
+        let end = CMTime(seconds: line.end, preferredTimescale: 600)
 
-        lockedLoopLine = line
-        currentLineID = line.id
+        currentLoopEndTime = end
+        player.seek(to: start, toleranceBefore: .zero, toleranceAfter: .zero)
+
+        if isLoopingSingleLine {
+            removeLoopObserver()
+            addLoopObserver(endTime: end)
+        }
+        player.play()
+
         let time = currentTimeFormatted(Int(line.start))
         print("🔄 手動切換循環目標: \(line)")
         print("time: \(time)")
+    }
+
+    private func addLoopObserver(endTime: CMTime) {
+
+        loopObserver = player.addBoundaryTimeObserver(
+            forTimes: [NSValue(time: endTime)],
+            queue: .main
+        ) { [weak self] in
+            guard let self else { return }
+
+            guard self.isLoopingSingleLine else { return }
+
+            guard self.currentCaptionIndex < self.captions.count else { return }
+            let startSeconds = self.captions[self.currentCaptionIndex].start
+            let start = CMTime(seconds: startSeconds, preferredTimescale: 600)
+
+            self.player.seek(to: start, toleranceBefore: .zero, toleranceAfter: .zero)
+            self.player.play()
+        }
+    }
+
+    private func removeLoopObserver() {
+        if let observer = loopObserver {
+            player.removeTimeObserver(observer)
+            loopObserver = nil
+        }
     }
 
     func playPlayer() {
@@ -527,28 +492,22 @@ final class PlayerViewModel: ObservableObject {
 
     func toggleSingleLineLoop() {
         isLoopingSingleLine.toggle()
-        print("按鈕点撃：循環状態変更為 \(isLoopingSingleLine)")
 
         if isLoopingSingleLine {
-            if captions.isEmpty {
-                print("⚠️ 鎖定失敗：captions 数組目前是空的")
-            }
+            guard currentCaptionIndex < captions.count else { return }
 
-            if let currentLine = captions.first(where: { $0.id == currentLineID }) {
-                lockedLoopLine = currentLine
-                print("lockedLoopLine: \(lockedLoopLine)")
-                print("start: \(currentTimeFormatted(Int(lockedLoopLine!.start)))")
-                print("📍 VM 内部鎖定循環行: \(currentLine.id)(範囲: \(currentLine.start)-\(currentLine.end))")
-            } else {
-                print("⚠️ 鎖定失敗：找不到與 currentLineID (\(currentLineID ?? nil)) 匹配的行")
-            }
+            let endSeconds = captions[currentCaptionIndex].end
+            let endTime = CMTime(seconds: endSeconds, preferredTimescale: 600)
+
+            currentLoopEndTime = endTime
+            removeLoopObserver()
+            addLoopObserver(endTime: endTime)
         } else {
-            lockedLoopLine = nil
-            print("🔓 已解除循環鎖定")
+            removeLoopObserver()
         }
     }
 
-    func seek(to seconds: Double) {
+    func seek(to seconds: Double, completion: (@Sendable (Bool) -> Void)? = nil) {
         let time = CMTime(seconds: seconds, preferredTimescale: 600)
         isSeeking = true
         player.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero) { [weak self] finished in
@@ -557,6 +516,7 @@ final class PlayerViewModel: ObservableObject {
             Task { @MainActor in
                 self.updateCaptionIndex(for: seconds, forceSearch: true)
                 self.isSeeking = false
+                completion?(true)
             }
         }
     }
