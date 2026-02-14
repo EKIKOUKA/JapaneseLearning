@@ -59,14 +59,13 @@ final class PlayerViewModel: ObservableObject {
     private var isSeeking = false
     private var boundaryObserver: Any?
     private var loopObserver: Any?
+    private var captionBoundaryObservers: [Any] = []
 
 
     init() {
         setupAudioSession()
         setupRemoteCommand()
-        setupTimeObserver()
         observePlaybackState()
-        observeRate()
     }
     func inject(videoStore: VideoStore, settingsStore: SettingsStore) {
         self.videoStore = videoStore
@@ -101,25 +100,13 @@ final class PlayerViewModel: ObservableObject {
         loadStartTime = Date()
         self.currentVideoItem = videoItem
 
-        Task {
-
-            do {
-                let videoData = try await fetchVideoService.fetchVideoDataFromServer(videoItem.id)
-
-                await MainActor.run {
-                    self.setupPlayer(with: videoData.videoURL)
-                }
-                try? await Task.sleep(nanoseconds: 100_000_000)
-
-                await MainActor.run {
-                    self.loadCaptions(videoID: videoItem.id, captions: videoData.captions)
-                }
-            } catch {
-                await MainActor.run {
-                    self.isVideoLoading = false
-                    print("❌ 載入失敗: \(error.localizedDescription)")
-                }
-            }
+        do {
+            let videoData = try await fetchVideoService.fetchVideoDataFromServer(videoItem.id)
+            self.setupPlayer(with: videoData.videoURL)
+            self.loadCaptions(videoID: videoItem.id, captions: videoData.captions)
+        } catch {
+            self.isVideoLoading = false
+            print("❌ 載入失敗: \(error.localizedDescription)")
         }
     }
 
@@ -134,6 +121,13 @@ final class PlayerViewModel: ObservableObject {
         item.canUseNetworkResourcesForLiveStreamingWhilePaused = true
 
         player.replaceCurrentItem(with: item)
+        // 監聽系統拖動進度條或任何時間跳躍
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleTimeJumped),
+            name: .AVPlayerItemTimeJumped,
+            object: item
+        )
         player.automaticallyWaitsToMinimizeStalling = true
 
         playerItemObservation = item.observe(\.status, options: [.new]) { [weak self] item, _ in
@@ -163,9 +157,11 @@ final class PlayerViewModel: ObservableObject {
         self.currentCaptionIndex = 0
         self.currentLineID = nil
 
+        setupCaptionBoundaryObservers()
+
         let time = self.player.currentTime().seconds
         // 強制執行一次査找
-        self.updateCaptionIndex(for: time, forceSearch: true)
+        self.updateCaptionIndexForSeek(to: time)
         print("✅ Captions Loaded: \(captions.count) lines. Start Index: \(currentCaptionIndex)")
     }
 
@@ -183,10 +179,12 @@ final class PlayerViewModel: ObservableObject {
             let seekTime = CMTime(seconds: videoProgress, preferredTimescale: 600)
             player.seek(to: seekTime, toleranceBefore: .zero, toleranceAfter: .zero) { [weak self] _ in
                 guard let self = self else { return }
-                    self.player.rate = videoRate
-                    self.tempRate = videoRate
-                    self.isVideoLoading = false
-                    print("🎯 進度恢復成功: \(videoProgress)s, 語速: \(videoRate)x")
+
+                self.updateCaptionIndexForSeek(to: videoProgress)
+                self.player.playImmediately(atRate: videoRate)
+                self.tempRate = videoRate
+                self.isVideoLoading = false
+                print("🎯 進度恢復成功: \(videoProgress)s, 語速: \(videoRate)x")
             }
         } else {
             isVideoLoading = false
@@ -216,6 +214,18 @@ final class PlayerViewModel: ObservableObject {
         isLoopingSingleLine = false
         lockedLoopLine = nil
         currentLineID = nil
+
+        for observer in captionBoundaryObservers {
+            player.removeTimeObserver(observer)
+        }
+        captionBoundaryObservers.removeAll()
+
+        // Remove observer for time jumped
+        NotificationCenter.default.removeObserver(
+            self,
+            name: .AVPlayerItemTimeJumped,
+            object: player.currentItem
+        )
 
         // 釋放 player item（關鍵）
         player.replaceCurrentItem(with: nil)
@@ -249,133 +259,75 @@ final class PlayerViewModel: ObservableObject {
     }
 
     @MainActor
-    func updateCaptionIndex(for time: Double, forceSearch: Bool = false) {
+    private func updateCaptionIndexForSeek(to time: Double) {
         guard !captions.isEmpty else { return }
 
-        // --- 1. 熱路径 (Hot Path): 播放中最常命中的邏輯 ---
-        // 只有在非強制搜索模式下才使用快速檢測
-        if !forceSearch {
-            // A. 優先檢査：是否已経進入下一句？(貪婪模式，解決延遅)
-            if currentCaptionIndex + 1 < captions.count {
-                let nextLine = captions[currentCaptionIndex + 1]
-                if time >= nextLine.start {
-                    currentCaptionIndex += 1
-                    currentLineID = nextLine.id
-
-                    // 快速追趕：如果一次跳過多句（比如卡頓後），用循環追上
-                    while currentCaptionIndex + 1 < captions.count {
-                        let nextNext = captions[currentCaptionIndex + 1]
-                        if time >= nextNext.start {
-                            currentCaptionIndex += 1
-                            currentLineID = nextNext.id
-                        } else {
-                            break
-                        }
-                    }
-                    return
-                }
-            }
-
-            // B. 檢査当前行是否依然有効
-            if currentCaptionIndex < captions.count {
-                let currentLine = captions[currentCaptionIndex]
-                // 如果還在当前行範囲内，直接返回，不做任何操作
-                if time >= currentLine.start && time < currentLine.end {
-                    if currentLineID != currentLine.id { currentLineID = currentLine.id }
-                    return
-                }
-
-                // C. 処理空隙 (Gap)：如果時間大於当前結束，小於下一句開始
-                // 保持索引不変，等待下一句
-                if currentCaptionIndex + 1 < captions.count {
-                    let nextLine = captions[currentCaptionIndex + 1]
-                    if time >= currentLine.end && time < nextLine.start {
-                        return
-                    }
-                }
-            }
-        }
-
-        // --- 2. 冷路径 (Cold Path): 跳転、回跳或熱路径失効時 ---
-        // 使用二分査找 (Binary Search)
         var left = 0
         var right = captions.count - 1
-        var foundIndex: Int? = nil
+        var resultIndex: Int? = nil
+
+        // 🛠️ 容錯値：解決 seek 落在 10.49999 而目標是 10.5 的問題
+        let epsilon = 0.05
 
         while left <= right {
             let mid = (left + right) / 2
             let line = captions[mid]
 
-            if time >= line.start && time < line.end {
-                foundIndex = mid
-                // ⚠️ 這裡不 break，継続往後找！
-                // 這是解決「閃爍」的関鍵：如果有重畳，我們希望找到「最晚」開始的那一行
-                // 但二分法通常找到任意一個就停。我們這裡簡単処理：找到後先暫存，
-                // 但如果我們想要「貪婪」匹配，需要在下面做額外判断。
+            if time >= (line.start - epsilon) && time < line.end {
+                resultIndex = mid
                 break
-            } else if time < line.start {
+            } else if time < (line.start - epsilon) {
                 right = mid - 1
             } else {
                 left = mid + 1
             }
         }
 
-        if let idx = foundIndex {
-            // ✅ 修正閃爍問題的関鍵邏輯：
-            // 二分査找找到了 idx，但可能 idx+1 也同時満足条件（重畳）。
-            // 由於我們採用「下一句優先」策略，這裡必須檢査 idx+1。
-            var finalIndex = idx
+        // 如果沒有精確落在區間內，則取「最後一個 start <= time 的行」
+        if resultIndex == nil {
+            let fallbackIndex = max(0, min(right, captions.count - 1))
+            resultIndex = fallbackIndex
+        }
 
-            if finalIndex + 1 < captions.count {
-                let nextLine = captions[finalIndex + 1]
-                // 如果下一句也已経開始了，説明発生了重畳，強制選下一句
-                if time >= nextLine.start {
-                    finalIndex += 1
-                }
-            }
-
+        guard let finalIndex = resultIndex else { return }
+        if currentCaptionIndex != finalIndex {
             currentCaptionIndex = finalIndex
             currentLineID = captions[finalIndex].id
-
-        } else {
-            // 没命中（在空隙中，或在開頭結尾之外）
-            // 讓索引停留在「最接近的前一句」
-            if right >= 0 && right < captions.count {
-                currentCaptionIndex = right
-                // 処於空隙時，你可以選択保留上一句高亮，或者 nil
-                // currentLineID = captions[right].id
-            } else {
-                currentCaptionIndex = 0
-                // 時間比第一句還早
-                currentLineID = captions[0].id
-            }
         }
     }
 
-    @MainActor
-    private func handleTimeUpdate(_ time: CMTime) {
-        guard !self.isSeeking else { return }
+    @objc
+    private func handleTimeJumped() {
+        guard !isSeeking else { return }
+
+        let time = player.currentTime().seconds
+        updateCaptionIndexForSeek(to: time)
+    }
+
+    private func setupCaptionBoundaryObservers() {
+
+        for observer in captionBoundaryObservers {
+            player.removeTimeObserver(observer)
+        }
+        captionBoundaryObservers.removeAll()
+
         guard !captions.isEmpty else { return }
 
-        let currentTime = time.seconds
+        for (index, line) in captions.enumerated() {
+            let time = CMTime(seconds: line.start, preferredTimescale: 600)
 
-        updateCaptionIndex(for: currentTime)
-        let line = captions[currentCaptionIndex]
+            let observer = player.addBoundaryTimeObserver(
+                forTimes: [NSValue(time: time)],
+                queue: .main
+            ) { [weak self] in
+                guard let self else { return }
+                guard !self.isSeeking else { return }
 
-        if currentLineID != line.id {
-            currentLineID = line.id
-        }
-    }
-    private func setupTimeObserver() {
-        timeObserver = player.addPeriodicTimeObserver(
-            forInterval: CMTime(seconds: 0.15, preferredTimescale: 600),
-            queue: .main
-        ) { [weak self] time in
-            guard let self = self else { return }
-
-            Task { @MainActor in
-                self.handleTimeUpdate(time)
+                self.currentCaptionIndex = index
+                self.currentLineID = line.id
             }
+
+            captionBoundaryObservers.append(observer)
         }
     }
 
@@ -404,42 +356,49 @@ final class PlayerViewModel: ObservableObject {
     func setRate(_ newRate: Float) {
         rate = newRate
         tempRate = newRate
-        player.rate = newRate
+
+        if isPlaying {
+            player.playImmediately(atRate: newRate)
+        }
+
         updateNowPlayingPlaybackRate(newRate)
     }
-    private func observeRate() {
-        rateObserver = player.observe(\.rate, options: [.new, .old]) { [weak self] player, change in
-            guard let self else { return }
-            let newRate = player.rate
-
-            guard newRate > 0 else { return }
-
-            if abs(newRate - 1.0) < 0.001 && abs(self.rate - 1.0) > 0.01 {
-                print("🚨 系統試圖重置為 1.0，強行拉回至: \(self.rate)")
-                DispatchQueue.main.async {
-                    if self.player.rate != self.rate {
-                        self.player.rate = self.rate
-                    }
-                }
-                return
-            }
-        }
-    }
-
 
     func playLine(_ line: CaptionLine) {
-        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        // 🔒 1️⃣ 先鎖住 timeObserver
+        isSeeking = true
+
         let start = CMTime(seconds: line.start, preferredTimescale: 600)
         let end = CMTime(seconds: line.end, preferredTimescale: 600)
 
         currentLoopEndTime = end
-        player.seek(to: start, toleranceBefore: .zero, toleranceAfter: .zero)
 
         if isLoopingSingleLine {
             removeLoopObserver()
             addLoopObserver(endTime: end)
         }
-        player.play()
+
+        // 🟢 2️⃣ 立即同步 index（避免閃一下）,這是用戸点撃的瞬間反饋
+        if let idx = captions.firstIndex(where: { $0.id == line.id }) {
+            currentCaptionIndex = idx
+            currentLineID = line.id
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        }
+
+        player.seek(to: start, toleranceBefore: .zero, toleranceAfter: .zero) { [weak self] finished in
+            guard let self, finished else { return }
+
+            Task { @MainActor in
+                self.playPlayer()
+
+                // 延遲一個 runloop，避免 boundary observer 在 seek 完成瞬間觸發
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    let actualTime = self.player.currentTime().seconds
+                    self.updateCaptionIndexForSeek(to: actualTime)
+                    self.isSeeking = false
+                }
+            }
+        }
 
         let time = currentTimeFormatted(Int(line.start))
         print("🔄 手動切換循環目標: \(line)")
@@ -461,7 +420,7 @@ final class PlayerViewModel: ObservableObject {
             let start = CMTime(seconds: startSeconds, preferredTimescale: 600)
 
             self.player.seek(to: start, toleranceBefore: .zero, toleranceAfter: .zero)
-            self.player.play()
+            self.playPlayer()
         }
     }
 
@@ -473,7 +432,7 @@ final class PlayerViewModel: ObservableObject {
     }
 
     func playPlayer() {
-        player.rate = rate
+        player.playImmediately(atRate: rate)
         isPlaying = true
     }
 
@@ -509,12 +468,15 @@ final class PlayerViewModel: ObservableObject {
 
     func seek(to seconds: Double, completion: (@Sendable (Bool) -> Void)? = nil) {
         let time = CMTime(seconds: seconds, preferredTimescale: 600)
+
         isSeeking = true
+
         player.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero) { [weak self] finished in
             guard let self, finished else { return }
 
             Task { @MainActor in
-                self.updateCaptionIndex(for: seconds, forceSearch: true)
+                let actualTime = self.player.currentTime().seconds
+                self.updateCaptionIndexForSeek(to: actualTime)
                 self.isSeeking = false
                 completion?(true)
             }
