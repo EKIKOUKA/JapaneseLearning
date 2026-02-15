@@ -7,18 +7,6 @@
 
 import SwiftUI
 
-//enum VideoResolveStrategy: String, Codable, CaseIterable {
-//    case YouTubeKit
-//    case yt_dlp
-//
-//    var displayName: String {
-//        switch self {
-//            case .yt_dlp: return "yt-dlp（サーバで）"
-//            case .YouTubeKit: return "YouTubeKit（携帯で）"
-//        }
-//    }
-//}
-
 enum VideoSubtitleLineWithAnimation: String, Codable, CaseIterable {
     case easeInOut
     case spring
@@ -83,14 +71,6 @@ struct ShadowingSettingsSheetView: View {
                         }
                     }
                 }
-
-                /* Section(header: Text("YouTubeビデオ解析方法")) {
-                    Picker("解析方法", selection: $settingsStoreBindable.settings.showVideoResolveStrategyPicker) {
-                        ForEach(VideoResolveStrategy.allCases, id: \.self) { strategy in
-                            Text(strategy.displayName).tag(strategy)
-                        }
-                    }
-                } */
             }
             .navigationTitle("シャドーイング設定")
             .navigationBarTitleDisplayMode(.inline)

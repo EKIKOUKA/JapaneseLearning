@@ -33,14 +33,14 @@ final class PlayerViewModel: ObservableObject {
     @Published var rate: Float = 1.0
     @Published var tempRate: Float = 1.0
 
-    // Subtitle Status about
-    @Published var currentLineID: String? = nil
+    // Subtitle Status
+    @Published private(set) var currentLineID: String? = nil
+    private var currentCaptionIndex: Int = 0
     @Published private(set) var isLoopingSingleLine = false
     private(set) var lockedLoopLine: CaptionLine?
-    private var currentCaptionIndex: Int = 0
     private var currentLoopEndTime: CMTime?
 
-    // UI about
+    // nowPlaying
     @Published var nowPlayingTitle: String = ""
     @Published var nowPlayingArtwork: UIImage?
 
@@ -59,7 +59,7 @@ final class PlayerViewModel: ObservableObject {
     private var isSeeking = false
     private var boundaryObserver: Any?
     private var loopObserver: Any?
-    private var captionBoundaryObservers: [Any] = []
+    private var captionBoundaryObserver: Any?
 
 
     init() {
@@ -156,17 +156,11 @@ final class PlayerViewModel: ObservableObject {
         print("captions: \(captions.prefix(2))")
         self.currentCaptionIndex = 0
         self.currentLineID = nil
-
-        setupCaptionBoundaryObservers()
-
-        let time = self.player.currentTime().seconds
-        // 強制執行一次査找
-        self.updateCaptionIndexForSeek(to: time)
         print("✅ Captions Loaded: \(captions.count) lines. Start Index: \(currentCaptionIndex)")
     }
 
     func restorePlayProgress() {
-        guard let videoItem = currentVideoItem else { // , let cachedItem = videoStore.videos.first(where: { $0.id == videoItem.id }) else
+        guard let videoItem = currentVideoItem else {
             self.isVideoLoading = false
             return
         }
@@ -175,19 +169,20 @@ final class PlayerViewModel: ObservableObject {
         let videoRate = videoItem.rate ?? 1.0
         rate = videoRate
 
-        if videoProgress > 0 {
-            let seekTime = CMTime(seconds: videoProgress, preferredTimescale: 600)
-            player.seek(to: seekTime, toleranceBefore: .zero, toleranceAfter: .zero) { [weak self] _ in
-                guard let self = self else { return }
+        let seekTime = CMTime(seconds: videoProgress, preferredTimescale: 600)
+        player.seek(to: seekTime, toleranceBefore: .zero, toleranceAfter: .zero) { [weak self] _ in
+            guard let self = self else { return }
 
-                self.updateCaptionIndexForSeek(to: videoProgress)
-                self.player.playImmediately(atRate: videoRate)
-                self.tempRate = videoRate
-                self.isVideoLoading = false
+            self.updateCaptionIndexForSeek(to: videoProgress)
+            self.player.playImmediately(atRate: videoRate)
+            self.tempRate = videoRate
+            self.isVideoLoading = false
+
+            if videoProgress > 0 {
                 print("🎯 進度恢復成功: \(videoProgress)s, 語速: \(videoRate)x")
+            } else {
+                print("▶️ 首次播放，自動開始")
             }
-        } else {
-            isVideoLoading = false
         }
     }
 
@@ -200,9 +195,9 @@ final class PlayerViewModel: ObservableObject {
         isPlaying = false
 
         // 解除 time observer
-        if let observer = timeObserver {
+        if let observer = captionBoundaryObserver {
             player.removeTimeObserver(observer)
-            timeObserver = nil
+            captionBoundaryObserver = nil
         }
 
         // 解除 KVO
@@ -215,18 +210,14 @@ final class PlayerViewModel: ObservableObject {
         lockedLoopLine = nil
         currentLineID = nil
 
-        for observer in captionBoundaryObservers {
-            player.removeTimeObserver(observer)
-        }
-        captionBoundaryObservers.removeAll()
-
         // Remove observer for time jumped
         NotificationCenter.default.removeObserver(
             self,
             name: .AVPlayerItemTimeJumped,
-            object: player.currentItem
+            object: nil
         )
 
+        removeLoopObserver()
         // 釋放 player item（關鍵）
         player.replaceCurrentItem(with: nil)
 
@@ -262,12 +253,23 @@ final class PlayerViewModel: ObservableObject {
     private func updateCaptionIndexForSeek(to time: Double) {
         guard !captions.isEmpty else { return }
 
+        // 🛠️ 容錯値：解決 seek 落在 10.49999 而目標是 10.5 的問題
+        let epsilon = 0.05
+
+        // 🔥 優化：快速檢査 (Hot Path)
+        // 先檢査「当前正在顯示的這句」是不是還在時間範囲内？如果是，直接 return
+        if currentCaptionIndex < captions.count {
+            let currentLine = captions[currentCaptionIndex]
+            // 稍微放寬一点 epsilon 容錯
+            if time >= (currentLine.start - epsilon) && time < currentLine.end {
+                return // ✅ 命中！時間没変，直接収工
+            }
+        }
+
+
         var left = 0
         var right = captions.count - 1
         var resultIndex: Int? = nil
-
-        // 🛠️ 容錯値：解決 seek 落在 10.49999 而目標是 10.5 的問題
-        let epsilon = 0.05
 
         while left <= right {
             let mid = (left + right) / 2
@@ -290,9 +292,12 @@ final class PlayerViewModel: ObservableObject {
         }
 
         guard let finalIndex = resultIndex else { return }
-        if currentCaptionIndex != finalIndex {
+
+        if finalIndex != currentCaptionIndex || currentLineID == nil {
             currentCaptionIndex = finalIndex
             currentLineID = captions[finalIndex].id
+            // 🔥 重要：重置辺界監聽器，讓它從新位置開始盯哨
+            setupNextCaptionBoundaryObserver()
         }
     }
 
@@ -304,30 +309,37 @@ final class PlayerViewModel: ObservableObject {
         updateCaptionIndexForSeek(to: time)
     }
 
-    private func setupCaptionBoundaryObservers() {
-
-        for observer in captionBoundaryObservers {
+    // 1. 動態設置「下一個」辺界監聽
+    private func setupNextCaptionBoundaryObserver() {
+        // 移除舊的監聽
+        if let observer = captionBoundaryObserver {
             player.removeTimeObserver(observer)
+            captionBoundaryObserver = nil
         }
-        captionBoundaryObservers.removeAll()
 
-        guard !captions.isEmpty else { return }
+        // 如果已経是最後一行，或者没有字幕，就不用設監聽了
+        let nextIndex = currentCaptionIndex + 1
+        guard nextIndex < captions.count else { return }
 
-        for (index, line) in captions.enumerated() {
-            let time = CMTime(seconds: line.start, preferredTimescale: 600)
+        // 確保当前有影片在播放
+        guard player.currentItem != nil else { return }
 
-            let observer = player.addBoundaryTimeObserver(
-                forTimes: [NSValue(time: time)],
-                queue: .main
-            ) { [weak self] in
-                guard let self else { return }
-                guard !self.isSeeking else { return }
+        let nextLine = captions[nextIndex]
+        let time = CMTime(seconds: nextLine.start, preferredTimescale: 600)
 
-                self.currentCaptionIndex = index
-                self.currentLineID = line.id
-            }
+        captionBoundaryObserver = player.addBoundaryTimeObserver(
+            forTimes: [NSValue(time: time)],
+            queue: .main
+        ) { [weak self] in
+            guard let self = self else { return }
+            guard !self.isSeeking else { return }
 
-            captionBoundaryObservers.append(observer)
+            // 踩到点了！更新当前索引
+            self.currentCaptionIndex = nextIndex
+            self.currentLineID = nextLine.id
+
+            // 遞帰：為再下一行設置監聽
+            self.setupNextCaptionBoundaryObserver()
         }
     }
 
@@ -364,7 +376,7 @@ final class PlayerViewModel: ObservableObject {
         updateNowPlayingPlaybackRate(newRate)
     }
 
-    func playLine(_ line: CaptionLine) {
+    func playLine(_ line: CaptionLine, _ index: Int) {
         // 🔒 1️⃣ 先鎖住 timeObserver
         isSeeking = true
 
@@ -379,11 +391,12 @@ final class PlayerViewModel: ObservableObject {
         }
 
         // 🟢 2️⃣ 立即同步 index（避免閃一下）,這是用戸点撃的瞬間反饋
-        if let idx = captions.firstIndex(where: { $0.id == line.id }) {
-            currentCaptionIndex = idx
-            currentLineID = line.id
-            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-        }
+        currentCaptionIndex = index
+        currentLineID = line.id
+        // 重置監聽器（因為 Index 変了）
+        setupNextCaptionBoundaryObserver()
+
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
 
         player.seek(to: start, toleranceBefore: .zero, toleranceAfter: .zero) { [weak self] finished in
             guard let self, finished else { return }
@@ -393,8 +406,6 @@ final class PlayerViewModel: ObservableObject {
 
                 // 延遲一個 runloop，避免 boundary observer 在 seek 完成瞬間觸發
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    let actualTime = self.player.currentTime().seconds
-                    self.updateCaptionIndexForSeek(to: actualTime)
                     self.isSeeking = false
                 }
             }
@@ -483,11 +494,6 @@ final class PlayerViewModel: ObservableObject {
         }
     }
 
-    func currentLineText() -> String? {
-        guard let id = currentLineID, let line = captions.first(where: { $0.id == id }) else { return nil }
-        return line.text
-    }
-
 
     private func setupAudioSession() {
         do {
@@ -522,27 +528,16 @@ final class PlayerViewModel: ObservableObject {
     }
     func setupNowPlaying() {
         var info: [String: Any] = [:]
-
-        // title
         info[MPMediaItemPropertyTitle] = nowPlayingTitle
-
-        // duration
         if let duration = player.currentItem?.duration.seconds,
            duration.isFinite {
             info[MPMediaItemPropertyPlaybackDuration] = duration
         }
-
-        // current time
         info[MPNowPlayingInfoPropertyElapsedPlaybackTime] = player.currentTime().seconds
-
-        // rate
         info[MPNowPlayingInfoPropertyPlaybackRate] = player.rate
-
-        // artwork
         if let image = nowPlayingArtwork {
             info[MPMediaItemPropertyArtwork] = MPMediaItemArtwork(boundsSize: image.size) { _ in image }
         }
-
         MPNowPlayingInfoCenter.default().nowPlayingInfo = info
     }
     private func updateNowPlayingPlaybackRate(_ rate: Float) {
@@ -565,21 +560,21 @@ final class PlayerViewModel: ObservableObject {
            let rubyWord = rubyWord(in: line, at: charIndex) else { return }
 
         let word = rubyWord.surface
-        print("word: \(word)")
 
         if activeLookUpWordIdentifiable?.word == word { return }
         if UIReferenceLibraryViewController.dictionaryHasDefinition(forTerm: word) {
-            print("✨ 系統詞典確認有定義，📖 開始查詢系統詞典: \(word)")
-
             player.pause()
             isPlaying = false
 
             DispatchQueue.main.async {
                 self.activeLookUpWordIdentifiable = WordIdentifiable(word: word)
             }
-        } else {
-            print("⚠️ 系統詞典未找到定義: \(word)")
         }
+    }
+
+    func currentLineText() -> String? {
+        guard currentCaptionIndex < captions.count else { return nil }
+        return captions[currentCaptionIndex].text
     }
 }
 

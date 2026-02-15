@@ -19,7 +19,6 @@ struct AppSettings: Codable {
 
     // Shadowing
     var showShadowingSubtitlesRuby: Bool = false
-//    var showVideoResolveStrategyPicker: VideoResolveStrategy = .YouTubeKit
     var videoSubtitleLineWithAnimation: VideoSubtitleLineWithAnimation = .spring
     var videoSubtitleFontSizeScale: Double = 1.0
     var videoSubtitleDimInactiveLines: Bool = false

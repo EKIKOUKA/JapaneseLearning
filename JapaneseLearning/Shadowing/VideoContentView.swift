@@ -16,8 +16,8 @@ struct VideoContentView: View {
     }
     @Environment(SettingsStore.self) private var settingsStore
     @Environment(VideoStore.self) private var videoStore
-    @StateObject private var playerVM = PlayerViewModel()
     @Environment(\.scenePhase) private var scenePhase
+    @StateObject private var playerVM = PlayerViewModel()
     @State private var showSettingSheet = false
     @State private var drawerOffset: CGFloat = 0
     @State private var lastDragOffset: CGFloat = 0
@@ -228,14 +228,14 @@ struct SubtitlesContentView: View {
 
                 VStack(spacing: 12) {
                     Color.clear.frame(height: 2)
-                    ForEach(playerVM.captions) { line in
+                    ForEach(Array(playerVM.captions.enumerated()), id: \.element.id) { index, line in
                         SubtitlesRowView(
                             line: line,
                             isActive: playerVM.currentLineID == line.id,
                             currentLineID: { playerVM.currentLineID },
                             playerVM: playerVM,
                             onTapLine: {
-                                playerVM.playLine(line)
+                                playerVM.playLine(line, index)
                             },
                             onTapWord: { lineID, wordIndex in
                                 playerVM.handleWordLookup(lineID, wordIndex)
@@ -245,6 +245,7 @@ struct SubtitlesContentView: View {
                     }
                     Color.clear.frame(height: 10)
                 }
+                .scrollIndicatorStyle(.white)
                 .animation(.easeInOut(duration: 1.0), value: playerVM.captions)
                 .padding(.horizontal, 18)
             }
@@ -447,9 +448,9 @@ struct AVPlayerControllerView: UIViewControllerRepresentable {
     func makeUIViewController(context: Context) -> AVPlayerViewController {
         let vc = AVPlayerViewController()
         vc.player = player
-        player.allowsExternalPlayback = false
+        player.allowsExternalPlayback = true
         vc.showsPlaybackControls = true
-        vc.allowsPictureInPicturePlayback = true
+        vc.allowsPictureInPicturePlayback = false
         vc.canStartPictureInPictureAutomaticallyFromInline = true
         vc.entersFullScreenWhenPlaybackBegins = false
         vc.exitsFullScreenWhenPlaybackEnds = false
