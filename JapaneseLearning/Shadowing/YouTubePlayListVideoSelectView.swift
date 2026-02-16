@@ -19,7 +19,6 @@ struct YouTubePlayListVideoSelectView: View {
     @Environment(VideoStore.self) private var store
     @State private var videos: [PlayListVideoItem] = []
     @State private var selectedIDs = Set<String>()
-    @State private var isLoading = true
 
     var body: some View {
 
@@ -46,10 +45,7 @@ struct YouTubePlayListVideoSelectView: View {
             }
         }
         .task {
-            isLoading = true
             videos = await store.fetchPlaylistVideos(playlistID: playlistID)
-            try? await Task.sleep(nanoseconds: 150_000_000)
-            isLoading = false
         }
     }
 

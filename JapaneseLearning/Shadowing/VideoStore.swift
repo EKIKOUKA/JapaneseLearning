@@ -7,6 +7,7 @@
 
 import Observation
 import Foundation
+import Supabase
 
 @Observable
 class VideoStore {
@@ -14,25 +15,133 @@ class VideoStore {
     var videoList: [PlaylistListItem] = []
     var currentResumeVideoID: String?
 
-    init() {
-        if let dataVideo = UserDefaults.standard.data(forKey: "saved_videos"),
-           let decodedVideo = try? JSONDecoder().decode([VideoItem].self, from: dataVideo) {
-            self.videos = decodedVideo
-            print("videos: \(decodedVideo.map { "\($0)" })")
-        }
+    let client = SupabaseClient(
+        supabaseURL: URL(string: Config.supabaseJapaneseLearningURL)!,
+        supabaseKey: Config.supabaseJapaneseLearningKey,
+        options: SupabaseClientOptions(
+            auth: .init(
+                emitLocalSessionAsInitialSession: true
+            )
+        )
+    )
+    @MainActor
+    func fetchVideos() async {
+        do {
+            let response: [VideoItem] = try await client
+                .from("japanese_YouTube_Videos")
+                .select()
+                .order("created_at", ascending: false)
+                .execute()
+                .value
 
-        if let dataVideoList = UserDefaults.standard.data(forKey: "saved_video_list"),
-           let decodedVideoList = try? JSONDecoder().decode([PlaylistListItem].self, from: dataVideoList) {
-            self.videoList = decodedVideoList
-            print("video list: \(decodedVideoList.map { "\($0.id): \($0.author): \($0.title): \($0.videoCount)件" })")
+            self.videos = response
+        } catch {
+            print("❌ Supabase Fetch Error：\(error)")
+        }
+    }
+    @MainActor
+    func addVideo(_ video: VideoItem) async {
+        do {
+            try await client
+                .from("japanese_YouTube_Videos")
+                .upsert(video, onConflict: "id")
+                .execute()
+
+            await fetchVideos()
+            print("✅ Supabase Insert Success: \(video.id)")
+        } catch {
+            print("❌ Supabase Insert Error: \(error)")
+        }
+    }
+    @MainActor
+    func updateVideo(_ video: VideoItem) async {
+        do {
+            try await client
+                .from("japanese_YouTube_Videos")
+                .update(video)
+                .eq("id", value: video.id)
+                .execute()
+
+            if let index = videos.firstIndex(where: { $0.id == video.id }) {
+                videos[index] = video
+            }
+            print("✅ Supabase Update Success: \(video.id)")
+        } catch {
+            print("❌ Supabase Update Error: \(error)")
+        }
+    }
+    @MainActor
+    func deleteVideo(_ id: String) async {
+        guard let url = URL(string: "https://makotodeveloper.website/shadowing/del_video/\(id)") else { return }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "DELETE"
+
+        do {
+            let (_, response) = try await URLSession.shared.data(for: request)
+
+            if let httpResponse = response as? HTTPURLResponse,
+               httpResponse.statusCode == 200 {
+                await fetchVideos()
+
+                if currentResumeVideoID == id {
+                    currentResumeVideoID = nil
+                    QuickActionManager.shared.clearResumeVideo()
+                }
+            } else {
+                print("❌ 刪除失敗")
+            }
+        } catch {
+            print("❌ 刪除錯誤:", error)
         }
     }
 
-    func saveVideo() {
-        if let encoded = try? JSONEncoder().encode(videos) {
-            UserDefaults.standard.set(encoded, forKey: "saved_videos")
+
+    // Playlist
+    @MainActor
+    func fetchVideoPlaylist() async {
+        do {
+            let response: [PlaylistListItem] = try await client
+                .from("japanese_YouTube_Video_Playlist")
+                .select()
+                .execute()
+                .value
+
+            print("Playlist response: \(response)")
+            self.videoList = response
+        } catch {
+            print("❌ Supabase Fetch Error：\(error)")
         }
     }
+    @MainActor
+    func addVideoPlaylist(_ video: PlaylistListItem) async {
+        do {
+            try await client
+                .from("japanese_YouTube_Video_Playlist")
+                .insert(video)
+                .execute()
+
+            await fetchVideoPlaylist()
+            print("✅ Supabase Insert Success: \(video.id)")
+        } catch {
+            print("❌ Supabase Insert Error: \(error)")
+        }
+    }
+    @MainActor
+    func deleteVideoPlaylist(_ id: String) async {
+        do {
+            try await client
+                .from("japanese_YouTube_Video_Playlist")
+                .delete()
+                .eq("id", value: id)
+                .execute()
+
+            await fetchVideoPlaylist()
+        } catch {
+            print("❌ Delete Error:", error)
+        }
+    }
+
 
     func fetchTitle(_ videoId: String) async -> String {
         let url = URL(string: "https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=\(videoId)&format=json")!
@@ -48,19 +157,25 @@ class VideoStore {
         return "YouTube Video"
     }
 
-    func addPlaylistVideos(_ items: [PlayListVideoItem]) {
-        for item in items {
-            if videos.contains(where: { $0.id == item.id }) { continue }
+    func addPlaylistVideos(
+        _ items: [PlayListVideoItem],
+        playlistID: String
+    ) async {
 
-            videos.append(
+        let existingIDs = getExistingVideoIDs()
+
+        for item in items {
+            if existingIDs.contains(item.id) { continue }
+
+            await addVideo(
                 VideoItem(
                     id: item.id,
                     title: item.title,
-                    thumbnailURL: item.thumbnailURL
+                    thumbnailURL: item.thumbnailURL,
+                    playlistID: playlistID
                 )
             )
         }
-        saveVideo()
     }
 
     @MainActor
@@ -79,15 +194,13 @@ class VideoStore {
                 let title = await fetchTitle(videoID)
                 let thumbURL = URL(string: "https://img.youtube.com/vi/\(videoID)/hqdefault.jpg")
 
-                videos.append(
+                await addVideo(
                     VideoItem(
                         id: videoID,
                         title: title,
                         thumbnailURL: thumbURL
                     )
                 )
-                saveVideo()
-
                 return .addedVideo
 
             case .playlist:
@@ -100,8 +213,8 @@ class VideoStore {
                 }
 
                 let meta = await fetchPlaylistMeta(playlistID: listID)
-                videoList.append(meta)
-                saveVideoList()
+                await addVideoPlaylist(meta)
+                await fetchVideoPlaylist()
 
                 return .addedPlaylist
 
@@ -140,46 +253,10 @@ class VideoStore {
         return .unknown
     }
 
-    func deleteVideo(_ id: String) {
-        videos.removeAll { $0.id == id }
-
-        if currentResumeVideoID == id {
-            currentResumeVideoID = nil
-            QuickActionManager.shared.clearResumeVideo()
-        }
-
-        saveVideo()
-    }
-
     func getExistingVideoIDs() -> Set<String> {
         return Set(videos.map { $0.id })
     }
 
-
-    func saveVideoList() {
-        if let encoded = try? JSONEncoder().encode(videoList) {
-            UserDefaults.standard.set(encoded, forKey: "saved_video_list")
-        }
-    }
-    func addVideoList(_ playlistVideoList: [PlaylistListItem]) {
-        for video_list in playlistVideoList {
-            if !videoList.contains(where: { $0.id == video_list.id }) {
-                videoList.append(
-                    PlaylistListItem(
-                        id: video_list.id,
-                        title: video_list.title,
-                        author: video_list.author,
-                        thumbnailURL: video_list.thumbnailURL,
-                        videoCount: video_list.videoCount
-                    )
-                )
-            }
-        }
-        saveVideoList()
-    }
-    func deleteVideoFromPlayList(_ id: String) {
-        videoList.removeAll { $0.id == id}
-    }
     private func extractPlaylistID(from url: String) -> String? {
         guard let components = URLComponents(string: url) else {
             return nil
@@ -255,10 +332,6 @@ class VideoStore {
 
         return comp.url!
     }
-    func deleteVideoList(_ id: String) {
-        videoList.removeAll { $0.id == id }
-        saveVideoList()
-    }
     func getExistingVideoListIDs() -> Set<String> {
         return Set(videoList.map { $0.id })
     }
@@ -293,18 +366,15 @@ class VideoStore {
                 id: playlistID,
                 title: item.snippet.title,
                 author: item.snippet.channelTitle,
-                thumbnailURL: URL(string: thumb),
-                videoCount: item.contentDetails.itemCount
+                thumbnailURL: URL(string: thumb)
             )
-
         } catch {
             print("❌ fetchPlaylistMeta error:", error)
             return PlaylistListItem(
                 id: playlistID,
                 title: "Unknown Playlist",
                 author: "",
-                thumbnailURL: nil,
-                videoCount: 0
+                thumbnailURL: nil
             )
         }
     }

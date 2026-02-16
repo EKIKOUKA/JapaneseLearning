@@ -166,12 +166,15 @@ struct VideoContentView: View {
             )
         }
         .onDisappear {
-            playerVM.resetPlayer()
+            Task { @MainActor in
+                await playerVM.saveCurrentProgress()
+                playerVM.resetPlayer()
+            }
         }
         .onChange(of: scenePhase) { _, phase in
             Task {
                 if phase == .background {
-                    playerVM.saveCurrentProgress()
+                    await playerVM.saveCurrentProgress()
                     playerVM.player.pause()
                     playerVM.isPlaying = false
                 }

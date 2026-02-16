@@ -10,7 +10,7 @@ import SwiftUI
 struct YouTubeAddVideoSheetView: View {
     @Environment(VideoStore.self) private var store
     @Environment(\.dismiss) private var dismiss
-    @State private var inputURL = "" // https://www.youtube.com/playlist?list=PLDLUFJdSF5xY1xsiYoWkkyp1k2GCGpcZP / https://www.youtube.com/watch?v=h3m5XnQce1k
+    @State private var inputURL = ""
 
     var body: some View {
         
@@ -31,7 +31,12 @@ struct YouTubeAddVideoSheetView: View {
                                     listTitle: videoList.title,
                                     existingVideoListIDs: store.getExistingVideoIDs(),
                                     onAdd: { selected in
-                                        store.addPlaylistVideos(selected)
+                                        Task {
+                                            await store.addPlaylistVideos(
+                                                selected,
+                                                playlistID: videoList.id
+                                            )
+                                        }
                                     }
                                 )
                             } label: {
@@ -39,7 +44,9 @@ struct YouTubeAddVideoSheetView: View {
                             }
                             .swipeActions {
                                 Button {
-                                    store.deleteVideoFromPlayList(videoList.id)
+                                    Task {
+                                        await store.deleteVideoPlaylist(videoList.id)
+                                    }
                                 } label: {
                                     Image(systemName: "trash")
                                 }
@@ -73,6 +80,9 @@ struct YouTubeAddVideoSheetView: View {
                     }
                     .disabled(inputURL.isEmpty)
                 }
+            }
+            .task {
+                await store.fetchVideoPlaylist()
             }
         }
     }
@@ -116,13 +126,8 @@ struct PlaylistListRow: View {
             .cornerRadius(8)
 
             VStack(alignment: .leading) {
-                HStack {
-                    Text(videoList.author)
-                        .font(.caption)
-                    Text("\(videoList.videoCount)件")
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
-                }
+                Text(videoList.author)
+                    .font(.caption)
                 Text(videoList.title)
                     .lineLimit(2)
             }

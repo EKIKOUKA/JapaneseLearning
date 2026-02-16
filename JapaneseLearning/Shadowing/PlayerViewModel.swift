@@ -102,10 +102,10 @@ final class PlayerViewModel: ObservableObject {
 
         do {
             let videoData = try await fetchVideoService.fetchVideoDataFromServer(videoItem.id)
+            print("videoData: \(videoData)")
             self.setupPlayer(with: videoData.videoURL)
             self.loadCaptions(videoID: videoItem.id, captions: videoData.captions)
         } catch {
-            self.isVideoLoading = false
             print("❌ 載入失敗: \(error.localizedDescription)")
         }
     }
@@ -145,7 +145,6 @@ final class PlayerViewModel: ObservableObject {
             } else if item.status == .failed {
                 print("❌ Player Item Failed: \(String(describing: item.error?.localizedDescription))")
                 print("❌ Error Detail: \(String(describing: item.error))")
-                self.isVideoLoading = false
             }
         }
     }
@@ -186,67 +185,26 @@ final class PlayerViewModel: ObservableObject {
         }
     }
 
-    func resetPlayer() {
-        print("🧹 reset player")
-        saveCurrentProgress()
-
-        // 停止播放
-        player.pause()
-        isPlaying = false
-
-        // 解除 time observer
-        if let observer = captionBoundaryObserver {
-            player.removeTimeObserver(observer)
-            captionBoundaryObserver = nil
-        }
-
-        // 解除 KVO
-        playerItemObservation = nil
-        timeControlObserver = nil
-        rateObserver = nil
-
-        // 清循環狀態
-        isLoopingSingleLine = false
-        lockedLoopLine = nil
-        currentLineID = nil
-
-        // Remove observer for time jumped
-        NotificationCenter.default.removeObserver(
-            self,
-            name: .AVPlayerItemTimeJumped,
-            object: nil
-        )
-
-        removeLoopObserver()
-        // 釋放 player item（關鍵）
-        player.replaceCurrentItem(with: nil)
-
-        // 清 Now Playing
-        MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
-    }
-
-    func saveCurrentProgress() {
+    func saveCurrentProgress() async {
         guard let videoItem = currentVideoItem else { return }
 
         let currentTime = player.currentTime().seconds
         guard currentTime.isFinite else { return }
 
-        if let video_index = videoStore.videos.firstIndex(where: { $0.id == videoItem.id }) {
+        var updatedVideo = videoItem
+        updatedVideo.currentTime = currentTime
+        updatedVideo.rate = self.rate
+        await videoStore.updateVideo(updatedVideo)
+        print("💾 已保存 - 進度: \(currentTime)s, 語速: \(self.rate)x")
 
-            videoStore.videos[video_index].currentTime = currentTime
-            videoStore.videos[video_index].rate = self.rate
-            print("videoStore.videos[video_index]: \(videoStore.videos[video_index])")
-            print("💾 已保存 - 進度: \(currentTime)s, 語速: \(self.rate)x")
-
-            let time_formatted = currentTimeFormatted(Int(currentTime))
-            print("time_formatted: \(time_formatted)")
-            QuickActionManager.shared.updateResumeVideoAction(
-                videoID: videoItem.id,
-                title: videoItem.title,
-                time: time_formatted
-            )
-            videoStore.currentResumeVideoID = videoItem.id
-        }
+        let time_formatted = currentTimeFormatted(Int(currentTime))
+        print("time_formatted: \(time_formatted)")
+        QuickActionManager.shared.updateResumeVideoAction(
+            videoID: videoItem.id,
+            title: videoItem.title,
+            time: time_formatted
+        )
+        videoStore.currentResumeVideoID = videoItem.id
     }
 
     @MainActor
@@ -261,11 +219,12 @@ final class PlayerViewModel: ObservableObject {
         if currentCaptionIndex < captions.count {
             let currentLine = captions[currentCaptionIndex]
             // 稍微放寬一点 epsilon 容錯
-            if time >= (currentLine.start - epsilon) && time < currentLine.end {
-                return // ✅ 命中！時間没変，直接収工
+            if time >= (currentLine.start - epsilon) &&
+                time < currentLine.end &&
+                currentLineID != nil {
+                return
             }
         }
-
 
         var left = 0
         var right = captions.count - 1
@@ -494,6 +453,50 @@ final class PlayerViewModel: ObservableObject {
         }
     }
 
+    func resetPlayer() {
+        print("🧹 reset player")
+
+        // 停止播放
+        player.pause()
+        isPlaying = false
+
+        // 解除 time observer
+        if let observer = captionBoundaryObserver {
+            player.removeTimeObserver(observer)
+            captionBoundaryObserver = nil
+        }
+        removeLoopObserver()
+
+        // Remove observer for time jumped
+        NotificationCenter.default.removeObserver(
+            self,
+            name: .AVPlayerItemTimeJumped,
+            object: player.currentItem
+        )
+
+        // 解除 KVO
+        playerItemObservation?.invalidate()
+        playerItemObservation = nil
+
+        timeControlObserver?.invalidate()
+        timeControlObserver = nil
+
+        rateObserver?.invalidate()
+        rateObserver = nil
+
+        // 清循環狀態
+        isLoopingSingleLine = false
+        lockedLoopLine = nil
+        currentLineID = nil
+        captions = []
+
+        // 釋放 player item（關鍵）
+        player.replaceCurrentItem(with: nil)
+
+        // 清 Now Playing
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
+    }
+
 
     private func setupAudioSession() {
         do {
@@ -560,9 +563,11 @@ final class PlayerViewModel: ObservableObject {
            let rubyWord = rubyWord(in: line, at: charIndex) else { return }
 
         let word = rubyWord.surface
+//        print("word: \(word)")
 
         if activeLookUpWordIdentifiable?.word == word { return }
         if UIReferenceLibraryViewController.dictionaryHasDefinition(forTerm: word) {
+//            print("✨ 系統詞典確認有定義，📖 開始查詢系統詞典: \(word)")
             player.pause()
             isPlaying = false
 
@@ -570,6 +575,9 @@ final class PlayerViewModel: ObservableObject {
                 self.activeLookUpWordIdentifiable = WordIdentifiable(word: word)
             }
         }
+//        else {
+//            print("⚠️ 系統詞典未找到定義: \(word)")
+//        }
     }
 
     func currentLineText() -> String? {

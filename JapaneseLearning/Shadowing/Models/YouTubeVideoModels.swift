@@ -58,6 +58,17 @@ struct VideoItem: Identifiable, Hashable, Codable {
 
     var currentTime: Double? = nil
     var rate: Float? = nil
+
+    var playlistID: String?
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case title
+        case currentTime
+        case rate
+        case thumbnailURL = "thumbnail"
+        case playlistID = "playlist_id"
+    }
 }
 
 enum YouTubeURLType {
@@ -81,5 +92,4 @@ struct PlaylistListItem: Identifiable, Hashable, Codable {
     let title: String
     let author: String
     let thumbnailURL: URL?
-    let videoCount: Int
 }

@@ -18,60 +18,110 @@ struct VideoListView: View {
     @State private var selectedVideo: VideoItem?
     @State private var showDeleteAlert = false
     @State private var pendingDeleteVideo: VideoItem?
+    @State private var isLoading = true
+
+    @State private var defaultID = "PLEC5UjKGbYI2TeWkpUE-RocpVhqXwwk-9"
+    @State private var selectedPlaylistID: String? = "others"
+
+    private var filteredVideos: [VideoItem] {
+        if selectedPlaylistID == defaultID {
+            return store.videos.filter { $0.playlistID == defaultID }
+        } else {
+            return store.videos.filter { $0.playlistID != defaultID } // != id1 && != id2
+        }
+    }
+    private var playlistCategories: [String] {
+        ["others", defaultID]
+    }
+    private func shortTitle(for id: String?) -> String {
+
+        if id == defaultID {
+            return "デフォルト"
+        } else {
+            return "シャドーイング"
+        }
+    }
 
     var body: some View {
 
-        Group { // NavigationStack
+        Group {
 
-            List {
+            if isLoading {
+                ProgressLoadingView()
+            } else {
 
-                if store.videos.isEmpty {
-                    VStack(spacing: 16) {
-                        Image(systemName: "folder")
-                            .font(.system(size: 100))
-                            .foregroundStyle(.secondary)
-                        Text("内容が見つかりません")
-                            .foregroundStyle(.secondary)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.top, 180)
-                    .listRowSeparator(.hidden)
-                    .listRowBackground(Color.clear)
-                } else {
+                ZStack {
 
-                    ForEach(store.videos) { video in
+                    List {
 
-                        Button {
-                            selectedVideo = video
-                        } label: {
-                            videoListItemView(video)
+                        if store.videos.isEmpty {
+                            VStack(spacing: 16) {
+                                Image(systemName: "folder")
+                                    .font(.system(size: 100))
+                                    .foregroundStyle(.secondary)
+                                Text("内容が見つかりません")
+                                    .foregroundStyle(.secondary)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.top, 180)
+                            .listRowSeparator(.hidden)
+                            .listRowBackground(Color.clear)
+                        } else {
+
+                            Section {
+
+                                ForEach(filteredVideos) { video in
+
+                                    Button {
+                                        selectedVideo = video
+                                    } label: {
+                                        videoListItemView(video)
+                                    }
+                                    .buttonStyle(.plain)
+                                    .listRowSeparator(.hidden)
+                                    .listRowBackground(Color.clear)
+                                    .listRowInsets(EdgeInsets(
+                                        top: 6,
+                                        leading: 15,
+                                        bottom: 6,
+                                        trailing: 15
+                                    ))
+                                }
+                            } header: {
+                                Picker("Category", selection: $selectedPlaylistID) {
+                                    ForEach(playlistCategories, id: \.self) { id in
+                                        Text(shortTitle(for: id))
+                                            .tag(id as String?)
+                                    }
+                                }
+                                .pickerStyle(.segmented)
+                                .frame(height: 64)
+                                .padding(.top, -20)
+                                .scaleEffect(y: 1.2)
+                                .listRowInsets(EdgeInsets(top: 5, leading: 15, bottom: 0, trailing: 15))
+                            }
                         }
-                        .buttonStyle(.plain)
-                        .listRowSeparator(.hidden)
-                        .listRowBackground(Color.clear)
-                        .listRowInsets(EdgeInsets(
-                            top: 6,
-                            leading: 15,
-                            bottom: 6,
-                            trailing: 15
-                        ))
+                    }
+                    .listStyle(.plain)
+                    .listSectionSpacing(0)
+                    .animation(.spring(response: 0.5, dampingFraction: 0.8), value: selectedPlaylistID)
+                    //  .safeAreaInset(edge: .top) {
+                    //  }
+                    .safeAreaInset(edge: .bottom) {
+                        Color.clear.frame(height: 20)
+                    }
+                    .navigationDestination(item: $selectedVideo) { video in
+                        VideoContentView(videoID: video.id)
                     }
                 }
             }
-            .listStyle(.plain)
-            .safeAreaInset(edge: .bottom) {
-                Color.clear.frame(height: 22)
-            }
-            .navigationDestination(item: $selectedVideo) { video in
-                VideoContentView(videoID: video.id)
-            }
-            .onChange(of: store.videos) {
-                store.saveVideo()
-            }
         }
-        .navigationTitle("シャドーイング")
-        .navigationBarTitleDisplayMode(.automatic)
+        .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            ToolbarItem(placement: .principal) {
+                Text("シャドーイング")
+                    .font(.headline)
+            }
             ToolbarItemGroup(placement: .topBarTrailing) {
                 Button {
                     showAddSheet = true
@@ -86,6 +136,10 @@ struct VideoListView: View {
                 }
             }
         }
+        .task {
+            await store.fetchVideos()
+            isLoading = false
+        }
         .sheet(isPresented: $showSettingSheet) {
             ShadowingSettingsSheetView()
                 .presentationDetents([.medium])
@@ -98,7 +152,10 @@ struct VideoListView: View {
                isPresented: $showDeleteAlert,
                presenting: pendingDeleteVideo) { video in
             Button("削除", role: .destructive) {
-                store.deleteVideo(video.id)
+                store.videos.removeAll { $0.id == video.id }
+                Task {
+                    await store.deleteVideo(video.id)
+                }
             }
         }
     }
