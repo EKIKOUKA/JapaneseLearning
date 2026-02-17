@@ -12,20 +12,19 @@ struct RubyLabel: UIViewRepresentable {
     let text: String
     let rubyWords: [RubyWord]
     let fontSizeScale: Double
+    let fontStyle: VideoSubtitleRubyFontStyle
     let onTapWordAtIndex: (Int) -> Void
 
     func makeUIView(context: Context) -> RubyUIView {
         let view = RubyUIView()
         view.onTap = onTapWordAtIndex
-        // 核心：告訴 SwiftUI 垂直方向不要圧縮我
         view.setContentCompressionResistancePriority(.required, for: .vertical)
         return view
     }
 
     func updateUIView(_ uiView: RubyUIView, context: Context) {
-        let key = "\(text)|\(fontSizeScale)"
+        let key = "\(text)|\(fontSizeScale)|\(fontStyle)"
 
-        // 只有内容変了才更新，避免循環刷新
         if uiView.contentKey != key {
             uiView.contentKey = key
             uiView.attributedText = buildAttributedString()
@@ -38,7 +37,9 @@ struct RubyLabel: UIViewRepresentable {
         style.alignment = .left
 
         let baseFontSize: CGFloat = 28
-        let baseFont = UIFont.systemFont(ofSize: baseFontSize * fontSizeScale, weight: .medium)
+        let baseFont_ = UIFont.systemFont(ofSize: baseFontSize * fontSizeScale, weight: .medium)
+        let fontName = fontStyle.rawValue
+        let baseFont = UIFont(name: fontName, size: baseFontSize * fontSizeScale) ?? baseFont_
 
         let cleanText = text.trimmingCharacters(in: .whitespacesAndNewlines)
 
@@ -51,7 +52,6 @@ struct RubyLabel: UIViewRepresentable {
             ]
         )
 
-        // 🔑 關鍵：只用文字搜尋，不用 start / length
         var searchStart = cleanText.startIndex
 
         for ruby in rubyWords {
@@ -60,7 +60,6 @@ struct RubyLabel: UIViewRepresentable {
                 ruby.reading != ruby.surface
             else { continue }
 
-            // 從尚未用過的位置開始找
             if let range = cleanText.range(
                 of: ruby.surface,
                 range: searchStart..<cleanText.endIndex
@@ -87,7 +86,6 @@ struct RubyLabel: UIViewRepresentable {
 
                 attr.addAttribute(.font, value: baseFont, range: nsRange)
 
-                // 👉 推進搜尋起點（非常重要）
                 searchStart = range.upperBound
             }
         }
@@ -103,11 +101,10 @@ class RubyUIView: UIView {
     private var cachedFramesetter: CTFramesetter?
     private var cachedFrame: CTFrame?
 
-    // 当文字改変時，自動触発重新佈局和繪製
     var attributedText: NSAttributedString? {
         didSet {
-            invalidateIntrinsicContentSize() // 告訴 SwiftUI 我的尺寸変了
-            setNeedsDisplay()               // 告訴系統需要重新繪製
+            invalidateIntrinsicContentSize()
+            setNeedsDisplay()
 
             cachedFramesetter = CTFramesetterCreateWithAttributedString(attributedText! as CFAttributedString)
             cachedFrame = nil
@@ -123,18 +120,14 @@ class RubyUIView: UIView {
 
     required init?(coder: NSCoder) { fatalError() }
 
-    // 核心修復：讓視図知道自己需要多高
     override var intrinsicContentSize: CGSize {
         guard let attributedText = attributedText else { return .zero }
 
-        // 獲取当前寬度，如果還没佈局則使用螢幕寬度（減去 Padding）
-        // 技巧：給予一個稍微寬裕的預估寬度，減少佈局計算的辺界錯誤
         let width = self.bounds.width > 0 ? self.bounds.width : (UIScreen.main.bounds.width - 36)
 
         let constraints = CGSize(width: width, height: .greatestFiniteMagnitude)
         let size = CTFramesetterSuggestFrameSizeWithConstraints(cachedFramesetter!, CFRangeMake(0, attributedText.length), nil, constraints, nil)
 
-        // 向上取整，避免浮点数導致的線条抖動
         return CGSize(width: width, height: ceil(size.height))
     }
 
