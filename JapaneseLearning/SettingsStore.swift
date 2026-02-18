@@ -9,6 +9,7 @@ import SwiftUI
 import Observation
 
 struct AppSettings: Codable {
+
     // Grammar
     var showGrammarListAddButton: Bool = false
     var showGrammarListCount: Bool = false
@@ -21,6 +22,7 @@ struct AppSettings: Codable {
     var showShadowingSubtitlesRuby: Bool = false
     var videoSubtitleLineWithAnimation: VideoSubtitleLineWithAnimation = .spring
     var videoSubtitleFontSizeScale: Double = 1.0
+    var videoSubtitleFontStyle: VideoSubtitleRubyFontStyle = .HiraginoSans
     var videoSubtitleDimInactiveLines: Bool = false
 
     // Somethings

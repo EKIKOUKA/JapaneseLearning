@@ -18,7 +18,6 @@ struct VideoListView: View {
     @State private var selectedVideo: VideoItem?
     @State private var showDeleteAlert = false
     @State private var pendingDeleteVideo: VideoItem?
-    @State private var isLoading = true
 
     @State private var defaultID = "PLEC5UjKGbYI2TeWkpUE-RocpVhqXwwk-9"
     @State private var selectedPlaylistID: String? = "others"
@@ -46,7 +45,7 @@ struct VideoListView: View {
 
         Group {
 
-            if isLoading {
+            if store.isLoading {
                 ProgressLoadingView()
             } else {
 
@@ -136,10 +135,6 @@ struct VideoListView: View {
                 }
             }
         }
-        .task {
-            await store.fetchVideos()
-            isLoading = false
-        }
         .sheet(isPresented: $showSettingSheet) {
             ShadowingSettingsSheetView()
                 .presentationDetents([.medium])
@@ -162,11 +157,22 @@ struct VideoListView: View {
 
     private func videoListItemView(_ video: VideoItem) -> some View {
         VStack(spacing: 8) {
-            AsyncImage(url: video.thumbnailURL) { img in
-                img.resizable()
-                   .scaledToFill()
-            } placeholder: {
-                Color.gray.opacity(0.3)
+            AsyncImage(url: video.thumbnailURL) { phase in
+                switch phase {
+                    case .empty:
+                        Rectangle()
+                            .fill(Color(.tertiarySystemFill))
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .scaledToFill()
+                            .transition(.opacity)
+                            .animation(.easeIn(duration: 0.25), value: image)
+                    case .failure:
+                        Color.gray
+                    @unknown default:
+                        EmptyView()
+                }
             }
             .frame(maxWidth: .infinity)
             .frame(height: 160)

@@ -18,7 +18,6 @@ final class PlayerViewModel: ObservableObject {
     let player = AVPlayer()
     var videoStore: VideoStore!
     var settingsStore: SettingsStore?
-    private let fetchVideoService = FetchVideoService()
     private var loadStartTime: Date?
 
     // Data Source (Runtime Only)
@@ -96,13 +95,11 @@ final class PlayerViewModel: ObservableObject {
 
     // 入り口
     func loadVideoProcess(for videoItem: VideoItem) async {
-        print("isVideoLoading: \(isVideoLoading)")
         loadStartTime = Date()
         self.currentVideoItem = videoItem
 
         do {
-            let videoData = try await fetchVideoService.fetchVideoDataFromServer(videoItem.id)
-            print("videoData: \(videoData)")
+            let videoData = try await videoStore.fetchVideoDataFromServer(videoItem.id)
             self.setupPlayer(with: videoData.videoURL)
             self.loadCaptions(videoID: videoItem.id, captions: videoData.captions)
         } catch {
@@ -152,10 +149,8 @@ final class PlayerViewModel: ObservableObject {
     // Subtitle & Ruby Logic
     func loadCaptions(videoID: String, captions: [CaptionLine]) {
         self.captions = captions
-        print("captions: \(captions.prefix(2))")
         self.currentCaptionIndex = 0
         self.currentLineID = nil
-        print("✅ Captions Loaded: \(captions.count) lines. Start Index: \(currentCaptionIndex)")
     }
 
     func restorePlayProgress() {
@@ -195,10 +190,8 @@ final class PlayerViewModel: ObservableObject {
         updatedVideo.currentTime = currentTime
         updatedVideo.rate = self.rate
         await videoStore.updateVideo(updatedVideo)
-        print("💾 已保存 - 進度: \(currentTime)s, 語速: \(self.rate)x")
 
         let time_formatted = currentTimeFormatted(Int(currentTime))
-        print("time_formatted: \(time_formatted)")
         QuickActionManager.shared.updateResumeVideoAction(
             videoID: videoItem.id,
             title: videoItem.title,

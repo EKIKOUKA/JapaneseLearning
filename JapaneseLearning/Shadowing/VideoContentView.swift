@@ -21,6 +21,7 @@ struct VideoContentView: View {
     @State private var showSettingSheet = false
     @State private var drawerOffset: CGFloat = 0
     @State private var lastDragOffset: CGFloat = 0
+    @State private var buttonAppearOffset: CGFloat = -15
     let maxDrawerOffset: CGFloat = 201
 
     var body: some View {
@@ -83,11 +84,14 @@ struct VideoContentView: View {
                                 .onEnded { _ in
                                     let shouldCollapse = drawerOffset > maxDrawerOffset * 0.35
 
-                                    withAnimation(.interactiveSpring(
-                                        response: 0.35,
-                                        dampingFraction: 0.85
-                                    )) {
-                                        drawerOffset = shouldCollapse ? maxDrawerOffset : 0
+                                    if shouldCollapse {
+                                        withAnimation(.spring(response: 0.3, dampingFraction: 1.0)) {
+                                            drawerOffset = maxDrawerOffset
+                                        }
+                                    } else {
+                                        withAnimation(.interpolatingSpring(stiffness: 120, damping: 13)) {
+                                            drawerOffset = 0
+                                        }
                                     }
 
                                     lastDragOffset = drawerOffset
@@ -97,16 +101,21 @@ struct VideoContentView: View {
                         SubtitlesContentView(playerVM: playerVM)
                     }
 
-                    if drawerOffset >= maxDrawerOffset {
-                        playResumeVideoView(
-                            drawerOffset: $drawerOffset,
-                            lastDragOffset: $lastDragOffset
-                        )
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                        .padding(.top, 5)
-                        .opacity(drawerOffset >= maxDrawerOffset ? 1 : 0)
-                        .offset(y: drawerOffset >= maxDrawerOffset ? 0 : -20)
-                        .animation(.easeOut(duration: 0.5), value: drawerOffset)
+                    playResumeVideoView(
+                        drawerOffset: $drawerOffset,
+                        lastDragOffset: $lastDragOffset
+                    )
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                    .padding(.top, 5)
+                    .opacity(drawerOffset >= maxDrawerOffset ? 1 : 0)
+                    .offset(y: buttonAppearOffset)
+                    .onChange(of: drawerOffset >= maxDrawerOffset) { _, isVisible in
+                        if isVisible {
+                            buttonAppearOffset = -15
+                            withAnimation(.interpolatingSpring(stiffness: 260, damping: 18)) {
+                                buttonAppearOffset = 0
+                            }
+                        }
                     }
                 }
             }
@@ -190,7 +199,7 @@ struct playResumeVideoView: View {
     var body: some View {
 
         Button {
-            withAnimation(.easeInOut(duration: 0.25)) {
+            withAnimation(.interpolatingSpring(stiffness: 120, damping: 13)) {
                 drawerOffset = 0
                 lastDragOffset = 0
             }
@@ -222,63 +231,61 @@ struct playResumeVideoView: View {
 struct SubtitlesContentView: View {
     @ObservedObject var playerVM: PlayerViewModel
     @Environment(SettingsStore.self) private var settingsStore
+    @State private var scrollTargetID: String?
 
     var body: some View {
 
-        ScrollViewReader { proxy in
+        ScrollView {
 
-            ScrollView {
-
-                VStack(spacing: 12) {
-                    Color.clear.frame(height: 2)
-                    ForEach(Array(playerVM.captions.enumerated()), id: \.element.id) { index, line in
-                        SubtitlesRowView(
-                            line: line,
-                            isActive: playerVM.currentLineID == line.id,
-                            currentLineID: { playerVM.currentLineID },
-                            playerVM: playerVM,
-                            onTapLine: {
-                                playerVM.playLine(line, index)
-                            },
-                            onTapWord: { lineID, wordIndex in
-                                playerVM.handleWordLookup(lineID, wordIndex)
-                            }
-                        )
-                        .id(line.id)
-                    }
-                    Color.clear.frame(height: 10)
+            VStack(spacing: 12) {
+                Color.clear.frame(height: 2)
+                ForEach(Array(playerVM.captions.enumerated()), id: \.element.id) { index, line in
+                    SubtitlesRowView(
+                        line: line,
+                        isActive: playerVM.currentLineID == line.id,
+                        currentLineID: { playerVM.currentLineID },
+                        playerVM: playerVM,
+                        onTapLine: {
+                            playerVM.playLine(line, index)
+                        },
+                        onTapWord: { lineID, wordIndex in
+                            playerVM.handleWordLookup(lineID, wordIndex)
+                        }
+                    )
+                    .id(line.id)
                 }
-                .scrollIndicatorStyle(.white)
-                .animation(.easeInOut(duration: 1.0), value: playerVM.captions)
-                .padding(.horizontal, 18)
+                Color.clear.frame(height: 10)
             }
-            .scrollContentBackground(.hidden)
-            .background(Color.clear)
-            .onChange(of: playerVM.currentLineID) { old, new in
-                guard old != new else { return }
-                guard let newID = new else { return }
+            .ScrollIndicatorStyle(.white)
+            .animation(.easeInOut(duration: 1.0), value: playerVM.captions)
+            .padding(.horizontal, 18)
+        }
+        .scrollContentBackground(.hidden)
+        .background(Color.clear)
+        .scrollPosition(id: $scrollTargetID, anchor: .subtitleAnchor)
+        .onChange(of: playerVM.currentLineID) { _, new in
+            guard let newID = new else { return }
+
+            if settingsStore.settings.videoSubtitleLineWithAnimation == .easeInOut {
+                withAnimation(.easeInOut(duration: 0.4)) {
+                    scrollTargetID = newID
+                }
+            } else {
+                withAnimation(.timingCurve(0.4, 0.0, 0.2, 1.0, duration: 0.32)) { // .spring()
+                    scrollTargetID = newID
+                }
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .scrollToCurrentLine)) { _ in
+            if let currentLineId = playerVM.currentLineID {
 
                 if settingsStore.settings.videoSubtitleLineWithAnimation == .easeInOut {
                     withAnimation(.easeInOut(duration: 0.4)) {
-                        proxy.scrollTo(newID, anchor: .subtitleAnchor)
+                        scrollTargetID = currentLineId
                     }
                 } else {
-                    withAnimation(.spring(response: 0.5, dampingFraction: 0.65)) {
-                        proxy.scrollTo(newID, anchor: .subtitleAnchor)
-                    }
-                }
-            }
-            .onReceive(NotificationCenter.default.publisher(for: .scrollToCurrentLine)) { _ in
-                if let currentLineId = playerVM.currentLineID {
-
-                    if settingsStore.settings.videoSubtitleLineWithAnimation == .easeInOut {
-                        withAnimation(.easeInOut(duration: 0.4)) {
-                            proxy.scrollTo(currentLineId, anchor: .subtitleAnchor)
-                        }
-                    } else {
-                        withAnimation(.spring(response: 0.5, dampingFraction: 0.65)) {
-                            proxy.scrollTo(currentLineId, anchor: .subtitleAnchor)
-                        }
+                    withAnimation(.spring(response: 0.5, dampingFraction: 0.6)) {
+                        scrollTargetID = currentLineId
                     }
                 }
             }
@@ -298,6 +305,7 @@ struct SubtitlesRowView: View {
     var body: some View {
         let ruby_show = (settingsStore.settings.showShadowingSubtitlesRuby ? line.ruby : [])!
         let font_size = settingsStore.settings.videoSubtitleFontSizeScale
+        let font_style = settingsStore.settings.videoSubtitleFontStyle
         let blur_opacity = settingsStore.settings.videoSubtitleDimInactiveLines
 
         VStack(alignment: .leading) {
@@ -305,6 +313,7 @@ struct SubtitlesRowView: View {
                 text: line.text,
                 rubyWords: ruby_show,
                 fontSizeScale: font_size,
+                fontStyle: font_style,
                 onTapWordAtIndex: { index in
                     let isNowActive = (currentLineID() == line.id)
                     if isNowActive {

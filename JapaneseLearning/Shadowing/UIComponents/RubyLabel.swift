@@ -37,12 +37,17 @@ struct RubyLabel: UIViewRepresentable {
         style.alignment = .left
 
         let baseFontSize: CGFloat = 28
-        let baseFont_ = UIFont.systemFont(ofSize: baseFontSize * fontSizeScale, weight: .medium)
-        let fontName = fontStyle.rawValue
-        let baseFont = UIFont(name: fontName, size: baseFontSize * fontSizeScale) ?? baseFont_
+        let baseFont: UIFont
+        let baseFontSystem = UIFont.systemFont(ofSize: baseFontSize * fontSizeScale)
+        
+        switch fontStyle {
+            case .system:
+                baseFont = UIFont.systemFont(ofSize: baseFontSize * fontSizeScale, weight: .medium)
+            default:
+                baseFont = UIFont(name: fontStyle.rawValue, size: baseFontSize * fontSizeScale) ?? baseFontSystem
+        }
 
         let cleanText = text.trimmingCharacters(in: .whitespacesAndNewlines)
-
         let attr = NSMutableAttributedString(
             string: cleanText,
             attributes: [
