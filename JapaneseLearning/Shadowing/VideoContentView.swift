@@ -34,20 +34,20 @@ struct VideoContentView: View {
 
                 ZStack {
 
-                    GeometryReader { geo in
-                        if let image = playerVM.nowPlayingArtwork {
-                            Image(uiImage: image)
-                                .resizable()
-                                .aspectRatio(contentMode: .fill)
-                                .frame(width: geo.size.width, height: geo.size.height)
-                                .clipped()
-                                .blur(radius: 70, opaque: true)
-                                .overlay(Color.black.opacity(0.2))
-                        } else {
-                            Color.black.opacity(0.1)
+                    if let image = playerVM.nowPlayingArtwork {
+                        Canvas { context, size in
+                            context.draw(
+                                Image(uiImage: image)
+                                    .resizable(),
+                                in: CGRect(origin: .zero, size: size)
+                            )
                         }
+                        .ignoresSafeArea()
+                        .blur(radius: 60, opaque: true)
+                        .overlay(Color.black.opacity(0.15))
+                    } else {
+                        Color.black.opacity(0.1)
                     }
-                    .ignoresSafeArea()
 
                     VStack(spacing: 0) {
 
@@ -247,9 +247,6 @@ struct SubtitlesContentView: View {
                         playerVM: playerVM,
                         onTapLine: {
                             playerVM.playLine(line, index)
-                        },
-                        onTapWord: { lineID, wordIndex in
-                            playerVM.handleWordLookup(lineID, wordIndex)
                         }
                     )
                     .id(line.id)
@@ -299,7 +296,6 @@ struct SubtitlesRowView: View {
     let currentLineID: () -> String?
     @ObservedObject var playerVM: PlayerViewModel
     let onTapLine: () -> Void
-    let onTapWord: (String, Int) -> Void
     @Environment(SettingsStore.self) private var settingsStore
 
     var body: some View {
@@ -308,18 +304,23 @@ struct SubtitlesRowView: View {
         let font_style = settingsStore.settings.videoSubtitleFontStyle
         let blur_opacity = settingsStore.settings.videoSubtitleDimInactiveLines
 
-        VStack(alignment: .leading) {
+        ZStack(alignment: .leading) {
+
+            Color.clear
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    onTapLine()
+                }
+
             RubyLabel(
                 text: line.text,
                 rubyWords: ruby_show,
                 fontSizeScale: font_size,
                 fontStyle: font_style,
-                onTapWordAtIndex: { index in
+                onTapWord: { word in
                     let isNowActive = (currentLineID() == line.id)
                     if isNowActive {
-                        if index != -1 {
-                            onTapWord(line.id, index)
-                        }
+                        playerVM.handleWordLookup(word)
                     } else {
                         onTapLine()
                     }
@@ -334,7 +335,6 @@ struct SubtitlesRowView: View {
         }
         .padding(.vertical, 5)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .contentShape(Rectangle())
     }
 }
 
@@ -440,10 +440,6 @@ struct VideoSubtitleFontSizeSliderView: View {
     }
 }
 
-struct WordIdentifiable: Identifiable {
-    let id = UUID()
-    let word: String
-}
 struct DictionaryView: UIViewControllerRepresentable {
     let word: String
 

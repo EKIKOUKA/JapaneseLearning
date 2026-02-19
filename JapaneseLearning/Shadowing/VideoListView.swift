@@ -115,12 +115,9 @@ struct VideoListView: View {
                 }
             }
         }
+        .navigationTitle("シャドーイング")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .principal) {
-                Text("シャドーイング")
-                    .font(.headline)
-            }
             ToolbarItemGroup(placement: .topBarTrailing) {
                 Button {
                     showAddSheet = true

@@ -13,11 +13,11 @@ struct RubyLabel: UIViewRepresentable {
     let rubyWords: [RubyWord]
     let fontSizeScale: Double
     let fontStyle: VideoSubtitleRubyFontStyle
-    let onTapWordAtIndex: (Int) -> Void
+    let onTapWord: (String) -> Void
 
     func makeUIView(context: Context) -> RubyUIView {
         let view = RubyUIView()
-        view.onTap = onTapWordAtIndex
+        view.onTapWord = onTapWord
         view.setContentCompressionResistancePriority(.required, for: .vertical)
         return view
     }
@@ -101,6 +101,7 @@ struct RubyLabel: UIViewRepresentable {
 
 class RubyUIView: UIView {
     var onTap: ((Int) -> Void)?
+    var onTapWord: ((String) -> Void)?
     var contentKey: String?
 
     private var cachedFramesetter: CTFramesetter?
@@ -152,34 +153,117 @@ class RubyUIView: UIView {
         CTFrameDraw(frame, context)
     }
 
-    @objc func handleTap(_ gesture: UITapGestureRecognizer) {
-        guard let attributedText = attributedText else { return }
-        let point = gesture.location(in: self)
+    private func wordAt(tapIndex: Int, in text: String) -> String? {
+        let nsText = text as NSString
+        let length = nsText.length
+        guard tapIndex >= 0 && tapIndex < length else { return nil }
 
-        let frame = CTFramesetterCreateFrame(cachedFramesetter!, CFRangeMake(0, attributedText.length), CGMutablePath(rect: bounds, transform: nil), nil)
+        // 1️⃣ 用 tokenizer 找基本 token
+        let tokenizer = CFStringTokenizerCreate(
+            kCFAllocatorDefault,
+            text as CFString,
+            CFRangeMake(0, length),
+            kCFStringTokenizerUnitWord,
+            Locale(identifier: "ja_JP") as CFLocale
+        )
 
-        let lines = CTFrameGetLines(frame) as! [CTLine]
-        var origins = [CGPoint](repeating: .zero, count: lines.count)
-        CTFrameGetLineOrigins(frame, CFRangeMake(0, 0), &origins)
+        var tokenType = CFStringTokenizerAdvanceToNextToken(tokenizer)
 
-        let y = bounds.height - point.y
+        while tokenType != [] {
+            let tokenRange = CFStringTokenizerGetCurrentTokenRange(tokenizer)
 
-        for (i, line) in lines.enumerated() {
-            let origin = origins[i]
-            var ascent: CGFloat = 0, descent: CGFloat = 0, leading: CGFloat = 0
-            let lineWidth = CTLineGetTypographicBounds(line, &ascent, &descent, &leading)
+            if tapIndex >= tokenRange.location &&
+               tapIndex < tokenRange.location + tokenRange.length {
 
-            if y >= (origin.y - descent - 5) && y <= (origin.y + ascent + 5) {
-                if point.x >= origin.x && point.x <= (origin.x + CGFloat(lineWidth)) {
-                    let relativePoint = CGPoint(x: point.x - origin.x, y: y - origin.y)
-                    let index = CTLineGetStringIndexForPosition(line, relativePoint)
-                    if index != kCFNotFound {
-                        onTap?(index)
-                        return
+                // 如果本來就超過1字，直接返回
+                if tokenRange.length > 1 {
+                    let nsRange = NSRange(location: tokenRange.location,
+                                          length: tokenRange.length)
+                    return nsText.substring(with: nsRange)
+                }
+
+                // 2️⃣ 只有1字 → 嘗試擴展（最多6字）
+                // 單字時才做
+                if tokenRange.length == 1 {
+
+                    var start = tokenRange.location
+                    var end = tokenRange.location + 1
+
+                    let maxLength = 4
+
+                    func isKanji(_ index: Int) -> Bool {
+                        let scalar = text[text.index(text.startIndex, offsetBy: index)].unicodeScalars.first!.value
+                        return (0x4E00...0x9FFF).contains(scalar)
                     }
+
+                    // 只向左擴
+                    while start > 0 &&
+                          isKanji(start - 1) &&
+                          (end - (start - 1)) <= maxLength {
+                        start -= 1
+                    }
+
+                    // 只向右擴
+                    while end < length &&
+                          isKanji(end) &&
+                          (end + 1 - start) <= maxLength {
+                        end += 1
+                    }
+
+                    let nsRange = NSRange(location: start, length: end - start)
+                    return nsText.substring(with: nsRange)
                 }
             }
+
+            tokenType = CFStringTokenizerAdvanceToNextToken(tokenizer)
         }
-        onTap?(-1)
+
+        return nil
+    }
+
+    @objc private func handleTap(_ gesture: UITapGestureRecognizer) {
+        guard let attributedText = attributedText else { return }
+
+        let location = gesture.location(in: self)
+
+        let textStorage = NSTextStorage(attributedString: attributedText)
+        let layoutManager = NSLayoutManager()
+        let textContainer = NSTextContainer(size: bounds.size)
+
+        textContainer.lineFragmentPadding = 0
+        textContainer.lineBreakMode = .byWordWrapping
+        textContainer.maximumNumberOfLines = 0
+
+        layoutManager.addTextContainer(textContainer)
+        textStorage.addLayoutManager(layoutManager)
+
+        let glyphIndex = layoutManager.glyphIndex(for: location, in: textContainer)
+
+        let glyphRect = layoutManager.boundingRect(
+            forGlyphRange: NSRange(location: glyphIndex, length: 1),
+            in: textContainer
+        )
+
+        if !glyphRect.contains(location) {
+            return
+        }
+
+        let characterIndex = layoutManager.characterIndexForGlyph(at: glyphIndex)
+        let text = attributedText.string
+        let nsText = text as NSString
+
+        guard characterIndex >= 0, characterIndex < nsText.length else {
+            return
+        }
+
+        let tappedChar = nsText.substring(with: NSRange(location: characterIndex, length: 1))
+        if tappedChar.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return
+        }
+
+        if let word = wordAt(tapIndex: characterIndex, in: text) {
+            print("word: \(word)")
+            onTapWord?(word)
+        }
     }
 }

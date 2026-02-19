@@ -551,16 +551,9 @@ final class PlayerViewModel: ObservableObject {
             charIndex < ($0.start + $0.length)
         }
     }
-    func handleWordLookup(_ lineID: String, _ charIndex: Int) {
-        guard let line = captions.first(where: { $0.id == lineID }),
-           let rubyWord = rubyWord(in: line, at: charIndex) else { return }
-
-        let word = rubyWord.surface
-//        print("word: \(word)")
-
+    func handleWordLookup(_ word: String) {
         if activeLookUpWordIdentifiable?.word == word { return }
         if UIReferenceLibraryViewController.dictionaryHasDefinition(forTerm: word) {
-//            print("✨ 系統詞典確認有定義，📖 開始查詢系統詞典: \(word)")
             player.pause()
             isPlaying = false
 
@@ -568,9 +561,6 @@ final class PlayerViewModel: ObservableObject {
                 self.activeLookUpWordIdentifiable = WordIdentifiable(word: word)
             }
         }
-//        else {
-//            print("⚠️ 系統詞典未找到定義: \(word)")
-//        }
     }
 
     func currentLineText() -> String? {

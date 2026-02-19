@@ -32,12 +32,12 @@ struct CaptionLine: Identifiable, Equatable, Codable {
 // Subtitle
 enum VideoSubtitleLineWithAnimation: String, Codable, CaseIterable {
     case easeInOut
-    case spring
+    case natural
 
     var displayName: String {
         switch self {
             case .easeInOut: return "スムーズ"
-            case .spring: return "弾む"
+            case .natural: return "ナチュラル"
         }
     }
 }
