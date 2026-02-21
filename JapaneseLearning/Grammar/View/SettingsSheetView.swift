@@ -12,6 +12,24 @@ struct SettingsSheetGrammarView: View {
     @Environment(SettingsStore.self) private var settingsStore
     @ObservedObject var store: GrammarStore
 
+    let isoCountries: [(code: String, name: String)] = {
+        let overrides: [String: String] = [
+            "TW": "台湾（中華民国）",
+            "CN": "中国（支那、西朝鮮）",
+            "JP": "大日本帝国"
+        ]
+
+        return Locale.Region.isoRegions.compactMap { region in
+            let code = region.identifier
+            guard code.count == 2 else { return nil }
+            let name = overrides[code] ?? Locale.current.localizedString(forRegionCode: code)
+            if let name = name {
+                return (code: code, name: name)
+            }
+            return nil
+        }
+    } ()
+
     var body: some View {
         @Bindable var settingsStoreBindable = settingsStore
 
@@ -90,6 +108,14 @@ struct SettingsSheetGrammarView: View {
                         }
                     } label: {
                         Text(store.isRealtimeConnected ? "停止" : "開始")
+                    }
+                }
+
+                Section(header: Text("国籍")) {
+                    Picker("国籍", selection: $settingsStoreBindable.settings.Nationality) {
+                        ForEach(isoCountries, id: \.code) { country in
+                            Text(country.name).tag(country.code)
+                        }
                     }
                 }
             }

@@ -31,13 +31,13 @@ struct CaptionLine: Identifiable, Equatable, Codable {
 
 // Subtitle
 enum VideoSubtitleLineWithAnimation: String, Codable, CaseIterable {
-    case easeInOut
     case natural
+    case easeInOut
 
     var displayName: String {
         switch self {
-            case .easeInOut: return "スムーズ"
             case .natural: return "ナチュラル"
+            case .easeInOut: return "スムーズ"
         }
     }
 }

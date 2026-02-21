@@ -17,6 +17,7 @@ struct VideoContentView: View {
     @Environment(SettingsStore.self) private var settingsStore
     @Environment(VideoStore.self) private var videoStore
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.horizontalSizeClass) var sizeClass
     @StateObject private var playerVM = PlayerViewModel()
     @State private var showSettingSheet = false
     @State private var drawerOffset: CGFloat = 0
@@ -25,105 +26,66 @@ struct VideoContentView: View {
     let maxDrawerOffset: CGFloat = 201
 
     var body: some View {
+        @State var sizeClass_regular = sizeClass == .regular
 
-        Group {
+        GeometryReader { geo in
 
-            if video == nil {
-                ProgressLoadingView()
-            } else {
+            let fullWidth = geo.size.width
+            let isLandscape = geo.size.width > geo.size.height
 
-                ZStack {
+            let videoWidth = isLandscape ? fullWidth * 0.5 : (fullWidth - 36)
+            let currentVideoHeight = videoWidth * 9 / 16
 
-                    if let image = playerVM.nowPlayingArtwork {
-                        Canvas { context, size in
-                            context.draw(
-                                Image(uiImage: image)
-                                    .resizable(),
-                                in: CGRect(origin: .zero, size: size)
+            Group {
+
+                if video == nil {
+                    ProgressLoadingView()
+                } else {
+
+                    ZStack {
+
+                        AdaptiveStack(isSideBySide: isLandscape) {
+
+                            videoContentArea(
+                                playerVM: playerVM,
+                                drawerOffset: $drawerOffset,
+                                lastDragOffset: $lastDragOffset,
+                                maxDrawerOffset: maxDrawerOffset,
+                                containerWidth: fullWidth,
+                                isLandscape: isLandscape
+                            )
+
+                            SubtitlesContentView(playerVM: playerVM)
+                        }
+
+                        if !isLandscape {
+                            playResumeVideoView(
+                                drawerOffset: $drawerOffset,
+                                lastDragOffset: $lastDragOffset,
+                                buttonAppearOffset: $buttonAppearOffset,
+                                maxDrawerOffset: currentVideoHeight
                             )
                         }
-                        .ignoresSafeArea()
-                        .blur(radius: 60, opaque: true)
-                        .overlay(Color.black.opacity(0.15))
-                    } else {
-                        Color.black.opacity(0.1)
                     }
-
-                    VStack(spacing: 0) {
-
-                        ZStack {
-
-                            if playerVM.isVideoLoading, let image = playerVM.nowPlayingArtwork {
-                                Image(uiImage: image)
-                                    .resizable()
-                                    .scaledToFill()
-                                    .clipped()
-                                    .opacity(playerVM.isVideoLoading ? 1 : 0)
-                            }
-
-                            AVPlayerControllerView(player: playerVM.player)
-                                .opacity(playerVM.isVideoLoading ? 0 : 1)
-                        }
-                        .animation(.easeInOut(duration: 0.75), value: playerVM.isVideoLoading)
-                        .frame(height: maxDrawerOffset)
-                        .cornerRadius(30)
-                        .frame(
-                            height: maxDrawerOffset - drawerOffset,
-                            alignment: .bottom
-                        )
-                        .background(Color.clear)
-                        .clipped()
-                        .padding(.bottom, 2)
-                        .padding(.horizontal, 18)
-                        .highPriorityGesture(
-                            DragGesture()
-                                .onChanged { value in
-                                    let offset = lastDragOffset - value.translation.height
-                                    drawerOffset = min(max(offset, 0), maxDrawerOffset)
-                                }
-                                .onEnded { _ in
-                                    let shouldCollapse = drawerOffset > maxDrawerOffset * 0.35
-
-                                    if shouldCollapse {
-                                        withAnimation(.spring(response: 0.3, dampingFraction: 1.0)) {
-                                            drawerOffset = maxDrawerOffset
-                                        }
-                                    } else {
-                                        withAnimation(.interpolatingSpring(stiffness: 120, damping: 13)) {
-                                            drawerOffset = 0
-                                        }
-                                    }
-
-                                    lastDragOffset = drawerOffset
-                                }
-                        )
-
-                        SubtitlesContentView(playerVM: playerVM)
-                    }
-
-                    playResumeVideoView(
-                        drawerOffset: $drawerOffset,
-                        lastDragOffset: $lastDragOffset
+                    .background(
+                        videoCoverView(playerVM: playerVM, sizeClass_regular: sizeClass_regular)
                     )
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                    .padding(.top, 5)
-                    .opacity(drawerOffset >= maxDrawerOffset ? 1 : 0)
-                    .offset(y: buttonAppearOffset)
-                    .onChange(of: drawerOffset >= maxDrawerOffset) { _, isVisible in
-                        if isVisible {
-                            buttonAppearOffset = -15
-                            withAnimation(.interpolatingSpring(stiffness: 260, damping: 18)) {
-                                buttonAppearOffset = 0
-                            }
-                        }
-                    }
                 }
             }
         }
-        .navigationTitle(video?.title ?? "何これ！")
+        .navigationTitle(sizeClass_regular ? "" : (video?.title ?? "読み込み中..."))
         .navigationBarTitleDisplayMode(.inline)
         .toolbarColorScheme(.dark, for: .navigationBar)
         .toolbar {
+            if sizeClass_regular && !playerVM.isVideoLoading {
+                ToolbarItem(placement: .principal) {
+                    Text(video?.title ?? "読み込み中...")
+                        .font(.headline)
+                        .foregroundColor(.white)
+                        .lineLimit(1)
+                }
+            }
+
             ToolbarItemGroup(placement: .topBarTrailing) {
                 Button {
                     showSettingSheet = true
@@ -135,38 +97,21 @@ struct VideoContentView: View {
         .toolbarVisibility(.hidden, for: .tabBar)
         .task(id: video?.id) {
             guard let video else { return }
-            playerVM.nowPlayingTitle = video.title
-
-            if let url = video.thumbnailURL {
-                Task.detached {
-                    if let data = try? Data(contentsOf: url),
-                       let image = UIImage(data: data) {
-                        await MainActor.run {
-                            playerVM.nowPlayingArtwork = image
-                            playerVM.setupNowPlaying()
-                        }
-                    }
-                }
-            }
-
-            Task {
-                playerVM.startLoadVideo(for: video)
-            }
+            playerVM.prepareVideo(video)
         }
         .sheet(item: $playerVM.activeLookUpWordIdentifiable,
-            onDismiss: {
-                playerVM.activeLookUpWordIdentifiable = nil
-                playerVM.playPlayer()
-            }
-        ) { item in
+               onDismiss: {
+            playerVM.activeLookUpWordIdentifiable = nil
+            playerVM.playPlayer()
+        }) { item in
             DictionaryView(word: item.word)
                 .ignoresSafeArea()
-                .presentationDetents([.medium, .large])
-                .presentationDragIndicator(.visible)
+                .presentationDetents(sizeClass_regular ? [.large] : [.medium, .large])
+                .presentationDragIndicator(sizeClass_regular ? .hidden : .visible)
         }
         .sheet(isPresented: $showSettingSheet) {
             ShadowingSettingsSheetView(playerVM: playerVM)
-                .presentationDetents([.medium])
+                .presentationDetents(sizeClass_regular ? [.large] : [.medium])
         }
         .onAppear {
             playerVM.inject(
@@ -184,17 +129,119 @@ struct VideoContentView: View {
             Task {
                 if phase == .background {
                     await playerVM.saveCurrentProgress()
-                    playerVM.player.pause()
-                    playerVM.isPlaying = false
+                    playerVM.pausePlayer()
                 }
             }
         }
     }
 }
 
+struct videoCoverView: View {
+    @ObservedObject var playerVM: PlayerViewModel
+    let sizeClass_regular: Bool
+
+    var body: some View {
+
+        if let image = playerVM.nowPlayingArtwork {
+            Canvas { context, size in
+                context.draw(
+                    Image(uiImage: image)
+                        .resizable(),
+                    in: CGRect(origin: .zero, size: size)
+                )
+            }
+            .ignoresSafeArea()
+            .blur(radius: sizeClass_regular ? 100 : 64, opaque: true)
+            .overlay(Color.black.opacity(0.2))
+        } else {
+            Color.black.opacity(0.1)
+        }
+    }
+}
+
+struct videoContentArea: View {
+    @Environment(\.horizontalSizeClass) var sizeClass
+    @ObservedObject var playerVM: PlayerViewModel
+    @Binding var drawerOffset: CGFloat
+    @Binding var lastDragOffset: CGFloat
+    let maxDrawerOffset: CGFloat
+    let containerWidth: CGFloat
+    let isLandscape: Bool
+
+    var body: some View {
+
+        let videoWidth = isLandscape ? containerWidth * 0.5 : (containerWidth - 36)
+        let baseHeight = videoWidth * 9 / 16
+
+        VStack(spacing: 0) {
+            if isLandscape {
+                Spacer()
+            }
+
+            ZStack {
+
+                if playerVM.isVideoLoading, let image = playerVM.nowPlayingArtwork {
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFill()
+//                        .clipped()
+                        .opacity(playerVM.isVideoLoading ? 1 : 0)
+                }
+
+                AVPlayerControllerView(player: playerVM.player)
+                    .opacity(playerVM.isVideoLoading ? 0 : 1)
+            }
+            .animation(.easeInOut(duration: 0.75), value: playerVM.isVideoLoading)
+            .frame(width: videoWidth, height: baseHeight)
+            .cornerRadius(30)
+            .frame(
+                height: isLandscape ? baseHeight : max(0, baseHeight - drawerOffset),
+                alignment: .bottom
+            )
+            .clipped()
+
+            if isLandscape {
+                Spacer()
+            }
+        }
+        .background(Color.clear)
+        .padding(.bottom, 2)
+        .padding(.horizontal, 18)
+        .highPriorityGesture(
+            isLandscape ? nil :
+                DragGesture()
+                .onChanged { value in
+                    let offset = lastDragOffset - value.translation.height
+                    drawerOffset = min(max(offset, 0), baseHeight)
+                }
+                .onEnded { _ in
+                    let shouldCollapse = drawerOffset > baseHeight * 0.35
+
+                    if shouldCollapse {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 1.0)) {
+                            drawerOffset = baseHeight
+                        }
+                    } else {
+                        withAnimation(.interpolatingSpring(stiffness: 120, damping: 13)) {
+                            drawerOffset = 0
+                        }
+                    }
+
+                    lastDragOffset = drawerOffset
+                }
+        )
+    }
+}
+
 struct playResumeVideoView: View {
     @Binding var drawerOffset: CGFloat
     @Binding var lastDragOffset: CGFloat
+    @Binding var buttonAppearOffset: CGFloat
+    let maxDrawerOffset: CGFloat
+
+    private var isCollapsed: Bool {
+        drawerOffset >= maxDrawerOffset
+    }
 
     var body: some View {
 
@@ -215,16 +262,29 @@ struct playResumeVideoView: View {
             .labelStyle(.titleAndIcon)
             .padding(.horizontal, 14)
             .padding(.vertical, 8)
+            .background {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(.ultraThinMaterial)
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(.white.opacity(0.1), lineWidth: 0.5)
+            }
         }
-        .background {
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(.ultraThinMaterial)
-        }
-        .overlay {
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(.white.opacity(0.14), lineWidth: 0.5)
-        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .padding(.top, 5)
+        .offset(y: buttonAppearOffset)
+        .opacity(isCollapsed ? 0.9 : 0)
+        .allowsHitTesting(isCollapsed)
         .shadow(color: .black.opacity(0.12), radius: 10, y: 4)
+        .onChange(of: isCollapsed) { _, isVisible in
+            if isVisible {
+                buttonAppearOffset = -15
+                withAnimation(.interpolatingSpring(stiffness: 260, damping: 18)) {
+                    buttonAppearOffset = 0
+                }
+            }
+        }
     }
 }
 
@@ -249,7 +309,7 @@ struct SubtitlesContentView: View {
                             playerVM.playLine(line, index)
                         }
                     )
-                    .id(line.id)
+                    // .id(line.id)
                 }
                 Color.clear.frame(height: 10)
             }
@@ -363,29 +423,66 @@ struct VideoControlView: View {
             .buttonStyle(.plain)
 
             HStack {
-                Image(systemName: "gauge.with.needle")
-                    .foregroundColor(.blue)
 
-                Slider(
-                    value: $playerVM.tempRate,
-                    in: 0.5...1.25,
-                    step: 0.05,
-                    onEditingChanged: { editing in
-                        if !editing {
-                            playerVM.setRate(playerVM.tempRate)
+                Image(systemName: "tortoise.fill")
+                    .foregroundColor(.secondary)
+                    .onTapGesture {
+                        if playerVM.tempRate > 0.5 {
+                            playerVM.tempRate = max(playerVM.tempRate - 0.05, 0.5)
+                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
                         }
                     }
-                )
-                .accentColor(.blue)
 
-                Text("\(String(format: "%.2f", playerVM.tempRate))x")
-                    .font(.system(.body, design: .monospaced))
-                    .frame(width: 55)
+                ZStack {
+
+                    GeometryReader { geo in
+                        let minRate: Double = 0.50
+                        let maxRate: Double = 1.25
+                        let range = maxRate - minRate
+                        let temp_rate = min(playerVM.tempRate, 1.25)
+
+                        let progress = (Double(temp_rate) - minRate) / range
+                        let thumbOffset = CGFloat(progress) * (geo.size.width - 30) + 15
+
+                        let selectionFeedback = UISelectionFeedbackGenerator()
+
+                        Slider(
+                            value: $playerVM.tempRate,
+                            in: 0.5...1.25,
+                            step: 0.05,
+                            onEditingChanged: { editing in
+                                if !editing {
+                                    playerVM.setRate(Float(playerVM.tempRate))
+                                }
+                                if editing { selectionFeedback.prepare() }
+                            }
+                        )
+                        .onChange(of: playerVM.tempRate) { _, newValue in
+                            if newValue == 1.0 {
+                                selectionFeedback.selectionChanged()
+                            }
+                        }
+
+                        Text("\(String(format: "%.2f", playerVM.tempRate))")
+                            .font(.caption.monospacedDigit())
+                            .foregroundStyle(.white.opacity(0.9))
+                            .position(x: thumbOffset, y: 15)
+                            .allowsHitTesting(false)
+                    }
+                    .frame(height: 30)
+                }
+
+                Image(systemName: "hare.fill")
+                    .foregroundStyle(.secondary)
                     .onTapGesture {
-                        playerVM.setRate(1.0)
+                        if playerVM.tempRate < 2.0 {
+                            playerVM.tempRate = min(playerVM.tempRate + 0.05, 2.0)
+                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        }
                     }
             }
             .padding(6)
+            .padding(.trailing, 0)
             .background(Color.gray.opacity(0.1))
             .cornerRadius(12)
 
@@ -395,7 +492,7 @@ struct VideoControlView: View {
                 Image(systemName: "repeat")
                     .foregroundColor(playerVM.isLoopingSingleLine ? .accentColor : .gray)
                     .contentShape(Rectangle())
-                    .padding(5)
+                    .padding(.horizontal, 0)
             }
             .buttonStyle(.plain)
         }
@@ -404,6 +501,7 @@ struct VideoControlView: View {
 
 struct VideoSubtitleFontSizeSliderView: View {
     @Environment(SettingsStore.self) private var settingsStore
+    @State private var tempFontSize: Double = 1.0
 
     var body: some View {
         @Bindable var settingsStoreBindable = settingsStore
@@ -413,29 +511,99 @@ struct VideoSubtitleFontSizeSliderView: View {
             Image(systemName: "textformat.size.smaller")
                 .foregroundColor(.secondary)
                 .onTapGesture {
-                    if settingsStoreBindable.settings.videoSubtitleFontSizeScale <= 0.70 { return }
-                    settingsStoreBindable.settings.videoSubtitleFontSizeScale -= 0.05
+                    if settingsStoreBindable.videoSubtitleFontSizeScale > 0.70 {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        let newValue = max(
+                            settingsStoreBindable.videoSubtitleFontSizeScale - 0.05,
+                            0.70
+                        )
+                        settingsStoreBindable.videoSubtitleFontSizeScale = newValue
+                        tempFontSize = newValue
+                    }
                 }
 
-            Slider(
-                value: $settingsStoreBindable.settings.videoSubtitleFontSizeScale,
-                in: 0.80...1.20,
-                step: 0.05
-            )
+            ZStack {
+
+                GeometryReader { geo in
+                    let minTempSizeScale: Double = 0.80
+                    let maxTempSizeScale: Double = 1.20
+                    let range = maxTempSizeScale - minTempSizeScale
+                    let tempSizeScale = max(minTempSizeScale, min(maxTempSizeScale, tempFontSize))
+
+                    let progress = (Double(tempSizeScale) - minTempSizeScale) / range
+                    let thumbOffset = CGFloat(progress) * (geo.size.width - 30) + 15
+
+                    let selectionFeedback = UISelectionFeedbackGenerator()
+
+                    Slider(
+                        value: $tempFontSize,
+                        in: minTempSizeScale...maxTempSizeScale,
+                        step: 0.05,
+                        onEditingChanged: { editing in
+                            if !editing {
+                                settingsStoreBindable.videoSubtitleFontSizeScale = tempFontSize
+                            }
+                            if editing { selectionFeedback.prepare() }
+                        }
+                    )
+                    .onChange(of: tempFontSize) { _, newValue in
+                        if newValue == 1.0 {
+                            selectionFeedback.selectionChanged()
+                        }
+                    }
+
+                    Text(String(format: "%.2f", tempFontSize))
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.white.opacity(0.9))
+                        .position(x: thumbOffset, y: 15)
+                        .allowsHitTesting(false)
+                }
+                .frame(height: 32)
+            }
 
             Image(systemName: "textformat.size.larger")
                 .foregroundColor(.secondary)
                 .onTapGesture {
-                    if settingsStoreBindable.settings.videoSubtitleFontSizeScale >= 1.40 { return }
-                    settingsStoreBindable.settings.videoSubtitleFontSizeScale += 0.05
+                    if settingsStoreBindable.videoSubtitleFontSizeScale < 1.40 {
+                        let newValue = min(
+                            settingsStoreBindable.videoSubtitleFontSizeScale + 0.05,
+                            1.40
+                        )
+                        settingsStoreBindable.videoSubtitleFontSizeScale = newValue
+                        tempFontSize = newValue
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    }
                 }
+        }
+        .onAppear {
+            tempFontSize = settingsStoreBindable.videoSubtitleFontSizeScale
+        }
+        .onChange(of: settingsStoreBindable.videoSubtitleFontSizeScale) { _, newValue in
+            if tempFontSize != newValue {
+                tempFontSize = newValue
+            }
+        }
+    }
+}
 
-            Text(String(format: "%.2fx", settingsStoreBindable.settings.videoSubtitleFontSizeScale))
-                .font(.caption.monospacedDigit())
-                .foregroundStyle(.secondary)
-                .onTapGesture {
-                    settingsStoreBindable.settings.videoSubtitleFontSizeScale = 1.0
-                }
+// 💡 輔助組件：自動根據環境切換 HStack 或 VStack
+struct AdaptiveStack<Content: View>: View {
+    var isSideBySide: Bool
+    let content: () -> Content
+
+    init(isSideBySide: Bool, @ViewBuilder content: @escaping () -> Content) {
+        self.isSideBySide = isSideBySide
+        self.content = content
+    }
+
+    var body: some View {
+        if isSideBySide {
+            HStack(spacing: 0) {
+                content()
+            }
+            .padding(.horizontal, 0)
+        } else {
+            VStack(spacing: 0) { content() }
         }
     }
 }
@@ -459,16 +627,12 @@ struct AVPlayerControllerView: UIViewControllerRepresentable {
         player.allowsExternalPlayback = true
         vc.showsPlaybackControls = true
         vc.allowsPictureInPicturePlayback = false
-        vc.canStartPictureInPictureAutomaticallyFromInline = true
-        vc.entersFullScreenWhenPlaybackBegins = false
-        vc.exitsFullScreenWhenPlaybackEnds = false
-//        vc.requiresLinearPlayback = true
         vc.videoGravity = .resizeAspect
         return vc
     }
 
     func updateUIViewController(_ uiViewController: AVPlayerViewController, context: Context) {
-        if uiViewController.player != player {
+        if uiViewController.player !== player {
             uiViewController.player = player
         }
     }
@@ -476,5 +640,5 @@ struct AVPlayerControllerView: UIViewControllerRepresentable {
 
 
 extension UnitPoint {
-    static let subtitleAnchor = UnitPoint(x: 0.5, y: 0.25)
+    static let subtitleAnchor = UnitPoint(x: 0.5, y: 0.3)
 }

@@ -12,6 +12,7 @@ struct VideoListView: View {
 
     @Environment(VideoStore.self) private var store
     @Environment(AppNavigationStore.self) private var navigationStore
+    @Environment(\.horizontalSizeClass) private var sizeClass
     @State private var showAddSheet = false
     @State private var showSettingSheet = false
     @State private var showPlayListSheet = false
@@ -42,6 +43,7 @@ struct VideoListView: View {
     }
 
     var body: some View {
+        @State var sizeClass_regular = sizeClass == .regular
 
         Group {
 
@@ -49,10 +51,20 @@ struct VideoListView: View {
                 ProgressLoadingView()
             } else {
 
-                ZStack {
+                GeometryReader { geo in
+                    let isLandscape = geo.size.width > geo.size.height
 
-                    List {
+                    let columns: [GridItem] = {
+                        if sizeClass_regular { // iPad
+                            return Array(repeating: GridItem(.flexible(), spacing: 16),
+                                         count: isLandscape ? 3 : 2)
+                        } else { // iPhone
+                            return Array(repeating: GridItem(.flexible(), spacing: 16),
+                                         count: isLandscape ? 2 : 1)
+                        }
+                    }()
 
+                    ScrollView {
                         if store.videos.isEmpty {
                             VStack(spacing: 16) {
                                 Image(systemName: "folder")
@@ -63,52 +75,38 @@ struct VideoListView: View {
                             }
                             .frame(maxWidth: .infinity)
                             .padding(.top, 180)
-                            .listRowSeparator(.hidden)
-                            .listRowBackground(Color.clear)
                         } else {
+                            VStack(spacing: 12) {
 
-                            Section {
-
-                                ForEach(filteredVideos) { video in
-
-                                    Button {
-                                        selectedVideo = video
-                                    } label: {
-                                        videoListItemView(video)
-                                    }
-                                    .buttonStyle(.plain)
-                                    .listRowSeparator(.hidden)
-                                    .listRowBackground(Color.clear)
-                                    .listRowInsets(EdgeInsets(
-                                        top: 6,
-                                        leading: 15,
-                                        bottom: 6,
-                                        trailing: 15
-                                    ))
-                                }
-                            } header: {
                                 Picker("Category", selection: $selectedPlaylistID) {
                                     ForEach(playlistCategories, id: \.self) { id in
                                         Text(shortTitle(for: id))
                                             .tag(id as String?)
                                     }
                                 }
-                                .pickerStyle(.segmented)
-                                .frame(height: 64)
-                                .padding(.top, -20)
-                                .scaleEffect(y: 1.2)
-                                .listRowInsets(EdgeInsets(top: 5, leading: 15, bottom: 0, trailing: 15))
+                                .pickerStyle(.palette)
+                                .controlSize(.large)
+                                .frame(height: 44)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 10)
+
+                                LazyVGrid(columns: columns) {
+
+                                    ForEach(filteredVideos) { video in
+                                        Button {
+                                            selectedVideo = video
+                                        } label: {
+                                            videoListItemView(video)
+                                        }
+                                        .buttonStyle(.plain)
+                                    }
+                                }
+                                .padding(.horizontal, 16)
+                                .padding(.bottom, 20)
                             }
                         }
                     }
-                    .listStyle(.plain)
-                    .listSectionSpacing(0)
                     .animation(.spring(response: 0.5, dampingFraction: 0.8), value: selectedPlaylistID)
-                    //  .safeAreaInset(edge: .top) {
-                    //  }
-                    .safeAreaInset(edge: .bottom) {
-                        Color.clear.frame(height: 20)
-                    }
                     .navigationDestination(item: $selectedVideo) { video in
                         VideoContentView(videoID: video.id)
                     }
@@ -134,11 +132,11 @@ struct VideoListView: View {
         }
         .sheet(isPresented: $showSettingSheet) {
             ShadowingSettingsSheetView()
-                .presentationDetents([.medium])
+                .presentationDetents(sizeClass_regular ? [.large] : [.medium])
         }
         .sheet(isPresented: $showAddSheet) {
             YouTubeAddVideoSheetView()
-                .presentationDetents([.medium, .large])
+                .presentationDetents(sizeClass_regular ? [.large] : [.medium, .large])
         }
         .alert("この動画を削除しますか？",
                isPresented: $showDeleteAlert,
@@ -153,28 +151,33 @@ struct VideoListView: View {
     }
 
     private func videoListItemView(_ video: VideoItem) -> some View {
-        VStack(spacing: 8) {
-            AsyncImage(url: video.thumbnailURL) { phase in
-                switch phase {
-                    case .empty:
-                        Rectangle()
-                            .fill(Color(.tertiarySystemFill))
-                    case .success(let image):
-                        image
-                            .resizable()
-                            .scaledToFill()
-                            .transition(.opacity)
-                            .animation(.easeIn(duration: 0.25), value: image)
-                    case .failure:
-                        Color.gray
-                    @unknown default:
-                        EmptyView()
+        var thumbnailRatio: CGFloat {
+            sizeClass == .regular ? (16.0 / 9.0) : (341.0 / 160.0)
+        }
+
+        return VStack(alignment: .leading, spacing: 12) {
+            // 1️⃣ 建立一個固定比例的容器
+            Color.clear
+                .aspectRatio(thumbnailRatio, contentMode: .fit) // 💡 關鍵：定義容器形狀
+                .overlay {
+                    // 2️⃣ 圖片在 overlay 裡填滿容器
+                    AsyncImage(url: video.thumbnailURL) { phase in
+                        switch phase {
+                            case .success(let image):
+                                image
+                                    .resizable()
+                                    .scaledToFill() // 💡 填滿不壓扁
+                            case .empty:
+                                Rectangle().fill(Color(.tertiarySystemFill))
+                            case .failure:
+                                Color.gray
+                            @unknown default:
+                                EmptyView()
+                        }
+                    }
                 }
-            }
-            .frame(maxWidth: .infinity)
-            .frame(height: 160)
-            .cornerRadius(20)
-            .clipped()
+                .clipShape(RoundedRectangle(cornerRadius: 20)) // 💡 在這裡裁切，確保上下被切掉
+                .contentShape(Rectangle())
 
             Text(video.title)
                 .font(.body)
@@ -184,6 +187,7 @@ struct VideoListView: View {
                 .padding(.bottom, 2)
         }
         .padding(10)
+        .frame(maxWidth: .infinity)
         .background(Color(.secondarySystemBackground))
         .cornerRadius(25)
         .onLongPressGesture {

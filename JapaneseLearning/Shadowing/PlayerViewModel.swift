@@ -44,11 +44,11 @@ final class PlayerViewModel: ObservableObject {
     @Published var nowPlayingArtwork: UIImage?
 
     // Loopup Status
-    struct WordIdentifiable: Identifiable {
+    struct LookUpWordIdentifiable: Identifiable {
         let id = UUID()
         let word: String
     }
-    @Published var activeLookUpWordIdentifiable: WordIdentifiable? = nil
+    @Published var activeLookUpWordIdentifiable: LookUpWordIdentifiable? = nil
 
     // Private Observers
     private var timeObserver: Any?
@@ -72,11 +72,28 @@ final class PlayerViewModel: ObservableObject {
     }
 
 
+    func prepareVideo(_ video: VideoItem) {
+        nowPlayingTitle = video.title
+
+        if let url = video.thumbnailURL {
+            Task {
+                if let data = try? Data(contentsOf: url),
+                   let image = UIImage(data: data) {
+                    await MainActor.run {
+                        self.nowPlayingArtwork = image
+                        self.setupNowPlaying()
+                    }
+                }
+            }
+        }
+
+        startLoadVideo(for: video)
+    }
+
     func startLoadVideo(for item: VideoItem) {
         print("startLoadVide...")
         // 停止舊影片
-        player.pause()
-        isPlaying = false
+        pausePlayer()
 
         // 清字幕與狀態
         captions = []
@@ -303,13 +320,19 @@ final class PlayerViewModel: ObservableObject {
                 switch player.timeControlStatus {
                     case .playing:
                         self.isPlaying = true
+
+                        // 🔹 檢查是否被系統修改 rate
+                        if player.rate != self.rate {
+                            player.playImmediately(atRate: self.rate)
+                        }
+
                         self.updateNowPlayingPlaybackRate(self.rate)
                         self.setupNowPlaying()
                     case .paused:
                         self.isPlaying = false
                         self.updateNowPlayingPlaybackRate(0)
                     case .waitingToPlayAtSpecifiedRate:
-                        print("⏳ 等待緩衝，自動恢復播放")
+                        print("⏳ waitingToPlayAtSpecifiedRate")
                     @unknown default:
                         break
                 }
@@ -362,10 +385,6 @@ final class PlayerViewModel: ObservableObject {
                 }
             }
         }
-
-        let time = currentTimeFormatted(Int(line.start))
-        print("🔄 手動切換循環目標: \(line)")
-        print("time: \(time)")
     }
 
     private func addLoopObserver(endTime: CMTime) {
@@ -402,14 +421,6 @@ final class PlayerViewModel: ObservableObject {
     func pausePlayer() {
         player.pause()
         isPlaying = false
-    }
-    func currentTimeFormatted(_ time: Int) -> String {
-        let totalSeconds = time
-        let minutes = totalSeconds / 60
-        let seconds = totalSeconds % 60
-        let formatted = String(format: "%02d:%02d", minutes, seconds)
-
-        return formatted
     }
 
     func toggleSingleLineLoop() {
@@ -450,8 +461,9 @@ final class PlayerViewModel: ObservableObject {
         print("🧹 reset player")
 
         // 停止播放
-        player.pause()
-        isPlaying = false
+//        player.pause()
+//        isPlaying = false
+        pausePlayer()
 
         // 解除 time observer
         if let observer = captionBoundaryObserver {
@@ -490,6 +502,15 @@ final class PlayerViewModel: ObservableObject {
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
     }
 
+    func currentTimeFormatted(_ time: Int) -> String {
+        let totalSeconds = time
+        let minutes = totalSeconds / 60
+        let seconds = totalSeconds % 60
+        let formatted = String(format: "%02d:%02d", minutes, seconds)
+
+        return formatted
+    }
+
 
     private func setupAudioSession() {
         do {
@@ -512,13 +533,13 @@ final class PlayerViewModel: ObservableObject {
 
         center.playCommand.addTarget { [weak self] _ in
             guard let self = self else { return .commandFailed }
-            self.player.rate = self.rate
+            self.playPlayer()
             return .success
         }
 
         center.pauseCommand.addTarget { [weak self] _ in
-            self?.player.pause()
-            self?.isPlaying = false
+            guard let self = self else { return .commandFailed }
+            self.pausePlayer()
             return .success
         }
     }
@@ -554,12 +575,17 @@ final class PlayerViewModel: ObservableObject {
     func handleWordLookup(_ word: String) {
         if activeLookUpWordIdentifiable?.word == word { return }
         if UIReferenceLibraryViewController.dictionaryHasDefinition(forTerm: word) {
-            player.pause()
-            isPlaying = false
+//            player.pause()
+//            isPlaying = false
+            pausePlayer()
+
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
 
             DispatchQueue.main.async {
-                self.activeLookUpWordIdentifiable = WordIdentifiable(word: word)
+                self.activeLookUpWordIdentifiable = LookUpWordIdentifiable(word: word)
             }
+        } else {
+            UINotificationFeedbackGenerator().notificationOccurred(.warning)
         }
     }
 

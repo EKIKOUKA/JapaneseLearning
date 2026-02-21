@@ -20,24 +20,24 @@ struct ShadowingSettingsSheetView: View {
             Form {
 
                 if let player_vm = playerVM {
-                    Section(header: Text("ビデオコントロール")) {
+                    Section(header: Text("動画の再生コントロール")) {
                         VideoControlView(playerVM: player_vm)
                     }
                 }
 
-                Section(header: Text("ビデオテキストサイズ")) {
+                Section(header: Text("動画字幕のサイズ")) {
                     VideoSubtitleFontSizeSliderView()
                 }
 
-                Section(header: Text("テキストのフォントスタイル")) {
-                    Picker("フォントスタイル", selection: $settingsStoreBindable.settings.videoSubtitleFontStyle) {
+                Section(header: Text("字幕のフォント")) {
+                    Picker("フォント", selection: $settingsStoreBindable.settings.videoSubtitleFontStyle) {
                         ForEach(VideoSubtitleRubyFontStyle.allCases, id: \.self) { fontStyle in
                             Text(fontStyle.displayName).tag(fontStyle)
                         }
                     }
                 }
 
-                Section(header: Text("ビデオテキストの表示")) {
+                Section(header: Text("動画字幕表示の強調")) {
                     Toggle(isOn: $settingsStoreBindable.settings.videoSubtitleDimInactiveLines) {
                         VStack(alignment: .leading) {
                             Text("非表示行を目立たせない")
@@ -48,7 +48,7 @@ struct ShadowingSettingsSheetView: View {
                     }
                 }
 
-                Section(header: Text("スクロールのアニメーション")) {
+                Section(header: Text("スクロールアニメーション")) {
                     Picker("アニメーション", selection: $settingsStoreBindable.settings.videoSubtitleLineWithAnimation) {
                         ForEach(VideoSubtitleLineWithAnimation.allCases, id: \.self) { animation in
                             Text(animation.displayName).tag(animation)
@@ -56,7 +56,7 @@ struct ShadowingSettingsSheetView: View {
                     }
                 }
 
-                Section(header: Text("表示設定")) {
+                Section(header: Text("振り仮名の表示")) {
 
                     Toggle(isOn: $settingsStoreBindable.settings.showShadowingSubtitlesRuby) {
                         VStack(alignment: .leading) {
