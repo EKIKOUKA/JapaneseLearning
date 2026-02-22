@@ -10,6 +10,7 @@ import SwiftUI
 struct SomethingsView: View {
 
     @State private var settingsStore = SettingsStore()
+    @Environment(\.horizontalSizeClass) private var sizeClass
 
     var body: some View {
 
@@ -17,89 +18,29 @@ struct SomethingsView: View {
 
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 16), count: 2), spacing: 16) {
 
-                NavigationLink(
-                    destination: KanjiWordsDiffToShinaLangView()
-                ) {
-                    Text("支那語に無い漢字")
-                        .font(.title3)
-                        .fontWeight(.semibold)
-                        .frame(maxWidth: .infinity, minHeight: 120)
-                        .foregroundStyle(.primary)
-                        .background(Color(.secondarySystemBackground))
-                        .clipShape(RoundedRectangle(cornerRadius: 20))
-                        .shadow(radius: 4)
+                btnTextView("支那語に無い漢字") {
+                    KanjiWordsDiffToShinaLangView()
                 }
-                .buttonStyle(.plain)
 
-                NavigationLink(
-                    destination: MemoryHardWordsView()
-                ) {
-                    Text("覚えにくい単語")
-                        .font(.title3)
-                        .fontWeight(.semibold)
-                        .frame(maxWidth: .infinity, minHeight: 120)
-                        .foregroundStyle(.primary)
-                        .background(Color(.secondarySystemBackground))
-                        .clipShape(RoundedRectangle(cornerRadius: 20))
-                        .shadow(radius: 4)
+                btnTextView("覚えにくい単語") {
+                    MemoryHardWordsView()
                 }
-                .buttonStyle(.plain)
 
-                NavigationLink(
-                    destination: ElegantSentenceView()
-                ) {
-                    Text("国語美文")
-                        .font(.title3)
-                        .fontWeight(.semibold)
-                        .frame(maxWidth: .infinity, minHeight: 120)
-                        .foregroundStyle(.primary)
-                        .background(Color(.secondarySystemBackground))
-                        .clipShape(RoundedRectangle(cornerRadius: 20))
-                        .shadow(radius: 4)
+                btnTextView("国語美文") {
+                    ElegantSentenceView()
                 }
-                .buttonStyle(.plain)
 
-                NavigationLink(
-                    destination: IdiomsListView()
-                ) {
-                    Text("慣用句")
-                        .font(.title3)
-                        .fontWeight(.semibold)
-                        .frame(maxWidth: .infinity, minHeight: 120)
-                        .foregroundStyle(.primary)
-                        .background(Color(.secondarySystemBackground))
-                        .clipShape(RoundedRectangle(cornerRadius: 20))
-                        .shadow(radius: 4)
+                btnTextView("慣用句") {
+                    IdiomsListView()
                 }
-                .buttonStyle(.plain)
 
-                NavigationLink(
-                    destination: SampleRubyWordsView()
-                ) {
-                    Text("同じ発音の言葉")
-                        .font(.title3)
-                        .fontWeight(.semibold)
-                        .frame(maxWidth: .infinity, minHeight: 120)
-                        .foregroundStyle(.primary)
-                        .background(Color(.secondarySystemBackground))
-                        .clipShape(RoundedRectangle(cornerRadius: 20))
-                        .shadow(radius: 4)
+                btnTextView("同じ発音の言葉") {
+                    SampleRubyWordsView()
                 }
-                .buttonStyle(.plain)
 
-                NavigationLink(
-                    destination: MediaProductsListView()
-                ) {
-                    Text("映像作品リスト")
-                        .font(.title3)
-                        .fontWeight(.semibold)
-                        .frame(maxWidth: .infinity, minHeight: 120)
-                        .foregroundStyle(.primary)
-                        .background(Color(.secondarySystemBackground))
-                        .clipShape(RoundedRectangle(cornerRadius: 20))
-                        .shadow(radius: 4)
+                btnTextView("映像作品リスト") {
+                    MediaProductsListView()
                 }
-                .buttonStyle(.plain)
             }
             .padding()
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
@@ -107,8 +48,26 @@ struct SomethingsView: View {
             .navigationTitle("その他")
         }
     }
-}
 
-#Preview {
-    SomethingsView()
+    func btnTextView<Destination: View>(
+        _ title: String,
+        @ViewBuilder destination: () -> Destination
+    ) -> some View {
+        let sizeClass_regular = sizeClass == .regular
+        let btnMinHeight: CGFloat = sizeClass_regular ? 220 : 120
+
+        return NavigationLink(
+            destination: destination()
+        ) {
+            Text(title)
+                .font(.title3)
+                .fontWeight(.semibold)
+                .frame(maxWidth: .infinity, minHeight: btnMinHeight)
+                .foregroundStyle(.primary)
+                .background(Color(.secondarySystemBackground))
+                .clipShape(RoundedRectangle(cornerRadius: 20))
+                .shadow(radius: 4)
+        }
+        .buttonStyle(.plain)
+    }
 }

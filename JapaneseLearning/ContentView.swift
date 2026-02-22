@@ -30,13 +30,13 @@ struct ContentView: View {
                 }
             }
             .tabItem {
-                Label("シャドーイング", systemImage: "shadow")
+                Label("　シャドーイング　", systemImage: "shadow")
             }
             .tag(0)
 
             SomethingsView()
             .tabItem {
-                Label("　　　　その他　　　　", systemImage: "books.vertical")
+                Label("　その他　", systemImage: "books.vertical")
             }
             .tag(1)
 
@@ -57,7 +57,7 @@ struct ContentView: View {
                     }
             }
             .tabItem {
-                Label("文法", systemImage: "book.pages") //は米国有事
+                Label("　文法　", systemImage: "book.pages") //は米国有事
             }
             .tag(2)
         }

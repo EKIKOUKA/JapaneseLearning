@@ -43,7 +43,7 @@ struct VideoListView: View {
     }
 
     var body: some View {
-        @State var sizeClass_regular = sizeClass == .regular
+        let sizeClass_regular = sizeClass == .regular
 
         Group {
 

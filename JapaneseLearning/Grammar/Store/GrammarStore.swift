@@ -12,7 +12,13 @@ import Combine
 class GrammarStore: ObservableObject {
 
     @Published var grammars: [GrammarItem] = []
-    @Published var isLoading = false
+    @Published var isLoading = true
+
+    init() {
+        Task { @MainActor in
+            await fetchAll()
+        }
+    }
 
     let client = SupabaseClient(
         supabaseURL: URL(string: Config.supabaseJapaneseLearningURL)!,
@@ -25,7 +31,6 @@ class GrammarStore: ObservableObject {
     )
     @MainActor
     func fetchAll() async {
-        isLoading = true
 
         do {
             let response: [GrammarItem] = try await client
@@ -37,7 +42,6 @@ class GrammarStore: ObservableObject {
             self.grammars = response
             self.isLoading = false
         } catch {
-            self.isLoading = false
             print("❌ Supabase Fetch Error：\(error)")
         }
     }

@@ -9,10 +9,11 @@ import SwiftUI
 
 struct GrammarNaviView: View {
 
-    @ObservedObject var store: GrammarStore
-    @Environment(\.colorScheme) var colorScheme
-    @State private var showSettingSheet = false
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.horizontalSizeClass) private var sizeClass
+    @ObservedObject var store: GrammarStore
+    @State private var showSettingSheet = false
 
     var dynamicColors: [LinearGradient] {
         let colors: [[Color]] = colorScheme == .dark
@@ -23,6 +24,7 @@ struct GrammarNaviView: View {
     }
 
     var body: some View {
+        let sizeClass_regular = sizeClass == .regular
 
         Group { // NavigationStack
 
@@ -42,7 +44,7 @@ struct GrammarNaviView: View {
                                     .font(.title3)
                                     .fontWeight(.semibold)
                             }
-                            .frame(maxWidth: .infinity, minHeight: 120)
+                            .frame(maxWidth: .infinity, minHeight: sizeClass_regular ? 220 : 120)
                             .foregroundStyle(.white)
                             .background(dynamicColors[index % dynamicColors.count])
                             .clipShape(RoundedRectangle(cornerRadius: 20))
@@ -76,13 +78,8 @@ struct GrammarNaviView: View {
         }
         .sheet(isPresented: $showSettingSheet) {
             SettingsSheetGrammarView(store: store)
-                .presentationDetents([.height(490), .large])
+                .presentationDetents(sizeClass_regular ? [.large] : [.height(490), .large])
                 .presentationDragIndicator(.visible)
-        }
-        .task {
-            if store.grammars.isEmpty {
-                await store.fetchAll()
-            }
         }
         .onChange(of: scenePhase) { _, phase in
             Task {
