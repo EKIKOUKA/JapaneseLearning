@@ -63,6 +63,20 @@ class VideoStore {
 
             await fetchVideos()
             print("✅ Supabase Insert Success: \(video.id)")
+
+            guard let url = URL(string: "https://makotodeveloper.website/shadowing/upload_video") else {
+                throw URLError(.badURL)
+            }
+
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+            let body = ["id": video.id]
+            request.httpBody = try JSONEncoder().encode(body)
+
+            _ = try await URLSession.shared.data(for: request)
+
         } catch {
             print("❌ Supabase Insert Error: \(error)")
         }

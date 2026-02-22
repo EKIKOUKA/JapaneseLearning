@@ -389,7 +389,7 @@ struct SubtitlesRowView: View {
             .id(settingsStore.settings.showShadowingSubtitlesRuby)
             .fixedSize(horizontal: false, vertical: true)
             .blur(radius: isActive || blur_opacity ? 0 : 1.5)
-            .opacity(isActive || blur_opacity ? 1.0 : 0.4)
+            .opacity(isActive ? 1.0 : (blur_opacity ? 0.4 : 0.6))
             .scaleEffect(isActive ? 1.02 : 1.0, anchor: .leading)
             .animation(.easeInOut(duration: 0.3), value: isActive)
         }
