@@ -55,7 +55,13 @@ struct VideoContentView: View {
                                 isLandscape: isLandscape
                             )
 
-                            SubtitlesContentView(playerVM: playerVM)
+                            if playerVM.isProgressing {
+                                Spacer()
+                                ProgressLoadingView()
+                                Spacer()
+                            } else {
+                                SubtitlesContentView(playerVM: playerVM)
+                            }
                         }
 
                         if !isLandscape {
@@ -75,7 +81,6 @@ struct VideoContentView: View {
         }
         .navigationTitle(sizeClass_regular ? "" : (video?.title ?? "読み込み中..."))
         .navigationBarTitleDisplayMode(.inline)
-        .toolbarColorScheme(.dark, for: .navigationBar)
         .toolbar {
             if sizeClass_regular && !playerVM.isVideoLoading {
                 ToolbarItem(placement: .principal) {
@@ -299,23 +304,24 @@ struct SubtitlesContentView: View {
 
             VStack(spacing: 12) {
                 Color.clear.frame(height: 2)
-                ForEach(Array(playerVM.captions.enumerated()), id: \.element.id) { index, line in
+                ForEach(Array(playerVM.captions.indices), id: \.self) { index in
+                    let line = playerVM.captions[index]
+
                     SubtitlesRowView(
+                        playerVM: playerVM,
                         line: line,
                         isActive: playerVM.currentLineID == line.id,
                         currentLineID: { playerVM.currentLineID },
-                        playerVM: playerVM,
                         onTapLine: {
                             playerVM.playLine(line, index)
                         }
                     )
-                    // .id(line.id)
+                    .id(line.id)
                 }
                 Color.clear.frame(height: 10)
             }
             .ScrollIndicatorStyle(.white)
             .animation(.easeInOut(duration: 1.0), value: playerVM.captions)
-            .padding(.horizontal, 18)
         }
         .scrollContentBackground(.hidden)
         .background(Color.clear)
@@ -323,7 +329,7 @@ struct SubtitlesContentView: View {
         .onChange(of: playerVM.currentLineID) { _, new in
             guard let newID = new else { return }
 
-            if settingsStore.settings.videoSubtitleLineWithAnimation == .easeInOut {
+            if settingsStore.videoSubtitleLineWithAnimation == .easeInOut {
                 withAnimation(.easeInOut(duration: 0.4)) {
                     scrollTargetID = newID
                 }
@@ -336,7 +342,7 @@ struct SubtitlesContentView: View {
         .onReceive(NotificationCenter.default.publisher(for: .scrollToCurrentLine)) { _ in
             if let currentLineId = playerVM.currentLineID {
 
-                if settingsStore.settings.videoSubtitleLineWithAnimation == .easeInOut {
+                if settingsStore.videoSubtitleLineWithAnimation == .easeInOut {
                     withAnimation(.easeInOut(duration: 0.4)) {
                         scrollTargetID = currentLineId
                     }
@@ -351,26 +357,25 @@ struct SubtitlesContentView: View {
 }
 
 struct SubtitlesRowView: View {
+    @Environment(SettingsStore.self) private var settingsStore
+    @ObservedObject var playerVM: PlayerViewModel
     let line: CaptionLine
     let isActive: Bool
     let currentLineID: () -> String?
-    @ObservedObject var playerVM: PlayerViewModel
     let onTapLine: () -> Void
-    @Environment(SettingsStore.self) private var settingsStore
+
+    @State private var tapHighlight = false
 
     var body: some View {
-        let ruby_show = (settingsStore.settings.showShadowingSubtitlesRuby ? line.ruby : [])!
-        let font_size = settingsStore.settings.videoSubtitleFontSizeScale
-        let font_style = settingsStore.settings.videoSubtitleFontStyle
-        let blur_opacity = settingsStore.settings.videoSubtitleDimInactiveLines
+        let ruby_show: [RubyWord] = settingsStore.showShadowingSubtitlesRuby ? (line.ruby ?? []) : []
+        let font_size = settingsStore.videoSubtitleFontSizeScale
+        let font_style = settingsStore.videoSubtitleFontStyle
+        let blur_opacity = settingsStore.videoSubtitleDimInactiveLines
 
         ZStack(alignment: .leading) {
 
-            Color.clear
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    onTapLine()
-                }
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(Color.white.opacity(tapHighlight ? 0.15 : 0))
 
             RubyLabel(
                 text: line.text,
@@ -378,23 +383,44 @@ struct SubtitlesRowView: View {
                 fontSizeScale: font_size,
                 fontStyle: font_style,
                 onTapWord: { word in
-                    let isNowActive = (currentLineID() == line.id)
-                    if isNowActive {
+                    if currentLineID() == line.id {
                         playerVM.handleWordLookup(word)
                     } else {
+                        triggerHighlight()
                         onTapLine()
                     }
+                },
+                onTapLine: {
+                    triggerHighlight()
+                    onTapLine()
                 }
             )
-            .id(settingsStore.settings.showShadowingSubtitlesRuby)
+            .id(settingsStore.showShadowingSubtitlesRuby)
             .fixedSize(horizontal: false, vertical: true)
+            .padding(.vertical, 6)
+            .padding(.horizontal, 20)
             .blur(radius: isActive || blur_opacity ? 0 : 1.5)
-            .opacity(isActive ? 1.0 : (blur_opacity ? 0.4 : 0.6))
+            .opacity(!isActive || (tapHighlight && isActive) ? 0.5 : 1.0)
             .scaleEffect(isActive ? 1.02 : 1.0, anchor: .leading)
-            .animation(.easeInOut(duration: 0.3), value: isActive)
+            .animation(.spring(response: 0.35, dampingFraction: 0.7), value: isActive)
+
+            .scaleEffect(tapHighlight ? 0.96 : 1.0, anchor: .center)
+            .animation(tapHighlight ? .easeOut(duration: 0.1) : .spring(response: 0.4, dampingFraction: 0.6), value: tapHighlight)
+
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding(.vertical, 5)
-        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func triggerHighlight() {
+        withAnimation(.easeOut(duration: 0.08)) {
+            tapHighlight = true
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+            withAnimation(.easeInOut(duration: 0.5)) {
+                tapHighlight = false
+            }
+        }
     }
 }
 

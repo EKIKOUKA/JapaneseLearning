@@ -17,11 +17,6 @@ class VideoStore {
     var currentResumeVideoID: String?
     var isLoading = true
 
-    struct VideoData {
-        let videoURL: URL
-        let captions: [CaptionLine]
-    }
-
     init() {
         Task { @MainActor in
             await fetchVideos()
@@ -61,7 +56,7 @@ class VideoStore {
                 .upsert(video, onConflict: "id")
                 .execute()
 
-            await fetchVideos()
+            videos.insert(video, at: 0)
             print("✅ Supabase Insert Success: \(video.id)")
 
             guard let url = URL(string: "https://makotodeveloper.website/shadowing/upload_video") else {
@@ -178,58 +173,25 @@ class VideoStore {
             throw URLError(.badURL)
         }
 
-        let (data, _) = try await URLSession.shared.data(from: url)
+        let (data, response) = try await URLSession.shared.data(from: url)
 
-        let body = String(data: data, encoding: .utf8) ?? ""
-        if body.contains("<html") {
-            print("❌ Server returned HTML, not JSON")
-            print(body.prefix(500))
+        guard let httpResponse = response as? HTTPURLResponse,
+              200..<300 ~= httpResponse.statusCode else {
             throw URLError(.badServerResponse)
         }
 
-        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-            let streamUrlString = json["url"] as? String,
-            let videoURL = URL(string: streamUrlString),
-            let rawCaptions = json["captions"] as? [[String: Any]] else {
-              throw URLError(.cannotParseResponse)
+        let video_decoded = try JSONDecoder().decode(VideoResponse.self, from: data)
+
+        guard let videoURL = URL(string: video_decoded.url),
+              let captionsURL = URL(string: video_decoded.captions) else {
+            throw URLError(.badURL)
         }
 
-        let captions: [CaptionLine] = rawCaptions.compactMap { dict in
-            guard let id = dict["id"] as? String,
-                let start = dict["start"] as? Double,
-                let end = dict["end"] as? Double,
-                let text = dict["text"] as? String
-            else { return nil }
-
-            var rubyList: [RubyWord]? = nil
-            if let rubyArr = dict["ruby"] as? [[String: Any]] {
-                rubyList = rubyArr.compactMap { rubyDict in
-                    guard let surface = rubyDict["surface"] as? String,
-                        let reading = rubyDict["reading"] as? String,
-                        let startIdx = rubyDict["start"] as? Int,
-                        let length = rubyDict["length"] as? Int
-                    else { return nil }
-
-                    return RubyWord(
-                        surface: surface,
-                        reading: reading,
-                        start: startIdx,
-                        length: length
-                    )
-                }
-            }
-
-            return CaptionLine(
-                id: id,
-                start: start,
-                end: end,
-                text: text,
-                ruby: rubyList
-            )
-        }
+        async let (captionData, _) = try await URLSession.shared.data(from: captionsURL)
+        let captions = try await JSONDecoder().decode([CaptionLine].self, from: captionData)
 
         return VideoData(
-            videoURL: videoURL,
+            url: videoURL,
             captions: captions
         )
     }
@@ -249,7 +211,7 @@ class VideoStore {
         return "YouTube Video"
     }
 
-    func addPlaylistVideos(
+    func addVideosFromPlaylist(
         _ items: [PlayListVideoItem],
         playlistID: String
     ) async {
@@ -286,14 +248,16 @@ class VideoStore {
                 let title = await fetchTitle(videoID)
                 let thumbURL = URL(string: "https://img.youtube.com/vi/\(videoID)/hqdefault.jpg")
 
-                await addVideo(
-                    VideoItem(
-                        id: videoID,
-                        title: title,
-                        thumbnailURL: thumbURL
-                    )
+                let newVideo = VideoItem(
+                    id: videoID,
+                    title: title,
+                    thumbnailURL: thumbURL,
+                    playlistID: nil
                 )
-                return .addedVideo
+
+                await addVideo(newVideo)
+
+                return .addedVideo(newVideo)
 
             case .playlist:
                 guard let listID = extractPlaylistID(from: url) else {

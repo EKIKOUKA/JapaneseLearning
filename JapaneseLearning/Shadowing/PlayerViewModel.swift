@@ -29,6 +29,7 @@ final class PlayerViewModel: ObservableObject {
     // Playback State
     @Published var isPlaying = false
     @Published var isVideoLoading = true
+    @Published var isProgressing = false
     @Published var rate: Float = 1.0
     @Published var tempRate: Float = 1.0
 
@@ -91,7 +92,6 @@ final class PlayerViewModel: ObservableObject {
     }
 
     func startLoadVideo(for item: VideoItem) {
-        print("startLoadVide...")
         // 停止舊影片
         pausePlayer()
 
@@ -117,9 +117,11 @@ final class PlayerViewModel: ObservableObject {
 
         do {
             let videoData = try await videoStore.fetchVideoDataFromServer(videoItem.id)
-            self.setupPlayer(with: videoData.videoURL)
+            self.setupPlayer(with: videoData.url)
             self.loadCaptions(videoID: videoItem.id, captions: videoData.captions)
         } catch {
+            isProgressing = true
+            print("❌ 失敗: \(error)")
             print("❌ 載入失敗: \(error.localizedDescription)")
         }
     }
@@ -563,22 +565,10 @@ final class PlayerViewModel: ObservableObject {
         ] = rate
     }
 
-
-    private func rubyWord(in line: CaptionLine, at charIndex: Int) -> RubyWord? {
-        guard let rubyWords = line.ruby else { return nil }
-
-        return rubyWords.first {
-            $0.start <= charIndex &&
-            charIndex < ($0.start + $0.length)
-        }
-    }
     func handleWordLookup(_ word: String) {
         if activeLookUpWordIdentifiable?.word == word { return }
         if UIReferenceLibraryViewController.dictionaryHasDefinition(forTerm: word) {
-//            player.pause()
-//            isPlaying = false
             pausePlayer()
-
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
 
             DispatchQueue.main.async {

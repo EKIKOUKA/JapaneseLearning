@@ -39,7 +39,7 @@ struct SettingsSheetGrammarView: View {
 
                 Section(header: Text("表示設定")) {
 
-                    Toggle(isOn: $settingsStoreBindable.settings.showGrammarListAddButton) {
+                    Toggle(isOn: $settingsStoreBindable.showGrammarListAddButton) {
                         VStack(alignment: .leading) {
                             Text("新規追加ボタンを表示")
                             Text("文法リストに新規追加ボタンを表示する")
@@ -47,7 +47,7 @@ struct SettingsSheetGrammarView: View {
                                 .foregroundStyle(.secondary)
                         }
                     }
-                    Toggle(isOn: $settingsStoreBindable.settings.showGrammarEditorButton) {
+                    Toggle(isOn: $settingsStoreBindable.showGrammarEditorButton) {
                         VStack(alignment: .leading) {
                             Text("編集ボタンを表示")
                             Text("文法画面に編集ボタンを表示")
@@ -55,7 +55,7 @@ struct SettingsSheetGrammarView: View {
                                 .foregroundStyle(.secondary)
                         }
                     }
-                    Toggle(isOn: $settingsStoreBindable.settings.showGrammarListItemSwipeActions) {
+                    Toggle(isOn: $settingsStoreBindable.showGrammarListItemSwipeActions) {
                         VStack(alignment: .leading) {
                             Text("スワイプアクションを表示")
                             Text("文法リストにスワイプアクションを表示")
@@ -63,7 +63,7 @@ struct SettingsSheetGrammarView: View {
                                 .foregroundStyle(.secondary)
                         }
                     }
-                    Toggle(isOn: $settingsStoreBindable.settings.showGrammarListItemImportantImage) {
+                    Toggle(isOn: $settingsStoreBindable.showGrammarListItemImportantImage) {
                         VStack(alignment: .leading) {
                             Text("重要アイコンを表示")
                             Text("文法リストに重要アイコンを表示")
@@ -71,7 +71,7 @@ struct SettingsSheetGrammarView: View {
                                 .foregroundStyle(.secondary)
                         }
                     }
-                    Toggle(isOn: $settingsStoreBindable.settings.showGrammarListCount) {
+                    Toggle(isOn: $settingsStoreBindable.showGrammarListCount) {
                         VStack(alignment: .leading) {
                             Text("件数を表示")
                             Text("文法リスト底に件数を表示する")
@@ -79,7 +79,7 @@ struct SettingsSheetGrammarView: View {
                                 .foregroundStyle(.secondary)
                         }
                     }
-                    Toggle(isOn: $settingsStoreBindable.settings.showGrammarListAllItemTag) {
+                    Toggle(isOn: $settingsStoreBindable.showGrammarListAllItemTag) {
                         VStack(alignment: .leading) {
                             Text("タグを表示")
                             Text("すべての文法リストにレベルタグを表示する")
@@ -112,7 +112,7 @@ struct SettingsSheetGrammarView: View {
                 }
 
                 Section(header: Text("国籍")) {
-                    Picker("国籍", selection: $settingsStoreBindable.settings.Nationality) {
+                    Picker("国籍", selection: $settingsStoreBindable.Nationality) {
                         ForEach(isoCountries, id: \.code) { country in
                             Text(country.name).tag(country.code)
                         }

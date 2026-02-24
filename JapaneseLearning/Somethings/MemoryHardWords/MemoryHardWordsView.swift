@@ -91,7 +91,7 @@ struct MemoryHardWordsView: View {
                         }
                     }
                 } footer: {
-                    if settingsStore.settings.showMemoryHardWordsListCount {
+                    if settingsStore.showMemoryHardWordsListCount {
                         Text("件数：\(filteredItems.count)")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
@@ -187,7 +187,7 @@ private struct SettingsSheetView: View {
 
                 Section(header: Text("表示設定")) {
 
-                    Toggle(isOn: $settingsStoreBindable.settings.showMemoryHardWordsListCount) {
+                    Toggle(isOn: $settingsStoreBindable.showMemoryHardWordsListCount) {
                         VStack(alignment: .leading) {
                             Text("件数を表示")
                             Text("覚えにくい単語リスト底に件数を表示する")

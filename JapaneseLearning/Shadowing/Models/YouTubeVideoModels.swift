@@ -77,8 +77,9 @@ enum YouTubeURLType {
     case unknown
 }
 enum AddYouTubeResult {
-    case addedVideo
+    case addedVideo(VideoItem)
     case addedPlaylist
+    case addedVideosFromPlaylist(String)
     case invalid
 }
 struct PlayListVideoItem: Identifiable, Hashable {

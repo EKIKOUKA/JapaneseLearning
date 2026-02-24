@@ -20,7 +20,8 @@ struct VideoListView: View {
     @State private var showDeleteAlert = false
     @State private var pendingDeleteVideo: VideoItem?
 
-    @State private var defaultID = "PLEC5UjKGbYI2TeWkpUE-RocpVhqXwwk-9"
+    private let defaultID = "PLEC5UjKGbYI2TeWkpUE-RocpVhqXwwk-9"
+    private let othersID = "others"
     @State private var selectedPlaylistID: String? = "others"
 
     private var filteredVideos: [VideoItem] {
@@ -31,7 +32,7 @@ struct VideoListView: View {
         }
     }
     private var playlistCategories: [String] {
-        ["others", defaultID]
+        [othersID, defaultID]
     }
     private func shortTitle(for id: String?) -> String {
 
@@ -85,10 +86,9 @@ struct VideoListView: View {
                                     }
                                 }
                                 .pickerStyle(.palette)
-                                .controlSize(.large)
-                                .frame(height: 44)
+                                .controlSize(sizeClass_regular ? .large : .regular)
                                 .padding(.horizontal, 16)
-                                .padding(.vertical, 10)
+                                .padding(.vertical, sizeClass_regular ? 10 : 2)
 
                                 LazyVGrid(columns: columns) {
 
@@ -109,6 +109,7 @@ struct VideoListView: View {
                     .animation(.spring(response: 0.5, dampingFraction: 0.8), value: selectedPlaylistID)
                     .navigationDestination(item: $selectedVideo) { video in
                         VideoContentView(videoID: video.id)
+                            .toolbarColorScheme(.dark, for: .navigationBar)
                     }
                 }
             }
@@ -135,8 +136,29 @@ struct VideoListView: View {
                 .presentationDetents(sizeClass_regular ? [.large] : [.medium])
         }
         .sheet(isPresented: $showAddSheet) {
-            YouTubeAddVideoSheetView()
-                .presentationDetents(sizeClass_regular ? [.large] : [.medium, .large])
+            YouTubeAddVideoSheetView { result in
+                switch result {
+                    case .addedVideo:
+                        if selectedPlaylistID != othersID {
+                            selectedPlaylistID = othersID
+                        }
+
+                    case .addedVideosFromPlaylist(let playlistID):
+                        if playlistID == defaultID {
+                            if selectedPlaylistID != defaultID {
+                                selectedPlaylistID = defaultID
+                            }
+                        } else {
+                            if selectedPlaylistID != othersID {
+                                selectedPlaylistID = othersID
+                            }
+                        }
+
+                    default:
+                        break
+                }
+            }
+            .presentationDetents(sizeClass_regular ? [.large] : [.medium, .large])
         }
         .alert("この動画を削除しますか？",
                isPresented: $showDeleteAlert,

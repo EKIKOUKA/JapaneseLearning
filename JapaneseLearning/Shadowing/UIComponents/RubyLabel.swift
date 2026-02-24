@@ -13,16 +13,19 @@ struct RubyLabel: UIViewRepresentable {
     let fontSizeScale: Double
     let fontStyle: VideoSubtitleRubyFontStyle
     let onTapWord: (String) -> Void
+    let onTapLine: () -> Void
 
     func makeUIView(context: Context) -> RubyUIView {
         let view = RubyUIView()
         view.onTapWord = onTapWord
+        view.onTapLine = onTapLine
         view.setContentCompressionResistancePriority(.required, for: .vertical)
         view.setContentHuggingPriority(.required, for: .vertical)
         return view
     }
 
     func updateUIView(_ uiView: RubyUIView, context: Context) {
+        uiView.onTapLine = onTapLine
         let key = "\(text)|\(fontSizeScale)|\(fontStyle)"
 
         if uiView.contentKey != key {
@@ -61,8 +64,9 @@ struct RubyLabel: UIViewRepresentable {
 
         for ruby in rubyWords {
             guard !ruby.surface.isEmpty,
-                !ruby.reading.isEmpty,
-                ruby.reading != ruby.surface
+                let reading = ruby.reading,
+                !reading.isEmpty,
+                reading != ruby.surface
             else { continue }
 
             if let range = cleanText.range(
@@ -72,7 +76,7 @@ struct RubyLabel: UIViewRepresentable {
                 let nsRange = NSRange(range, in: cleanText)
 
                 var rubyAnnotations: [Unmanaged<CFString>?] = [
-                    Unmanaged.passRetained(ruby.reading as CFString),
+                    Unmanaged.passRetained(reading as CFString),
                     nil, nil, nil
                 ]
 
@@ -102,6 +106,7 @@ struct RubyLabel: UIViewRepresentable {
 class RubyUIView: UIView {
     var onTap: ((Int) -> Void)?
     var onTapWord: ((String) -> Void)?
+    var onTapLine: (() -> Void)?
     var contentKey: String?
 
     private var cachedFramesetter: CTFramesetter?
@@ -248,7 +253,10 @@ class RubyUIView: UIView {
     }
 
     @objc private func handleTap(_ gesture: UITapGestureRecognizer) {
-        guard let attributedText = attributedText, let cachedFramesetter = cachedFramesetter else { return }
+        guard let attributedText = attributedText, let cachedFramesetter = cachedFramesetter else {
+            onTapLine?()
+            return
+        }
 
         let location = gesture.location(in: self)
 
@@ -281,7 +289,7 @@ class RubyUIView: UIView {
             CTLineGetTypographicBounds(line, &ascent, &descent, &leading)
 
             // 考慮到 Ruby 注音，行高的判定範圍需要包含 ascent 和 descent
-            let yMin = origin.y - descent
+            let yMin = origin.y - descent - leading
             let yMax = origin.y + ascent
 
             if flippedLocation.y >= yMin && flippedLocation.y <= yMax {
@@ -295,17 +303,17 @@ class RubyUIView: UIView {
         // 6. 執行 wordAt
         if characterIndex != -1 && characterIndex < attributedText.length {
             let text = attributedText.string
-
-            // 額外安全檢查：防止點擊行尾空白處返回最後一個字符
             let nsText = text as NSString
             let tappedChar = nsText.substring(with: NSRange(location: characterIndex, length: 1))
-            if tappedChar.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                return
-            }
 
-            if let word = wordAt(tapIndex: characterIndex, in: text) {
-                onTapWord?(word)
+            if !tappedChar.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                if let word = wordAt(tapIndex: characterIndex, in: text) {
+                    onTapWord?(word)
+                    return
+                }
             }
         }
+
+        onTapLine?()
     }
 }

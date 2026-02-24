@@ -30,7 +30,7 @@ struct GrammarListView: View {
 
                         NavigationLink(value: GrammarNavDestination.details(id: item.id)) {
                             Text(item.title)
-                            if settingsStore.settings.showGrammarListItemImportantImage {
+                            if settingsStore.showGrammarListItemImportantImage {
                                 if item.isImportant {
                                     Image(systemName: "star.fill")
                                         .font(.system(size: 12))
@@ -49,7 +49,7 @@ struct GrammarListView: View {
                                     .background(Color.red)
                                     .clipShape(Capsule())
                             }
-                            if settingsStore.settings.showGrammarListAllItemTag, level == "All" {
+                            if settingsStore.showGrammarListAllItemTag, level == "All" {
                                 Text(item.level)
                                     .font(.system(size: 12))
                                     .padding(.horizontal, 4)
@@ -59,7 +59,7 @@ struct GrammarListView: View {
                             }
                         }
                         .swipeActions(edge: .trailing) {
-                            if settingsStore.settings.showGrammarListItemSwipeActions {
+                            if settingsStore.showGrammarListItemSwipeActions {
                                 Button {
                                     Task {
                                         await store.toggleImportant(item.id)
@@ -87,7 +87,7 @@ struct GrammarListView: View {
                         }
                     }
                 } footer: {
-                    if settingsStore.settings.showGrammarListCount {
+                    if settingsStore.showGrammarListCount {
                         Text("件数：\(filteredItems.count)")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
@@ -119,7 +119,7 @@ struct GrammarListView: View {
 //                    }
                 }
 
-                if settingsStore.settings.showGrammarListAddButton && level != "All" {
+                if settingsStore.showGrammarListAddButton && level != "All" {
                     ToolbarItemGroup(placement: .bottomBar) {
                         Spacer()
 

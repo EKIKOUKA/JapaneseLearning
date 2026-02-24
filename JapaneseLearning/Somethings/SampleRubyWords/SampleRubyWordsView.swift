@@ -91,7 +91,7 @@ struct SampleRubyWordsView: View {
                         }
                     }
                 } footer: {
-                    if settingsStore.settings.showSampleRubyWordsListCount {
+                    if settingsStore.showSampleRubyWordsListCount {
                         Text("件数：\(filteredItems.count)")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
@@ -187,7 +187,7 @@ private struct SettingsSheetView: View {
 
                 Section(header: Text("表示設定")) {
 
-                    Toggle(isOn: $settingsStoreBindable.settings.showSampleRubyWordsListCount) {
+                    Toggle(isOn: $settingsStoreBindable.showSampleRubyWordsListCount) {
                         VStack(alignment: .leading) {
                             Text("件数を表示")
                             Text("同じ発音の言葉リスト底に件数を表示する")

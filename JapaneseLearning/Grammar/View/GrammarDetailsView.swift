@@ -76,7 +76,7 @@ struct GrammarDetailsView: View {
         }
         .navigationTitle(item.title)
         .toolbar {
-            if settingsStore.settings.showGrammarEditorButton {
+            if settingsStore.showGrammarEditorButton {
                 ToolbarItem(placement: .topBarTrailing) {
                     NavigationLink {
                         GrammarDetailsEditorView(item: item, store: store, isNew: false)

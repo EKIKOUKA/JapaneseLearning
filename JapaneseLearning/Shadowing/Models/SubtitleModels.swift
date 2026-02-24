@@ -7,17 +7,15 @@
 
 import Foundation
 
-// RubyModels
-struct RubyWordRange {
-    let range: NSRange
-    let surface: String
+// Captions
+struct VideoData {
+    let url: URL
+    let captions: [CaptionLine]
 }
 
-struct RubyWord: Codable, Equatable {
-    let surface: String
-    let reading: String
-    let start: Int
-    let length: Int
+struct VideoResponse: Codable {
+    let url: String
+    let captions: String
 }
 
 struct CaptionLine: Identifiable, Equatable, Codable {
@@ -26,6 +24,19 @@ struct CaptionLine: Identifiable, Equatable, Codable {
     let end: Double
     let text: String
     let ruby: [RubyWord]?
+}
+
+// RubyModels
+struct RubyWordRange {
+    let range: NSRange
+    let surface: String
+}
+
+struct RubyWord: Codable, Equatable {
+    let surface: String
+    let reading: String?
+    let start: Int?
+    let length: Int?
 }
 
 

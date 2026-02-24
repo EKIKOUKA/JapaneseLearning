@@ -11,9 +11,10 @@ struct YouTubeAddVideoSheetView: View {
     @Environment(VideoStore.self) private var store
     @Environment(\.dismiss) private var dismiss
     @State private var inputURL = ""
+    let onComplete: (AddYouTubeResult) -> Void
 
     var body: some View {
-        
+
         NavigationStack {
 
             List {
@@ -32,10 +33,12 @@ struct YouTubeAddVideoSheetView: View {
                                     existingVideoListIDs: store.getExistingVideoIDs(),
                                     onAdd: { selected in
                                         Task {
-                                            await store.addPlaylistVideos(
+                                            await store.addVideosFromPlaylist(
                                                 selected,
                                                 playlistID: videoList.id
                                             )
+                                            onComplete(.addedVideosFromPlaylist(videoList.id))
+                                            dismiss()
                                         }
                                     }
                                 )
@@ -70,10 +73,9 @@ struct YouTubeAddVideoSheetView: View {
                     Button {
                         Task {
                             let result = await store.handleYouTubeURL(inputURL)
+                            onComplete(result)
+                            dismiss()
                             inputURL = ""
-                            if result == .addedVideo {
-                                dismiss()
-                            }
                         }
                     } label: {
                         Image(systemName: "checkmark")
