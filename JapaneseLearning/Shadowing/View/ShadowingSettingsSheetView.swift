@@ -29,12 +29,19 @@ struct ShadowingSettingsSheetView: View {
                     VideoSubtitleFontSizeSliderView()
                 }
 
-                Section(header: Text("字幕のフォント")) {
-                    Picker("フォント", selection: $settingsStoreBindable.videoSubtitleFontStyle) {
-                        ForEach(VideoSubtitleRubyFontStyle.allCases, id: \.self) { fontStyle in
-                            Text(fontStyle.displayName).tag(fontStyle)
+                Section(header: Text("即ジャンプ")) {
+                    Toggle(isOn: $settingsStoreBindable.videoAutoJumpToNextLine) {
+                        VStack(alignment: .leading) {
+                            Text("次の文へ即ジャンプ")
+                            Text("再生中の行が終わったらすぐ次の文へ即ジャンプする")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
                         }
                     }
+                }
+
+                Section(header: Text("字幕の色を選択")) {
+                    ColorPicker("字幕の色", selection: settingsStore.videoSubtitleFontColor, supportsOpacity: true)
                 }
 
                 Section(header: Text("動画字幕表示の強調")) {
@@ -44,6 +51,14 @@ struct ShadowingSettingsSheetView: View {
                             Text("再生中の行を見やすい強調して表示する、他の字幕を弱めます")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+
+                Section(header: Text("字幕のフォント")) {
+                    Picker("フォント", selection: $settingsStoreBindable.videoSubtitleFontStyle) {
+                        ForEach(VideoSubtitleRubyFontStyle.allCases, id: \.self) { fontStyle in
+                            Text(fontStyle.displayName).tag(fontStyle)
                         }
                     }
                 }

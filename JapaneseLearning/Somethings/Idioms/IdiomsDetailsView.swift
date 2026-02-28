@@ -8,7 +8,6 @@
 import SwiftUI
 
 struct IdiomsDetailsView: View {
-
     let item: IdiomsItem
     let isNew: Bool // edit or add
     @ObservedObject var store: IdiomsStore
@@ -95,18 +94,24 @@ struct IdiomsDetailsView: View {
             return
         }
 
-        let edited = IdiomsItem(
-            id: item.id,
-            word: word,
-            ruby: ruby,
-            meaning: meaning
-        )
-
         Task {
             if isNew {
-                await store.IdiomsAdd(edited)
+                await store.IdiomsAdd(
+                    IdiomsItem(
+                        word: word,
+                        ruby: ruby,
+                        meaning: meaning
+                    )
+                )
             } else {
-                await store.IdiomsUpdate(edited)
+                await store.IdiomsUpdate(
+                    IdiomsItem(
+                        id: item.id,
+                        word: word,
+                        ruby: ruby,
+                        meaning: meaning
+                    )
+                )
             }
 
             await MainActor.run {

@@ -8,6 +8,6 @@
 import Foundation
 
 enum QuickActionTarget: Hashable {
-    case lastGrammar(id: UUID, level: String)
+    case lastGrammar(id: Int, level: String)
     case resumeVideo(id: String)
 }

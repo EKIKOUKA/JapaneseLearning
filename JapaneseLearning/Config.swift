@@ -18,14 +18,9 @@ struct Config {
         return plist
     }
 
-    static var supabaseJapaneseLearningURL: String {
-        return shared?["supabaseJapaneseLearningURL"] as? String ?? ""
-    }
-    static var supabaseJapaneseLearningKey: String {
-        return shared?["supabaseJapaneseLearningKey"] as? String ?? ""
-    }
-
     static var YouTubeDataAPIKey: String {
         return shared?["YouTubeDataAPIKey"] as? String ?? ""
     }
 }
+
+let Cloudflare_Workers_URL = "https://"

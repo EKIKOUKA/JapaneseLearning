@@ -64,7 +64,7 @@ struct VideoItem: Identifiable, Hashable, Codable {
     enum CodingKeys: String, CodingKey {
         case id
         case title
-        case currentTime
+        case currentTime = "current_time"
         case rate
         case thumbnailURL = "thumbnail"
         case playlistID = "playlist_id"

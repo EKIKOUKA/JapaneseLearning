@@ -39,7 +39,8 @@ struct VideoContentView: View {
             Group {
 
                 if video == nil {
-                    ProgressLoadingView()
+//                    ProgressLoadingView()
+                    Color.clear.frame(height: 10)
                 } else {
 
                     ZStack {
@@ -81,6 +82,7 @@ struct VideoContentView: View {
         }
         .navigationTitle(sizeClass_regular ? "" : (video?.title ?? "読み込み中..."))
         .navigationBarTitleDisplayMode(.inline)
+        .toolbarColorScheme(.dark, for: .navigationBar)
         .toolbar {
             if sizeClass_regular && !playerVM.isVideoLoading {
                 ToolbarItem(placement: .principal) {
@@ -116,7 +118,8 @@ struct VideoContentView: View {
         }
         .sheet(isPresented: $showSettingSheet) {
             ShadowingSettingsSheetView(playerVM: playerVM)
-                .presentationDetents(sizeClass_regular ? [.large] : [.medium])
+                .presentationDetents(sizeClass_regular ? [.large] : [.medium, .large])
+                .presentationDragIndicator(.visible)
         }
         .onAppear {
             playerVM.inject(
@@ -130,11 +133,11 @@ struct VideoContentView: View {
                 playerVM.resetPlayer()
             }
         }
-        .onChange(of: scenePhase) { _, phase in
+        .onChange(of: scenePhase, initial: false) {
             Task {
-                if phase == .background {
+                if scenePhase == .background {
                     await playerVM.saveCurrentProgress()
-                    playerVM.pausePlayer()
+                    playerVM.playPlayer()
                 }
             }
         }
@@ -175,8 +178,8 @@ struct videoContentArea: View {
 
     var body: some View {
 
-        let videoWidth = isLandscape ? containerWidth * 0.5 : (containerWidth - 36)
-        let baseHeight = videoWidth * 9 / 16
+        let videoWidth = max(0, isLandscape ? containerWidth * 0.5 : (containerWidth - 36))
+        let baseHeight = max(0, videoWidth * 9 / 16)
 
         VStack(spacing: 0) {
             if isLandscape {
@@ -313,12 +316,14 @@ struct SubtitlesContentView: View {
                         isActive: playerVM.currentLineID == line.id,
                         currentLineID: { playerVM.currentLineID },
                         onTapLine: {
-                            playerVM.playLine(line, index)
+                            Task {
+                                await playerVM.playLine(line, index)
+                            }
                         }
                     )
                     .id(line.id)
                 }
-                Color.clear.frame(height: 10)
+                Color.clear.frame(height: 20)
             }
             .ScrollIndicatorStyle(.white)
             .animation(.easeInOut(duration: 1.0), value: playerVM.captions)
@@ -370,6 +375,7 @@ struct SubtitlesRowView: View {
         let ruby_show: [RubyWord] = settingsStore.showShadowingSubtitlesRuby ? (line.ruby ?? []) : []
         let font_size = settingsStore.videoSubtitleFontSizeScale
         let font_style = settingsStore.videoSubtitleFontStyle
+        let font_color = settingsStore.videoSubtitleFontUIColor
         let blur_opacity = settingsStore.videoSubtitleDimInactiveLines
 
         ZStack(alignment: .leading) {
@@ -382,6 +388,7 @@ struct SubtitlesRowView: View {
                 rubyWords: ruby_show,
                 fontSizeScale: font_size,
                 fontStyle: font_style,
+                fontColor: font_color,
                 onTapWord: { word in
                     if currentLineID() == line.id {
                         playerVM.handleWordLookup(word)

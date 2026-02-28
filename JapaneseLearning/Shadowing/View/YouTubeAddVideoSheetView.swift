@@ -38,7 +38,6 @@ struct YouTubeAddVideoSheetView: View {
                                                 playlistID: videoList.id
                                             )
                                             onComplete(.addedVideosFromPlaylist(videoList.id))
-                                            dismiss()
                                         }
                                     }
                                 )
@@ -74,7 +73,12 @@ struct YouTubeAddVideoSheetView: View {
                         Task {
                             let result = await store.handleYouTubeURL(inputURL)
                             onComplete(result)
-                            dismiss()
+                            switch result {
+                                case .addedVideo:
+                                    dismiss()
+                                default:
+                                    break
+                            }
                             inputURL = ""
                         }
                     } label: {
@@ -99,7 +103,7 @@ struct URLInputView: View {
 
             ZStack(alignment: .topLeading) {
                 if inputURL.isEmpty {
-                    Text("YouTube URL")
+                    Text("YouTube動画かリストのリンク")
                         .foregroundColor(.secondary)
                         .padding(.leading, 4)
                         .padding(.top, 8)

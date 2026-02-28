@@ -7,6 +7,32 @@
 
 import Foundation
 
+@propertyWrapper
+struct BoolFromInt: Codable {
+    var wrappedValue: Bool
+
+    init(wrappedValue: Bool) {
+        self.wrappedValue = wrappedValue
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+
+        if let boolValue = try? container.decode(Bool.self) {
+            wrappedValue = boolValue
+        } else if let intValue = try? container.decode(Int.self) {
+            wrappedValue = intValue == 1
+        } else {
+            wrappedValue = false
+        }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        try container.encode(wrappedValue ? 1 : 0)
+    }
+}
+
 struct GrammarData: Codable {
     var N1: [GrammarItem]
     var N2: [GrammarItem]
@@ -17,14 +43,16 @@ struct GrammarData: Codable {
 }
 
 struct GrammarItem: Codable, Identifiable {
-    var id: UUID
+    var id: Int
     var title: String
     var level: String
     var meaning: String
     var connection: String?
     var notes: String?
     var examples: String
+    @BoolFromInt
     var isImportant: Bool
+    @BoolFromInt
     var isMarked: Bool
 
     enum CodingKeys: String, CodingKey {

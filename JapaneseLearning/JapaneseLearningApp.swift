@@ -15,6 +15,13 @@ struct JapaneseLearningApp: App {
     @State private var videoStore = VideoStore()
     @State private var settingsStore = SettingsStore()
 
+    init() {
+        requestPushPermission()
+
+        URLCache.shared.diskCapacity = 0
+        URLCache.shared.memoryCapacity = 0
+    }
+
     var body: some Scene {
 
         WindowGroup {
@@ -23,6 +30,18 @@ struct JapaneseLearningApp: App {
                 .environment(settingsStore)
                 .environment(navigationStore)
                 .environment(videoStore)
+        }
+    }
+
+    private func requestPushPermission() {
+        UNUserNotificationCenter.current().requestAuthorization(
+            options: [.alert, .sound, .badge]
+        ) { granted, error in
+            print("Permission:", granted)
+        }
+
+        DispatchQueue.main.async {
+            UIApplication.shared.registerForRemoteNotifications()
         }
     }
 }

@@ -37,8 +37,10 @@ struct SelectableUITextView: UIViewRepresentable {
         ]
         uiView.attributedText = NSAttributedString(string: text, attributes: attributes)
 
+        let targetWidth = uiView.frame.width > 0 ? uiView.frame.width : UIScreen.main.bounds.width - 40 // 減去 Padding
+
         let size = uiView.sizeThatFits(
-            CGSize(width: uiView.bounds.width, height: .greatestFiniteMagnitude)
+            CGSize(width: targetWidth, height: .greatestFiniteMagnitude)
         )
 
         if abs(height - size.height) > 1.0 {

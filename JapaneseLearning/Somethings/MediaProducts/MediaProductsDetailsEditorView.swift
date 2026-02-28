@@ -8,15 +8,14 @@
 import SwiftUI
 
 struct MediaProductsDetailsEditorView: View {
-
     let item: MediaProductsItem
     let isNew: Bool // edit or add
     @ObservedObject var store: MediaProductsStore
     @Environment(\.dismiss) var dismiss
 
     @State private var title: String
-    @State private var category: String
-    @State private var status: String
+    @State private var category: MediaCategory
+    @State private var status: WatchStatus
     @State private var detailsURL: String
     @State private var memo: String
 
@@ -25,8 +24,8 @@ struct MediaProductsDetailsEditorView: View {
         self.store = store
         self.isNew = isNew
         _title = State(initialValue: item.title)
-        _category = State(initialValue: item.category.rawValue)
-        _status = State(initialValue: item.status.rawValue)
+        _category = State(initialValue: item.category)
+        _status = State(initialValue: item.status)
         _detailsURL = State(initialValue: item.detailsURL ?? "")
         _memo = State(initialValue: item.memo ?? "")
     }
@@ -114,21 +113,28 @@ struct MediaProductsDetailsEditorView: View {
             return
         }
 
-        let formItem = MediaProductsItem(
-            id: item.id,
-            title: title,
-            category: MediaCategory(rawValue: category) ?? .drama,
-            status: WatchStatus(rawValue: status) ?? .watched,
-            detailsURL: detailsURL,
-            memo: memo,
-            createdAt: item.createdAt
-        )
-
         Task {
             if isNew {
-                await store.MediaProductsAdd(formItem)
+                await store.MediaProductsAdd(
+                    MediaProductsItem(
+                        title: title,
+                        category: category,
+                        status: status,
+                        detailsURL: detailsURL,
+                        memo: memo
+                    )
+                )
             } else {
-                await store.MediaProductsUpdate(formItem)
+                await store.MediaProductsUpdate(
+                    MediaProductsItem(
+                        id: item.id,
+                        title: title,
+                        category: category,
+                        status: status,
+                        detailsURL: detailsURL,
+                        memo: memo
+                    )
+                )
             }
 
             await MainActor.run {

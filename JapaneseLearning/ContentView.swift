@@ -52,8 +52,8 @@ struct ContentView: View {
                     }
                     .navigationDestination(for: QuickActionTarget.self) { target in
                         if case .lastGrammar(let id, _) = target {
-                             GrammarDetailLoader(id: id, store: grammarStore)
-                         }
+                            GrammarDetailLoader(id: id, store: grammarStore)
+                        }
                     }
             }
             .tabItem {
@@ -62,7 +62,6 @@ struct ContentView: View {
             .tag(2)
         }
         .onChange(of: navigationStore.quickActionTarget) { _, target in
-            print("📍 ContentView onChange:", String(describing: target))
             guard let target = target else { return }
 
             if case .lastGrammar(let id, let level) = target {

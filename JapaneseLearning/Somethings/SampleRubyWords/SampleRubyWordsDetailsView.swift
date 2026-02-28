@@ -8,7 +8,6 @@
 import SwiftUI
 
 struct SampleRubyWordsDetailsView: View {
-
     let item: SampleRubyWordsItem
     let isNew: Bool // edit or add
     @ObservedObject var store: SampleRubyWordsStore
@@ -95,18 +94,24 @@ struct SampleRubyWordsDetailsView: View {
             return
         }
 
-        let edited = SampleRubyWordsItem(
-            id: item.id,
-            word: word,
-            ruby: ruby,
-            meaning: meaning
-        )
-
         Task {
             if isNew {
-                await store.SampleRubyWordsAdd(edited)
+                await store.SampleRubyWordsAdd(
+                    SampleRubyWordsItem(
+                        word: word,
+                        ruby: ruby,
+                        meaning: meaning
+                    )
+                )
             } else {
-                await store.SampleRubyWordsUpdate(edited)
+                await store.SampleRubyWordsUpdate(
+                    SampleRubyWordsItem(
+                        id: item.id,
+                        word: word,
+                        ruby: ruby,
+                        meaning: meaning
+                    )
+                )
             }
 
             await MainActor.run {

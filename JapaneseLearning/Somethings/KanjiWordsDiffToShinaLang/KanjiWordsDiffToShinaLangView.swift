@@ -7,13 +7,6 @@
 
 import SwiftUI
 
-struct KanjiWordsItem: Codable, Identifiable {
-    let id: UUID
-    var word: String
-    var ruby: String
-    var meaning: String
-}
-
 struct WordListView: View {
     let item: KanjiWordsItem
     let isExpanded: Bool
@@ -41,7 +34,7 @@ struct WordListView: View {
             .zIndex(1)
             .contentShape(Rectangle())
             .onTapGesture {
-                store.toggleExpand(item.id)
+                store.toggleExpand(item.id ?? 8964)
             }
 
             VStack(alignment: .leading, spacing: 0) {
@@ -77,7 +70,7 @@ struct KanjiWordsDiffToShinaLangView: View {
                     ForEach(filteredItems) { item in
                         WordListView(
                             item: item,
-                            isExpanded: store.expandedIDs.contains(item.id),
+                            isExpanded: store.expandedIDs.contains(item.id ?? -1),
                             showRuby: showRuby,
                             store: store
                         )
@@ -113,7 +106,6 @@ struct KanjiWordsDiffToShinaLangView: View {
                     NavigationLink {
                         KanjiWordsDiffToShinaLangDetailsView(
                             item: KanjiWordsItem(
-                                id: UUID(),
                                 word: "",
                                 ruby: "",
                                 meaning: ""
@@ -201,8 +193,4 @@ private struct SettingsSheetView: View {
             .navigationBarTitleDisplayMode(.inline)
         }
     }
-}
-
-#Preview {
-    KanjiWordsDiffToShinaLangView()
 }

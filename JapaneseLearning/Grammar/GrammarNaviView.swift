@@ -8,7 +8,6 @@
 import SwiftUI
 
 struct GrammarNaviView: View {
-
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.horizontalSizeClass) private var sizeClass
@@ -32,7 +31,8 @@ struct GrammarNaviView: View {
 
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 16), count: 2), spacing: 16) {
 
-                    ForEach(Array(GrammarAllLevels.grammarList.enumerated()), id: \.element.id) { index, item in
+                    ForEach(GrammarAllLevels.grammarList.indices, id: \.self) { index in
+                        let item = GrammarAllLevels.grammarList[index]
 
                         NavigationLink(
                             value: GrammarNavDestination.list(level: item.level, title: item.title)
@@ -81,13 +81,5 @@ struct GrammarNaviView: View {
                 .presentationDetents(sizeClass_regular ? [.large] : [.height(490), .large])
                 .presentationDragIndicator(.visible)
         }
-        .onChange(of: scenePhase) { _, phase in
-            Task {
-                if phase == .background {
-                    await store.stopRealtime()
-                }
-            }
-        }
     }
 }
-

@@ -12,6 +12,7 @@ struct RubyLabel: UIViewRepresentable {
     let rubyWords: [RubyWord]
     let fontSizeScale: Double
     let fontStyle: VideoSubtitleRubyFontStyle
+    let fontColor: UIColor
     let onTapWord: (String) -> Void
     let onTapLine: () -> Void
 
@@ -26,7 +27,7 @@ struct RubyLabel: UIViewRepresentable {
 
     func updateUIView(_ uiView: RubyUIView, context: Context) {
         uiView.onTapLine = onTapLine
-        let key = "\(text)|\(fontSizeScale)|\(fontStyle)"
+        let key = "\(text)|\(fontSizeScale)|\(fontStyle)|\(fontColor)"
 
         if uiView.contentKey != key {
             uiView.contentKey = key
@@ -36,7 +37,7 @@ struct RubyLabel: UIViewRepresentable {
 
     private func buildAttributedString() -> NSAttributedString {
         let style = NSMutableParagraphStyle()
-        style.lineSpacing = 8
+        style.lineSpacing = 6
         style.alignment = .left
 
         let baseFontSize: CGFloat = 28
@@ -55,7 +56,7 @@ struct RubyLabel: UIViewRepresentable {
             string: cleanText,
             attributes: [
                 .font: baseFont,
-                .foregroundColor: UIColor.white,
+                .foregroundColor: fontColor,
                 .paragraphStyle: style
             ]
         )

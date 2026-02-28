@@ -7,7 +7,6 @@
 
 import Observation
 import Foundation
-import Supabase
 
 @Observable
 class VideoStore {
@@ -23,79 +22,65 @@ class VideoStore {
         }
     }
 
-    let client = SupabaseClient(
-        supabaseURL: URL(string: Config.supabaseJapaneseLearningURL)!,
-        supabaseKey: Config.supabaseJapaneseLearningKey,
-        options: SupabaseClientOptions(
-            auth: .init(
-                emitLocalSessionAsInitialSession: true
-            )
-        )
-    )
     @MainActor
     func fetchVideos() async {
         do {
-            let response: [VideoItem] = try await client
-                .from("japanese_YouTube_Videos")
-                .select()
-                .order("created_at", ascending: false)
-                .execute()
-                .value
+            let url = URL(string: "\(Cloudflare_Workers_URL)/fetch_videos")!
+            let (data, _) = try await URLSession.shared.data(from: url)
 
-            self.videos = response
+            let videos = try JSONDecoder().decode([VideoItem].self, from: data)
+            self.videos = videos
             isLoading = false
         } catch {
-            print("❌ Supabase Fetch Error：\(error)")
+            print("❌ Fetch Error：\(error)")
         }
     }
     @MainActor
     func addVideo(_ video: VideoItem) async {
+        guard let url = URL(string: "\(Cloudflare_Workers_URL)/add_video") else { return }
+
         do {
-            try await client
-                .from("japanese_YouTube_Videos")
-                .upsert(video, onConflict: "id")
-                .execute()
-
-            videos.insert(video, at: 0)
-            print("✅ Supabase Insert Success: \(video.id)")
-
-            guard let url = URL(string: "https://makotodeveloper.website/shadowing/upload_video") else {
-                throw URLError(.badURL)
-            }
-
             var request = URLRequest(url: url)
             request.httpMethod = "POST"
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
-            let body = ["id": video.id]
-            request.httpBody = try JSONEncoder().encode(body)
+            request.httpBody = try JSONEncoder().encode(video)
 
-            _ = try await URLSession.shared.data(for: request)
+            let (_, response) = try await URLSession.shared.data(for: request)
 
+            guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
+                print("❌ Server Save Failed")
+                return
+            }
+
+            videos.insert(video, at: 0)
         } catch {
-            print("❌ Supabase Insert Error: \(error)")
+            print("❌ Save add Error: \(error)")
         }
     }
+    // 更新狀態：播放進度同步
     @MainActor
     func updateVideo(_ video: VideoItem) async {
-        do {
-            try await client
-                .from("japanese_YouTube_Videos")
-                .update(video)
-                .eq("id", value: video.id)
-                .execute()
+        guard let url = URL(string: "\(Cloudflare_Workers_URL)/update_video") else { return }
 
+        do {
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.httpBody = try JSONEncoder().encode(video)
+
+            _ = try await URLSession.shared.data(for: request)
+            print("✅ Progress Sync Success")
             if let index = videos.firstIndex(where: { $0.id == video.id }) {
                 videos[index] = video
             }
-            print("✅ Supabase Update Success: \(video.id)")
         } catch {
-            print("❌ Supabase Update Error: \(error)")
+            print("❌ Update Error: \(error)")
         }
     }
     @MainActor
     func deleteVideo(_ id: String) async {
-        guard let url = URL(string: "https://makotodeveloper.website/shadowing/del_video/\(id)") else { return }
+        guard let url = URL(string: "\(Cloudflare_Workers_URL)/del_video/\(id)") else { return }
 
         var request = URLRequest(url: url)
         request.httpMethod = "DELETE"
@@ -111,8 +96,6 @@ class VideoStore {
                     currentResumeVideoID = nil
                     QuickActionManager.shared.clearResumeVideo()
                 }
-            } else {
-                print("❌ 刪除失敗")
             }
         } catch {
             print("❌ 刪除錯誤:", error)
@@ -123,40 +106,38 @@ class VideoStore {
     @MainActor
     func fetchVideoPlaylist() async {
         do {
-            let response: [PlaylistListItem] = try await client
-                .from("japanese_YouTube_Video_Playlist")
-                .select()
-                .execute()
-                .value
+            let url = URL(string: "\(Cloudflare_Workers_URL)/fetch_video_playlist")!
+            let (data, _) = try await URLSession.shared.data(from: url)
 
-            print("Playlist response: \(response)")
+            let response = try JSONDecoder().decode([PlaylistListItem].self, from: data)
             self.videoList = response
         } catch {
-            print("❌ Supabase Fetch Error：\(error)")
+            print("❌ Fetch Error：\(error)")
         }
     }
     @MainActor
     func addVideoPlaylist(_ video: PlaylistListItem) async {
         do {
-            try await client
-                .from("japanese_YouTube_Video_Playlist")
-                .insert(video)
-                .execute()
+            let url = URL(string: "\(Cloudflare_Workers_URL)/add_video_playlist")!
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.httpBody = try JSONEncoder().encode(video)
+            _ = try await URLSession.shared.data(for: request)
 
             await fetchVideoPlaylist()
-            print("✅ Supabase Insert Success: \(video.id)")
+            print("✅ Insert Success: \(video.id)")
         } catch {
-            print("❌ Supabase Insert Error: \(error)")
+            print("❌ Insert Error: \(error)")
         }
     }
     @MainActor
     func deleteVideoPlaylist(_ id: String) async {
         do {
-            try await client
-                .from("japanese_YouTube_Video_Playlist")
-                .delete()
-                .eq("id", value: id)
-                .execute()
+            let url = URL(string: "\(Cloudflare_Workers_URL)/delete_video_playlist/\(id)")!
+            var request = URLRequest(url: url)
+            request.httpMethod = "DELETE"
+            _ = try await URLSession.shared.data(for: request)
 
             await fetchVideoPlaylist()
         } catch {
@@ -166,14 +147,19 @@ class VideoStore {
 
     // video url/captions
     func fetchVideoDataFromServer(_ videoID: String) async throws -> VideoData {
+        let config = URLSessionConfiguration.ephemeral
+        config.requestCachePolicy = .reloadIgnoringLocalCacheData
+        config.urlCache = nil
 
-        let serverURL = "https://makotodeveloper.website/shadowing/get_video?id=\(videoID)"
+        let session = URLSession(configuration: config)
+
+        let serverURL = "\(Cloudflare_Workers_URL)/get_video?id=\(videoID)"
         guard let url = URL(string: serverURL) else {
             print("❌ invalid url:", serverURL)
             throw URLError(.badURL)
         }
 
-        let (data, response) = try await URLSession.shared.data(from: url)
+        let (data, response) = try await session.data(from: url) // URLSession.shared
 
         guard let httpResponse = response as? HTTPURLResponse,
               200..<300 ~= httpResponse.statusCode else {
@@ -187,7 +173,7 @@ class VideoStore {
             throw URLError(.badURL)
         }
 
-        async let (captionData, _) = try await URLSession.shared.data(from: captionsURL)
+        async let (captionData, _) = try await session.data(from: captionsURL)
         let captions = try await JSONDecoder().decode([CaptionLine].self, from: captionData)
 
         return VideoData(
@@ -215,12 +201,7 @@ class VideoStore {
         _ items: [PlayListVideoItem],
         playlistID: String
     ) async {
-
-        let existingIDs = getExistingVideoIDs()
-
         for item in items {
-            if existingIDs.contains(item.id) { continue }
-
             await addVideo(
                 VideoItem(
                     id: item.id,

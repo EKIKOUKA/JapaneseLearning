@@ -154,7 +154,7 @@ struct GrammarDetailsEditorView: View {
             return
         }
 
-        let edited = GrammarItem(
+        let grammar_item = GrammarItem(
             id: item.id,
             title: title,
             level: item.level,
@@ -168,9 +168,9 @@ struct GrammarDetailsEditorView: View {
 
         Task {
             if isNew {
-                await store.grammarAdd(edited)
+                await store.grammarAdd(grammar_item)
             } else {
-                await store.grammarUpdate(item.id, updatedItem: edited)
+                await store.grammarUpdate(item.id, updatedItem: grammar_item)
             }
 
             await MainActor.run {

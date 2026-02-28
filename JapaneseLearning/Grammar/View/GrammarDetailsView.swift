@@ -8,16 +8,15 @@
 import SwiftUI
 
 struct GrammarDetailsView: View {
-
     let item: GrammarItem
+    let isReady: Bool
     @ObservedObject var store: GrammarStore
+    @Environment(SettingsStore.self) private var settingsStore
 
     @State private var meaningHeight: CGFloat = .zero
     @State private var connectionHeight: CGFloat = .zero
     @State private var notesHeight: CGFloat = .zero
     @State private var examplesHeight: CGFloat = .zero
-
-    @Environment(SettingsStore.self) private var settingsStore
 
     var body: some View {
 
@@ -73,6 +72,11 @@ struct GrammarDetailsView: View {
                 }
             }
             .listStyle(.insetGrouped)
+            .transaction { transaction in
+                transaction.animation = nil
+            }
+            .opacity(isReady ? 1 : 0)
+            .animation(.easeIn(duration: 0.2), value: isReady)
         }
         .navigationTitle(item.title)
         .toolbar {
@@ -87,7 +91,11 @@ struct GrammarDetailsView: View {
             }
         }
         .onAppear {
-            QuickActionManager.shared.updateRecentGrammarAction(grammarID: item.id.uuidString, title: item.title, level: item.level)
+            QuickActionManager.shared.updateRecentGrammarAction(
+                grammarID: String(item.id),
+                title: item.title,
+                level: item.level
+            )
         }
     }
 }

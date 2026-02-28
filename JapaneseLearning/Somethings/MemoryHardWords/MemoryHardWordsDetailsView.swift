@@ -8,7 +8,6 @@
 import SwiftUI
 
 struct MemoryHardWordsDetailsView: View {
-
     let item: MemoryHardWordsItem
     let isNew: Bool // edit or add
     @ObservedObject var store: MemoryHardWordsStore
@@ -95,18 +94,24 @@ struct MemoryHardWordsDetailsView: View {
             return
         }
 
-        let edited = MemoryHardWordsItem(
-            id: item.id,
-            word: word,
-            ruby: ruby,
-            meaning: meaning
-        )
-
         Task {
             if isNew {
-                await store.MemoryHardWordsAdd(edited)
+                await store.MemoryHardWordsAdd(
+                    MemoryHardWordsItem(
+                        word: word,
+                        ruby: ruby,
+                        meaning: meaning
+                    )
+                )
             } else {
-                await store.MemoryHardWordsUpdate(edited)
+                await store.MemoryHardWordsUpdate(
+                    MemoryHardWordsItem(
+                        id: item.id,
+                        word: word,
+                        ruby: ruby,
+                        meaning: meaning
+                    )
+                )
             }
 
             await MainActor.run {

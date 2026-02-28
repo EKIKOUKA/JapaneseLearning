@@ -8,7 +8,6 @@
 import SwiftUI
 
 struct ElegantSentenceDetailsView: View {
-
     let item: ElegantSentenceItem
     let isNew: Bool // edit or add
     @ObservedObject var store: ElegantSentenceStore
@@ -66,16 +65,20 @@ struct ElegantSentenceDetailsView: View {
             return
         }
 
-        let edited = ElegantSentenceItem(
-            id: item.id,
-            sentence: sentence
-        )
-
         Task {
             if isNew {
-                await store.ElegantSentenceAdd(edited)
+                await store.ElegantSentenceAdd(
+                    ElegantSentenceItem(
+                        sentence: sentence
+                    )
+                )
             } else {
-                await store.ElegantSentenceUpdate(edited)
+                await store.ElegantSentenceUpdate(
+                    ElegantSentenceItem(
+                        id: item.id,
+                        sentence: sentence
+                    )
+                )
             }
 
             await MainActor.run {

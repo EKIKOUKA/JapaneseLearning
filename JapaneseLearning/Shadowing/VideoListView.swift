@@ -19,6 +19,7 @@ struct VideoListView: View {
     @State private var selectedVideo: VideoItem?
     @State private var showDeleteAlert = false
     @State private var pendingDeleteVideo: VideoItem?
+    @State private var retryImageLoad = UUID()
 
     private let defaultID = "PLEC5UjKGbYI2TeWkpUE-RocpVhqXwwk-9"
     private let othersID = "others"
@@ -133,7 +134,8 @@ struct VideoListView: View {
         }
         .sheet(isPresented: $showSettingSheet) {
             ShadowingSettingsSheetView()
-                .presentationDetents(sizeClass_regular ? [.large] : [.medium])
+                .presentationDetents(sizeClass_regular ? [.large] : [.medium, .large])
+                .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $showAddSheet) {
             YouTubeAddVideoSheetView { result in
@@ -178,9 +180,8 @@ struct VideoListView: View {
         }
 
         return VStack(alignment: .leading, spacing: 12) {
-            // 1️⃣ 建立一個固定比例的容器
             Color.clear
-                .aspectRatio(thumbnailRatio, contentMode: .fit) // 💡 關鍵：定義容器形狀
+                .aspectRatio(thumbnailRatio, contentMode: .fit)
                 .overlay {
                     // 2️⃣ 圖片在 overlay 裡填滿容器
                     AsyncImage(url: video.thumbnailURL) { phase in
@@ -188,17 +189,38 @@ struct VideoListView: View {
                             case .success(let image):
                                 image
                                     .resizable()
-                                    .scaledToFill() // 💡 填滿不壓扁
+                                    .scaledToFill()
+                                    .transition(.opacity)
+                                    .animation(.easeIn(duration: 0.5), value: video.thumbnailURL)
                             case .empty:
-                                Rectangle().fill(Color(.tertiarySystemFill))
+                                ZStack {
+                                    Rectangle()
+                                        .fill(Color(.tertiarySystemFill))
+                                    ProgressView()
+                                        .progressViewStyle(.circular)
+                                }
                             case .failure:
-                                Color.gray
+                                ZStack {
+                                    Rectangle()
+                                        .fill(Color(.tertiarySystemFill))
+                                    Image(systemName: "photo")
+                                        .font(.largeTitle)
+                                        .foregroundStyle(.secondary)
+                                }
+                                .onAppear {
+                                    retryImageLoad = UUID()
+                                }
                             @unknown default:
-                                EmptyView()
+                                ZStack {
+                                    Rectangle()
+                                        .fill(Color(.tertiarySystemFill))
+                                    ProgressView()
+                                }
                         }
                     }
+                    .id(retryImageLoad)
                 }
-                .clipShape(RoundedRectangle(cornerRadius: 20)) // 💡 在這裡裁切，確保上下被切掉
+                .clipShape(RoundedRectangle(cornerRadius: 20))
                 .contentShape(Rectangle())
 
             Text(video.title)

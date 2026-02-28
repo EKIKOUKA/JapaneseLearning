@@ -75,15 +75,18 @@ final class PlayerViewModel: ObservableObject {
 
     func prepareVideo(_ video: VideoItem) {
         nowPlayingTitle = video.title
+        loadStartTime = Date()
 
         if let url = video.thumbnailURL {
             Task {
-                if let data = try? Data(contentsOf: url),
-                   let image = UIImage(data: data) {
-                    await MainActor.run {
+                do {
+                    let (data, _) = try await URLSession.shared.data(from: url)
+
+                    if let image = UIImage(data: data) {
                         self.nowPlayingArtwork = image
                         self.setupNowPlaying()
                     }
+                } catch {
                 }
             }
         }
@@ -112,7 +115,6 @@ final class PlayerViewModel: ObservableObject {
 
     // 入り口
     func loadVideoProcess(for videoItem: VideoItem) async {
-        loadStartTime = Date()
         self.currentVideoItem = videoItem
 
         do {
@@ -147,20 +149,22 @@ final class PlayerViewModel: ObservableObject {
         player.automaticallyWaitsToMinimizeStalling = true
 
         playerItemObservation = item.observe(\.status, options: [.new]) { [weak self] item, _ in
-            guard let self else { return }
-            if item.status == .readyToPlay {
-                print("readyToPlay")
-                if let startTime = self.loadStartTime {
-                    let duration = Date().timeIntervalSince(startTime)
-                    print("⏱️ 視頻加載耗時: \(String(format: "%.2f", duration)) 秒")
-                    self.loadStartTime = nil
-                }
+            Task { @MainActor [weak self] in
+                guard let self = self else { return }
+                if item.status == .readyToPlay {
+                    print("readyToPlay")
+                    if let startTime = self.loadStartTime {
+                        let duration = Date().timeIntervalSince(startTime)
+                        print("⏱️ 視頻加載耗時: \(String(format: "%.2f", duration)) 秒")
+                        self.loadStartTime = nil
+                    }
 
-                self.restorePlayProgress()
-                self.setupNowPlaying()
-            } else if item.status == .failed {
-                print("❌ Player Item Failed: \(String(describing: item.error?.localizedDescription))")
-                print("❌ Error Detail: \(String(describing: item.error))")
+                    self.restorePlayProgress()
+                    self.setupNowPlaying()
+                } else if item.status == .failed {
+                    print("❌ Player Item Failed: \(String(describing: item.error?.localizedDescription))")
+                    print("❌ Error Detail: \(String(describing: item.error))")
+                }
             }
         }
     }
@@ -184,17 +188,19 @@ final class PlayerViewModel: ObservableObject {
 
         let seekTime = CMTime(seconds: videoProgress, preferredTimescale: 600)
         player.seek(to: seekTime, toleranceBefore: .zero, toleranceAfter: .zero) { [weak self] _ in
-            guard let self = self else { return }
+            Task { @MainActor [weak self] in
+                guard let self = self else { return }
 
-            self.updateCaptionIndexForSeek(to: videoProgress)
-            self.player.playImmediately(atRate: videoRate)
-            self.tempRate = videoRate
-            self.isVideoLoading = false
+                self.updateCaptionIndexForSeek(to: videoProgress)
+                self.player.playImmediately(atRate: videoRate)
+                self.tempRate = videoRate
+                self.isVideoLoading = false
 
-            if videoProgress > 0 {
-                print("🎯 進度恢復成功: \(videoProgress)s, 語速: \(videoRate)x")
-            } else {
-                print("▶️ 首次播放，自動開始")
+                if videoProgress > 0 {
+                    print("🎯 進度恢復成功: \(videoProgress)s, 語速: \(videoRate)x")
+                } else {
+                    print("▶️ 首次播放，自動開始")
+                }
             }
         }
     }
@@ -288,35 +294,70 @@ final class PlayerViewModel: ObservableObject {
             captionBoundaryObserver = nil
         }
 
+        guard currentCaptionIndex < captions.count else { return }
+        let currentLine = captions[currentCaptionIndex]
+        guard player.currentItem != nil else { return }
+
         // 如果已経是最後一行，或者没有字幕，就不用設監聽了
         let nextIndex = currentCaptionIndex + 1
         guard nextIndex < captions.count else { return }
 
-        // 確保当前有影片在播放
-        guard player.currentItem != nil else { return }
-
         let nextLine = captions[nextIndex]
-        let time = CMTime(seconds: nextLine.start, preferredTimescale: 600)
+        let gap = nextLine.start - currentLine.end
+        let endTime = CMTime(seconds: currentLine.end, preferredTimescale: 600)
 
         captionBoundaryObserver = player.addBoundaryTimeObserver(
-            forTimes: [NSValue(time: time)],
+            forTimes: [NSValue(time: endTime)],
             queue: .main
         ) { [weak self] in
-            guard let self = self else { return }
-            guard !self.isSeeking else { return }
+            Task { @MainActor [weak self] in
+                guard let self = self else { return }
+                guard !self.isSeeking else { return }
 
-            // 踩到点了！更新当前索引
-            self.currentCaptionIndex = nextIndex
-            self.currentLineID = nextLine.id
+                if let store = settingsStore, store.videoAutoJumpToNextLine, gap >= 0.5 {
+                    // 🔥 立即跳到下一句 start
+                    let startTime = CMTime(seconds: nextLine.start, preferredTimescale: 600)
+                    self.isSeeking = true
+                    await self.player.seek(to: startTime, toleranceBefore: .zero, toleranceAfter: .zero)
 
-            // 遞帰：為再下一行設置監聽
-            self.setupNextCaptionBoundaryObserver()
+                    self.currentCaptionIndex = nextIndex
+                    self.currentLineID = nextLine.id
+                    self.isSeeking = false
+                    self.setupNextCaptionBoundaryObserver()
+                } else {
+                    if gap <= 0.05 {
+                        // 直接切換到下一行，並重新設置下一行的結束監聽
+                        self.currentCaptionIndex = nextIndex
+                        self.currentLineID = nextLine.id
+                        self.setupNextCaptionBoundaryObserver()
+                    } else {
+                        // 正常播放模式：兩句之間有微小間隙（例如 0.2 秒），才設置下一個監聽等它自然走到下一句
+                        self.observeNaturalStartTime(for: nextLine, at: nextIndex)
+                    }
+                }
+            }
+        }
+    }
+
+    /// 監聽自然播放到下一句 start
+    private func observeNaturalStartTime(for line: CaptionLine, at index: Int) {
+        let startTime = CMTime(seconds: line.start, preferredTimescale: 600)
+        captionBoundaryObserver = player.addBoundaryTimeObserver(
+            forTimes: [NSValue(time: startTime)],
+            queue: .main
+        ) { [weak self] in
+            Task { @MainActor [weak self] in
+                guard let self = self else { return }
+                self.currentCaptionIndex = index
+                self.currentLineID = line.id
+                setupNextCaptionBoundaryObserver()
+            }
         }
     }
 
     private func observePlaybackState() {
         timeControlObserver = player.observe(\.timeControlStatus, options: [.initial, .new]) { [weak self] player, _ in
-            guard let self else { return }
+            guard let self = self else { return }
 
             Task { @MainActor in
                 switch player.timeControlStatus {
@@ -353,7 +394,7 @@ final class PlayerViewModel: ObservableObject {
         updateNowPlayingPlaybackRate(newRate)
     }
 
-    func playLine(_ line: CaptionLine, _ index: Int) {
+    func playLine(_ line: CaptionLine, _ index: Int) async {
         // 🔒 1️⃣ 先鎖住 timeObserver
         isSeeking = true
 
@@ -375,18 +416,13 @@ final class PlayerViewModel: ObservableObject {
 
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
 
-        player.seek(to: start, toleranceBefore: .zero, toleranceAfter: .zero) { [weak self] finished in
-            guard let self, finished else { return }
+        await player.seek(to: start, toleranceBefore: .zero, toleranceAfter: .zero)
 
-            Task { @MainActor in
-                self.playPlayer()
-
-                // 延遲一個 runloop，避免 boundary observer 在 seek 完成瞬間觸發
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    self.isSeeking = false
-                }
-            }
-        }
+        self.playPlayer()
+        // 延遲一個 runloop，避免 boundary observer 在 seek 完成瞬間觸發
+//      DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+        try? await Task.sleep(nanoseconds: 100_000_000)
+        self.isSeeking = false
     }
 
     private func addLoopObserver(endTime: CMTime) {
@@ -395,16 +431,18 @@ final class PlayerViewModel: ObservableObject {
             forTimes: [NSValue(time: endTime)],
             queue: .main
         ) { [weak self] in
-            guard let self else { return }
+            Task { @MainActor [weak self] in
+                guard let self = self else { return }
 
-            guard self.isLoopingSingleLine else { return }
+                guard self.isLoopingSingleLine else { return }
 
-            guard self.currentCaptionIndex < self.captions.count else { return }
-            let startSeconds = self.captions[self.currentCaptionIndex].start
-            let start = CMTime(seconds: startSeconds, preferredTimescale: 600)
+                guard self.currentCaptionIndex < self.captions.count else { return }
+                let startSeconds = self.captions[self.currentCaptionIndex].start
+                let start = CMTime(seconds: startSeconds, preferredTimescale: 600)
 
-            self.player.seek(to: start, toleranceBefore: .zero, toleranceAfter: .zero)
-            self.playPlayer()
+                self.player.seek(to: start, toleranceBefore: .zero, toleranceAfter: .zero)
+                self.playPlayer()
+            }
         }
     }
 
@@ -461,10 +499,7 @@ final class PlayerViewModel: ObservableObject {
 
     func resetPlayer() {
         print("🧹 reset player")
-
         // 停止播放
-//        player.pause()
-//        isPlaying = false
         pausePlayer()
 
         // 解除 time observer

@@ -8,13 +8,13 @@
 import Foundation
 
 struct MediaProductsItem: Codable, Identifiable {
-    let id: UUID
+    var id: Int? = nil
     var title: String
     var category: MediaCategory
     var status: WatchStatus
     var detailsURL: String?
     var memo: String?
-    var createdAt: Date
+    var createdAt: String? = nil
 
     enum CodingKeys: String, CodingKey {
         case id

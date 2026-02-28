@@ -30,8 +30,63 @@ struct SettingsSheetGrammarView: View {
         }
     } ()
 
+    func folderSize(at url: URL) -> Int64 {
+        let fileManager = FileManager.default
+        guard let enumerator = fileManager.enumerator(
+            at: url,
+            includingPropertiesForKeys: [.fileSizeKey],
+            options: [],
+            errorHandler: nil
+        ) else { return 0 }
+
+        var total: Int64 = 0
+
+        for case let fileURL as URL in enumerator {
+            if let size = try? fileURL.resourceValues(forKeys: [.fileSizeKey]).fileSize {
+                total += Int64(size)
+            }
+        }
+
+        return total
+    }
+
+    func getAppStorageSize() -> Int64 {
+//        let fileManager = FileManager.default
+//        let urls: [URL?] = [
+//            fileManager.urls(for: .documentDirectory, in: .userDomainMask).first,
+//            fileManager.urls(for: .libraryDirectory, in: .userDomainMask).first,
+//            fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first,
+//            fileManager.urls(for: .cachesDirectory, in: .userDomainMask).first,
+//            URL(fileURLWithPath: NSTemporaryDirectory())
+//        ]
+
+//        return urls.compactMap { $0 }.reduce(0) { total, url in
+//            total + folderSize(at: url)
+//        }
+
+        let homeURL = URL(fileURLWithPath: NSHomeDirectory(), isDirectory: true)
+        return folderSize(at: homeURL)
+    }
+
+    func formattedStorageSize(_ bytes: Int64) -> String {
+        if bytes <= 0 {
+            return "0 KB"
+        }
+
+        let kb = Double(bytes) / 1024
+        let mb = kb / 1024
+
+        if mb >= 1 {
+            return String(format: "%.1f MB", mb)
+        } else {
+            return String(format: "%.0f KB", kb)
+        }
+    }
+
     var body: some View {
         @Bindable var settingsStoreBindable = settingsStore
+
+        @State var storageBytes = getAppStorageSize()
 
         NavigationStack {
 
@@ -89,25 +144,33 @@ struct SettingsSheetGrammarView: View {
                     }
                 }
 
-                Section(header: Text("機能設定"), footer: Text("文法リストの変更のRealtime機能を有効にする")) {
+                Section(header: Text("機能設定")) {
+
+                    Button {
+                        Task {
+                            await store.fetchAll()
+                        }
+                    } label: {
+                        Text("再読み込み")
+                    }
+                }
+
+                Section(header: Text("ストレージ"), footer: Text("キャッシュを削除すると、一時的に保存されたデータが削除されます。")) {
 
                     HStack {
-                        Text("Realtimeの状態")
+                        Text("使用容量")
                         Spacer()
-                        Text(store.isRealtimeConnected ? "接続中..." : "停止中")
-                            .foregroundStyle(store.isRealtimeConnected ? .green : .secondary)
+                        Text(formattedStorageSize(storageBytes))
+                            .foregroundStyle(.secondary)
                     }
 
                     Button {
                         Task {
-                            if store.isRealtimeConnected {
-                                await store.stopRealtime()
-                            } else {
-                                store.startRealtime()
-                            }
+                            clearAppCache()
+                            storageBytes = getAppStorageSize()
                         }
                     } label: {
-                        Text(store.isRealtimeConnected ? "停止" : "開始")
+                        Text("キャッシュを削除")
                     }
                 }
 
@@ -119,8 +182,21 @@ struct SettingsSheetGrammarView: View {
                     }
                 }
             }
-            .navigationTitle("日本語文法設定")
+            .navigationTitle("日本語勉学に設定")
             .navigationBarTitleDisplayMode(.inline)
         }
+    }
+
+    func clearAppCache() {
+        // 清 URLSession cache
+        URLCache.shared.removeAllCachedResponses()
+
+        // 清 tmp
+        let fileManager = FileManager.default
+        let tmpURL = fileManager.temporaryDirectory
+        try? fileManager.removeItem(at: tmpURL)
+
+        // 3️⃣ 重新建立 tmp
+        try? fileManager.createDirectory(at: tmpURL, withIntermediateDirectories: true)
     }
 }

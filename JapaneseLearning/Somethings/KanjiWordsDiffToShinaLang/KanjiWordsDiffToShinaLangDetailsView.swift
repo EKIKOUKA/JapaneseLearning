@@ -8,7 +8,6 @@
 import SwiftUI
 
 struct KanjiWordsDiffToShinaLangDetailsView: View {
-
     let item: KanjiWordsItem
     let isNew: Bool // edit or add
     @ObservedObject var store: KanjiWordsStore
@@ -95,18 +94,24 @@ struct KanjiWordsDiffToShinaLangDetailsView: View {
             return
         }
 
-        let edited = KanjiWordsItem(
-            id: item.id,
-            word: word,
-            ruby: ruby,
-            meaning: meaning
-        )
-
         Task {
             if isNew {
-                await store.KanjiWordsAdd(edited)
+                await store.KanjiWordsAdd(
+                    KanjiWordsItem(
+                        word: word,
+                        ruby: ruby,
+                        meaning: meaning
+                    )
+                )
             } else {
-                await store.KanjiWordsUpdate(edited)
+                await store.KanjiWordsUpdate(
+                    KanjiWordsItem(
+                        id: item.id,
+                        word: word,
+                        ruby: ruby,
+                        meaning: meaning
+                    )
+                )
             }
 
             await MainActor.run {

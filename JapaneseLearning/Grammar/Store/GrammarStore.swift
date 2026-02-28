@@ -6,13 +6,11 @@
 //
 
 import Foundation
-import Supabase
 import Combine
 
 class GrammarStore: ObservableObject {
-
     @Published var grammars: [GrammarItem] = []
-    @Published var isLoading = true
+    @Published var isLoading = false
 
     init() {
         Task { @MainActor in
@@ -20,111 +18,39 @@ class GrammarStore: ObservableObject {
         }
     }
 
-    let client = SupabaseClient(
-        supabaseURL: URL(string: Config.supabaseJapaneseLearningURL)!,
-        supabaseKey: Config.supabaseJapaneseLearningKey,
-        options: SupabaseClientOptions(
-            auth: .init(
-                emitLocalSessionAsInitialSession: true
-            )
-        )
-    )
     @MainActor
     func fetchAll() async {
-
         do {
-            let response: [GrammarItem] = try await client
-                .from("japanese_grammars")
-                .select()
-                .execute()
-                .value
-
+            let url = URL(string: "\(Cloudflare_Workers_URL)/fetch_grammars")!
+            let (data, _) = try await URLSession.shared.data(from: url)
+            let response = try JSONDecoder().decode([GrammarItem].self, from: data)
             self.grammars = response
-            self.isLoading = false
         } catch {
-            print("❌ Supabase Fetch Error：\(error)")
+            self.isLoading = true
+            print("❌ Fetch Error：\(error)")
         }
     }
 
-
-    private var channel: RealtimeChannelV2?
-    private var realtimeTask: Task<Void, Never>?
-    @Published private(set) var isRealtimeConnected = false
-
     @MainActor
-    func startRealtime() {
-        guard !isRealtimeConnected else { return }
-        print("🔵 Realtime...")
-        channel = client.channel("grammar-changes")
-
-        realtimeTask = Task {
-            guard let channel else { return }
-
-            let changeStream = channel.postgresChange(
-                AnyAction.self,
-                schema: "public",
-                table: "japanese_grammars"
-            )
-
-            do {
-
-                try await channel.subscribeWithError()
-                print("🟢 Realtime Channel connection done!")
-                isRealtimeConnected = true
-
-                for try await change in changeStream {
-                    print("🟣 changed！")
-                    await MainActor.run {
-                        switch change {
-                            case .insert(let action):
-                                if let newItem: GrammarItem = try? action.record.decode() {
-                                    self.grammars.insert(newItem, at: 0)
-                                }
-                            case .update(let action):
-                                if let updatedItem: GrammarItem = try? action.record.decode() {
-                                    if let index = self.grammars.firstIndex(where: { $0.id == updatedItem.id }) {
-                                        self.grammars[index] = updatedItem
-                                    }
-                                }
-                            default:
-                                break
-                        }
-                    }
-                }
-            } catch {
-                print("🔴 Realtime stream ended or failed: \(error)")
-                await stopRealtime()
-            }
-        }
-    }
-    @MainActor
-    func stopRealtime() async {
-        guard isRealtimeConnected else { return }
-        print("⚪️ Stop Realtime")
-
-        realtimeTask?.cancel()
-        realtimeTask = nil
-        if let channel {
-            await channel.unsubscribe()
-        }
-
-        channel = nil
-        isRealtimeConnected = false
-    }
-
-    @MainActor
-    func toggleImportant(_ id: UUID) async {
+    func toggleImportant(_ id: Int) async {
         guard let index = grammars.firstIndex(where: { $0.id == id }) else { return }
         let originValue = grammars[index].isImportant
 
         grammars[index].isImportant.toggle()
 
+        let updatedItem = [
+            "id": id,
+            "is_important": grammars[index].isImportant ? 1 : 0
+        ]
+
         do {
-            try await client
-                .from("japanese_grammars")
-                .update(["is_important": !originValue])
-                .eq("id", value: id.uuidString)
-                .execute()
+            let url = URL(string: "\(Cloudflare_Workers_URL)/grammars_toggle_important")!
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.httpBody = try JSONSerialization.data(withJSONObject: updatedItem)
+
+            _ = try await URLSession.shared.data(for: request)
         } catch {
             print("❌ Update failed:", error)
             grammars[index].isImportant = originValue
@@ -132,17 +58,24 @@ class GrammarStore: ObservableObject {
     }
 
     @MainActor
-    func toggleMarked(_ id: UUID) async {
+    func toggleMarked(_ id: Int) async {
         guard let index = grammars.firstIndex(where: { $0.id == id }) else { return }
         let originValue = grammars[index].isMarked
         grammars[index].isMarked.toggle()
 
+        let updatedItem = [
+            "id": id,
+            "is_marked": grammars[index].isMarked ? 1 : 0
+        ]
+
         do {
-            let _ = try await client
-                .from("japanese_grammars")
-                .update(["is_marked": !originValue])
-                .eq("id", value: id.uuidString)
-                .execute()
+            let url = URL(string: "\(Cloudflare_Workers_URL)/grammars_toggle_marked")!
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.httpBody = try JSONSerialization.data(withJSONObject: updatedItem)
+
+            _ = try await URLSession.shared.data(for: request)
         } catch {
             print("❌ Update failed:", error)
             grammars[index].isMarked = originValue
@@ -154,17 +87,12 @@ class GrammarStore: ObservableObject {
         grammars.append(addItem)
 
         do {
-            try await client
-                .from("japanese_grammars")
-                .insert([
-                    "title": addItem.title,
-                    "level": addItem.level,
-                    "meaning": addItem.meaning,
-                    "connection": addItem.connection,
-                    "notes": addItem.notes,
-                    "examples": addItem.examples
-                ])
-                .execute()
+            let url = URL(string: "\(Cloudflare_Workers_URL)/add_grammars")!
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.httpBody = try JSONEncoder().encode(addItem)
+            _ = try await URLSession.shared.data(for: request)
         } catch {
             print("❌ Add failed:", error)
             grammars.removeAll { $0.id == addItem.id }
@@ -172,24 +100,19 @@ class GrammarStore: ObservableObject {
     }
 
     @MainActor
-    func grammarUpdate(_ id: UUID, updatedItem: GrammarItem) async {
+    func grammarUpdate(_ id: Int, updatedItem: GrammarItem) async {
         guard let index = grammars.firstIndex(where: { $0.id == id }) else { return }
 
         let original = grammars[index]
         grammars[index] = updatedItem
 
         do {
-            try await client
-                .from("japanese_grammars")
-                .update([
-                    "title": updatedItem.title,
-                    "meaning": updatedItem.meaning,
-                    "connection": updatedItem.connection,
-                    "notes": updatedItem.notes,
-                    "examples": updatedItem.examples
-                ])
-                .eq("id", value: id.uuidString)
-                .execute()
+            let url = URL(string: "\(Cloudflare_Workers_URL)/update_grammars")!
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.httpBody = try JSONEncoder().encode(updatedItem)
+            _ = try await URLSession.shared.data(for: request)
         } catch {
             print("❌ Update failed:", error)
             grammars[index] = original

@@ -9,8 +9,9 @@ import SwiftUI
 
 struct MediaProductsDetailsView: View {
     let item: MediaProductsItem
-    @State private var isWebLoading = true
     @ObservedObject var store: MediaProductsStore
+    @State private var isWebLoading = true
+    @State private var isReady = false
 
     var body: some View {
 
@@ -28,9 +29,12 @@ struct MediaProductsDetailsView: View {
                     )
                 }
             }
-
-            if isWebLoading {
-//                ProgressLoadingView()
+            .opacity(isReady ? 1 : 0)
+            .animation(.easeIn(duration: 0.2), value: isReady)
+            .onAppear {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                    isReady = true
+                }
             }
         }
         .navigationTitle(item.title)

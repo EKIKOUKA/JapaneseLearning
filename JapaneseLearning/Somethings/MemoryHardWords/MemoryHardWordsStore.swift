@@ -6,16 +6,22 @@
 //
 
 import Foundation
-import Supabase
 import Combine
+
+struct MemoryHardWordsItem: Codable, Identifiable {
+    var id: Int? = nil
+    var word: String
+    var ruby: String
+    var meaning: String
+}
 
 class MemoryHardWordsStore: ObservableObject {
 
     @Published var MemoryHardWordsList: [MemoryHardWordsItem] = []
-    @Published var expandedIDs: Set<UUID> = []
+    @Published var expandedIDs: Set<Int> = []
     @Published var isLoading = false
 
-    func toggleExpand(_ id: UUID) {
+    func toggleExpand(_ id: Int) {
         if expandedIDs.contains(id) {
             expandedIDs.remove(id)
         } else {
@@ -23,39 +29,26 @@ class MemoryHardWordsStore: ObservableObject {
         }
     }
     func expandAll() {
-        expandedIDs = Set(MemoryHardWordsList.map(\.id))
+        let allIDs = MemoryHardWordsList.compactMap { $0.id }
+        expandedIDs = Set(allIDs)
     }
     func collapseAll() {
         expandedIDs.removeAll()
     }
 
-    let client = SupabaseClient(
-        supabaseURL: URL(string: Config.supabaseJapaneseLearningURL)!,
-        supabaseKey: Config.supabaseJapaneseLearningKey,
-        options: SupabaseClientOptions(
-            auth: .init(
-                emitLocalSessionAsInitialSession: true
-            )
-        )
-    )
     @MainActor
     func fetchAll() async {
         isLoading = true
 
         do {
-            try? await Task.sleep(nanoseconds: 256_000_000)
-            let response: [MemoryHardWordsItem] = try await client
-                .from("japanese_memory_hard_words")
-                .select()
-                .order("word")
-                .execute()
-                .value
-
+            let url = URL(string: "\(Cloudflare_Workers_URL)/fetch_memory_hard_words")!
+            let (data, _) = try await URLSession.shared.data(from: url)
+            let response = try JSONDecoder().decode([MemoryHardWordsItem].self, from: data)
             MemoryHardWordsList = response
             isLoading = false
         } catch {
             isLoading = false
-            print("❌ Supabase Fetch Error：\(error)")
+            print("❌ Fetch Error：\(error)")
         }
     }
 
@@ -64,14 +57,12 @@ class MemoryHardWordsStore: ObservableObject {
         MemoryHardWordsList.append(addItem)
 
         do {
-            try await client
-                .from("japanese_memory_hard_words")
-                .insert([
-                    "word": addItem.word,
-                    "ruby": addItem.ruby,
-                    "meaning": addItem.meaning
-                ])
-                .execute()
+            let url = URL(string: "\(Cloudflare_Workers_URL)/add_memory_hard_words")!
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.httpBody = try JSONEncoder().encode(addItem)
+            _ = try await URLSession.shared.data(for: request)
         } catch {
             print("❌ Add failed:", error)
             MemoryHardWordsList.removeAll { $0.id == addItem.id }
@@ -85,15 +76,12 @@ class MemoryHardWordsStore: ObservableObject {
         MemoryHardWordsList[index] = updatedItem
 
         do {
-            try await client
-                .from("japanese_memory_hard_words")
-                .update([
-                    "word": updatedItem.word,
-                    "ruby": updatedItem.ruby,
-                    "meaning": updatedItem.meaning
-                ])
-                .eq("id", value: updatedItem.id.uuidString)
-                .execute()
+            let url = URL(string: "\(Cloudflare_Workers_URL)/update_memory_hard_words")!
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.httpBody = try JSONEncoder().encode(updatedItem)
+            _ = try await URLSession.shared.data(for: request)
         } catch {
             print("❌ Update failed:", error)
             MemoryHardWordsList[index] = original

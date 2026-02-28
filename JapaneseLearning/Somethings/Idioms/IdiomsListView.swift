@@ -7,13 +7,6 @@
 
 import SwiftUI
 
-struct IdiomsItem: Codable, Identifiable {
-    let id: UUID
-    var word: String
-    var ruby: String
-    var meaning: String
-}
-
 struct IdiomsItemsView: View {
     let item: IdiomsItem
     let isExpanded: Bool
@@ -41,7 +34,7 @@ struct IdiomsItemsView: View {
             .zIndex(1)
             .contentShape(Rectangle())
             .onTapGesture {
-                store.toggleExpand(item.id)
+                store.toggleExpand(item.id ?? 8964)
             }
 
             VStack(alignment: .leading, spacing: 0) {
@@ -59,7 +52,6 @@ struct IdiomsItemsView: View {
 }
 
 struct IdiomsListView: View {
-
     @Environment(SettingsStore.self) private var settingsStore
     @StateObject private var store = IdiomsStore()
     @State private var showRuby: Bool = false
@@ -77,7 +69,7 @@ struct IdiomsListView: View {
                     ForEach(filteredItems) { item in
                         IdiomsItemsView(
                             item: item,
-                            isExpanded: store.expandedIDs.contains(item.id),
+                            isExpanded: store.expandedIDs.contains(item.id ?? -1),
                             showRuby: showRuby,
                             store: store
                         )
@@ -113,7 +105,6 @@ struct IdiomsListView: View {
                     NavigationLink {
                         IdiomsDetailsView(
                             item: IdiomsItem(
-                                id: UUID(),
                                 word: "",
                                 ruby: "",
                                 meaning: ""
@@ -174,7 +165,6 @@ struct IdiomsListView: View {
 
 
 private struct SettingsSheetView: View {
-
     @Environment(SettingsStore.self) private var settingsStore
     @ObservedObject var store: IdiomsStore
 
@@ -201,8 +191,4 @@ private struct SettingsSheetView: View {
             .navigationBarTitleDisplayMode(.inline)
         }
     }
-}
-
-#Preview {
-    IdiomsListView()
 }

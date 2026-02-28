@@ -6,16 +6,22 @@
 //
 
 import Foundation
-import Supabase
 import Combine
+
+struct SampleRubyWordsItem: Codable, Identifiable {
+    var id: Int? = nil
+    var word: String
+    var ruby: String
+    var meaning: String
+}
 
 class SampleRubyWordsStore: ObservableObject {
 
     @Published var SampleRubyWordsList: [SampleRubyWordsItem] = []
-    @Published var expandedIDs: Set<UUID> = []
+    @Published var expandedIDs: Set<Int> = []
     @Published var isLoading = false
 
-    func toggleExpand(_ id: UUID) {
+    func toggleExpand(_ id: Int) {
         if expandedIDs.contains(id) {
             expandedIDs.remove(id)
         } else {
@@ -23,39 +29,23 @@ class SampleRubyWordsStore: ObservableObject {
         }
     }
     func expandAll() {
-        expandedIDs = Set(SampleRubyWordsList.map(\.id))
+        let allIDs = SampleRubyWordsList.compactMap { $0.id }
+        expandedIDs = Set(allIDs)
     }
     func collapseAll() {
         expandedIDs.removeAll()
     }
 
-    let client = SupabaseClient(
-        supabaseURL: URL(string: Config.supabaseJapaneseLearningURL)!,
-        supabaseKey: Config.supabaseJapaneseLearningKey,
-        options: SupabaseClientOptions(
-            auth: .init(
-                emitLocalSessionAsInitialSession: true
-            )
-        )
-    )
     @MainActor
     func fetchAll() async {
-        isLoading = true
-
         do {
-            try? await Task.sleep(nanoseconds: 256_000_000)
-            let response: [SampleRubyWordsItem] = try await client
-                .from("japanese_sample_ruby_words")
-                .select()
-                .order("word")
-                .execute()
-                .value
-
+            let url = URL(string: "\(Cloudflare_Workers_URL)/fetch_sample_ruby_words")!
+            let (data, _) = try await URLSession.shared.data(from: url)
+            let response = try JSONDecoder().decode([SampleRubyWordsItem].self, from: data)
             SampleRubyWordsList = response
-            isLoading = false
         } catch {
             isLoading = false
-            print("❌ Supabase Fetch Error：\(error)")
+            print("❌ Fetch Error：\(error)")
         }
     }
 
@@ -64,14 +54,12 @@ class SampleRubyWordsStore: ObservableObject {
         SampleRubyWordsList.append(addItem)
 
         do {
-            try await client
-                .from("japanese_sample_ruby_words")
-                .insert([
-                    "word": addItem.word,
-                    "ruby": addItem.ruby,
-                    "meaning": addItem.meaning
-                ])
-                .execute()
+            let url = URL(string: "\(Cloudflare_Workers_URL)/add_sample_ruby_words")!
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.httpBody = try JSONEncoder().encode(addItem)
+            _ = try await URLSession.shared.data(for: request)
         } catch {
             print("❌ Add failed:", error)
             SampleRubyWordsList.removeAll { $0.id == addItem.id }
@@ -85,15 +73,12 @@ class SampleRubyWordsStore: ObservableObject {
         SampleRubyWordsList[index] = updatedItem
 
         do {
-            try await client
-                .from("japanese_sample_ruby_words")
-                .update([
-                    "word": updatedItem.word,
-                    "ruby": updatedItem.ruby,
-                    "meaning": updatedItem.meaning
-                ])
-                .eq("id", value: updatedItem.id.uuidString)
-                .execute()
+            let url = URL(string: "\(Cloudflare_Workers_URL)/update_sample_ruby_words")!
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.httpBody = try JSONEncoder().encode(updatedItem)
+            _ = try await URLSession.shared.data(for: request)
         } catch {
             print("❌ Update failed:", error)
             SampleRubyWordsList[index] = original

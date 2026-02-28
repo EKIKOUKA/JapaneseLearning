@@ -6,41 +6,26 @@
 //
 
 import Foundation
-import Supabase
 import Combine
 
 class MediaProductsStore: ObservableObject {
-
     @Published var MediaProductsList: [MediaProductsItem] = []
     @Published var isLoading = false
+    @Published var isReady: Bool = false
 
-    let client = SupabaseClient(
-        supabaseURL: URL(string: Config.supabaseJapaneseLearningURL)!,
-        supabaseKey: Config.supabaseJapaneseLearningKey,
-        options: SupabaseClientOptions(
-            auth: .init(
-                emitLocalSessionAsInitialSession: true
-            )
-        )
-    )
     @MainActor
     func fetchAll() async {
-        isLoading = true
-
         do {
-            try? await Task.sleep(nanoseconds: 300_000_000)
-            let response: [MediaProductsItem] = try await client
-                .from("japanese_video_products")
-                .select()
-                .order("created_at")
-                .execute()
-                .value
-
+            let url = URL(string: "\(Cloudflare_Workers_URL)/fetch_video_products")!
+            let (data, _) = try await URLSession.shared.data(from: url)
+            let response = try JSONDecoder().decode([MediaProductsItem].self, from: data)
             MediaProductsList = response
-            isLoading = false
+            try? await Task.sleep(nanoseconds: 100_000_000)
+            isReady = true
         } catch {
-            isLoading = false
-            print("❌ Supabase Fetch Error：\(error)")
+            isLoading = true
+            isReady = false
+            print("❌ Fetch Error：\(error)")
         }
     }
     @MainActor
@@ -48,16 +33,12 @@ class MediaProductsStore: ObservableObject {
         MediaProductsList.append(addItem)
 
         do {
-            try await client
-                .from("japanese_video_products")
-                .insert([
-                    "title": addItem.title,
-                    "category": addItem.category.rawValue,
-                    "status": addItem.status.rawValue,
-                    "details_url": addItem.detailsURL,
-                    "memo": addItem.memo
-                ])
-                .execute()
+            let url = URL(string: "\(Cloudflare_Workers_URL)/add_video_products")!
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.httpBody = try JSONEncoder().encode(addItem)
+            _ = try await URLSession.shared.data(for: request)
         } catch {
             print("❌ Add failed:", error)
             MediaProductsList.removeAll { $0.id == addItem.id }
@@ -71,17 +52,12 @@ class MediaProductsStore: ObservableObject {
         MediaProductsList[index] = updatedItem
 
         do {
-            try await client
-                .from("japanese_video_products")
-                .update([
-                    "title": updatedItem.title,
-                    "category": updatedItem.category.rawValue,
-                    "status": updatedItem.status.rawValue,
-                    "details_url": updatedItem.detailsURL,
-                    "memo": updatedItem.memo
-                ])
-                .eq("id", value: updatedItem.id.uuidString)
-                .execute()
+            let url = URL(string: "\(Cloudflare_Workers_URL)/update_video_products")!
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.httpBody = try JSONEncoder().encode(updatedItem)
+            _ = try await URLSession.shared.data(for: request)
         } catch {
             print("❌ Update failed:", error)
             MediaProductsList[index] = original

@@ -7,18 +7,6 @@
 
 import SwiftUI
 
-struct ElegantSentenceItem: Codable, Identifiable {
-    let id: UUID
-    var sentence: String
-
-    var height: CGFloat = .zero
-
-    enum CodingKeys: String, CodingKey {
-        case id
-        case sentence
-    }
-}
-
 struct ElegantSentenceView: View {
 
     @Environment(SettingsStore.self) private var settingsStore
@@ -28,46 +16,45 @@ struct ElegantSentenceView: View {
 
     var body: some View {
 
-        ZStack {
-
-            List {
-
-                Section {
-                    
-                    ForEach(filteredItems, id: \.self) { index in
-                        let item = $store.ElegantSentenceList[index]
-
-                        HStack {
-//                            Text(store.ElegantSentenceList[index].sentence)
-//                                .font(.headline)
-                            SelectableUITextView(
-                                text: store.ElegantSentenceList[index].sentence,
-                                height: item.height
-                            )
-                            .frame(height: store.ElegantSentenceList[index].height)
-                        }
-                        .swipeActions {
-                            NavigationLink {
-                                ElegantSentenceDetailsView(item: store.ElegantSentenceList[index], store: store)
-                            } label: {
-                                Image(systemName: "highlighter")
-                            }
-                            .tint(.blue)
-                        }
-                    }
-                } footer: {
-                    if settingsStore.showElegantSentenceListCount {
-                        Text("件数：\(filteredItems.count)")
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-            }
-            .searchable(text: $searchText, prompt: "入力して検索")
-            .opacity(store.isLoading ? 0 : 1)
-
+        VStack {
             if store.isLoading {
                 ProgressLoadingView()
+            } else {
+                List {
+
+                    Section {
+
+                        ForEach(filteredItems, id: \.self) { index in
+                            let item = $store.ElegantSentenceList[index]
+
+                            HStack {
+                                SelectableUITextView(
+                                    text: store.ElegantSentenceList[index].sentence,
+                                    height: item.height
+                                )
+                                .frame(height: store.ElegantSentenceList[index].height)
+                            }
+                            .swipeActions {
+                                NavigationLink {
+                                    ElegantSentenceDetailsView(item: store.ElegantSentenceList[index], store: store)
+                                } label: {
+                                    Image(systemName: "highlighter")
+                                }
+                                .tint(.blue)
+                            }
+                        }
+                    } footer: {
+                        if settingsStore.showElegantSentenceListCount {
+                            Text("件数：\(filteredItems.count)")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+                .searchable(text: $searchText, prompt: "入力して検索")
+                .opacity(store.isLoading ? 0 : 1)
+                .opacity(store.isReady ? 1 : 0)
+                .animation(.easeIn(duration: 0.2), value: store.isReady)
             }
         }
         .navigationTitle("国語美文")
@@ -77,10 +64,7 @@ struct ElegantSentenceView: View {
                 Menu {
                     NavigationLink {
                         ElegantSentenceDetailsView(
-                            item: ElegantSentenceItem(
-                                id: UUID(),
-                                sentence: ""
-                            ),
+                            item: ElegantSentenceItem(sentence: ""),
                             store: store,
                             isNew: true
                         )
@@ -147,8 +131,4 @@ private struct SettingsSheetView: View {
             .navigationBarTitleDisplayMode(.inline)
         }
     }
-}
-
-#Preview {
-    ElegantSentenceView()
 }

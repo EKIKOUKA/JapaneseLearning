@@ -8,7 +8,6 @@
 import SwiftUI
 
 struct GrammarListView: View {
-
     let level: String
     let title: String
 
@@ -126,7 +125,7 @@ struct GrammarListView: View {
                         NavigationLink {
                             GrammarDetailsEditorView(
                                 item: GrammarItem(
-                                    id: UUID(),
+                                    id: 8964,
                                     title: "",
                                     level: level,
                                     meaning: "",
