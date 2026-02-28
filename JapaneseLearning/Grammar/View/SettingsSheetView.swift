@@ -51,19 +51,6 @@ struct SettingsSheetGrammarView: View {
     }
 
     func getAppStorageSize() -> Int64 {
-//        let fileManager = FileManager.default
-//        let urls: [URL?] = [
-//            fileManager.urls(for: .documentDirectory, in: .userDomainMask).first,
-//            fileManager.urls(for: .libraryDirectory, in: .userDomainMask).first,
-//            fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first,
-//            fileManager.urls(for: .cachesDirectory, in: .userDomainMask).first,
-//            URL(fileURLWithPath: NSTemporaryDirectory())
-//        ]
-
-//        return urls.compactMap { $0 }.reduce(0) { total, url in
-//            total + folderSize(at: url)
-//        }
-
         let homeURL = URL(fileURLWithPath: NSHomeDirectory(), isDirectory: true)
         return folderSize(at: homeURL)
     }

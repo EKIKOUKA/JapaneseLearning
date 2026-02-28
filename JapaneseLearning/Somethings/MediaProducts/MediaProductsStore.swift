@@ -16,10 +16,7 @@ class MediaProductsStore: ObservableObject {
     @MainActor
     func fetchAll() async {
         do {
-            let url = URL(string: "\(Cloudflare_Workers_URL)/fetch_video_products")!
-            let (data, _) = try await URLSession.shared.data(from: url)
-            let response = try JSONDecoder().decode([MediaProductsItem].self, from: data)
-            MediaProductsList = response
+            MediaProductsList = try await WorkersAPI.get("fetch_video_products")
             try? await Task.sleep(nanoseconds: 100_000_000)
             isReady = true
         } catch {
@@ -33,12 +30,7 @@ class MediaProductsStore: ObservableObject {
         MediaProductsList.append(addItem)
 
         do {
-            let url = URL(string: "\(Cloudflare_Workers_URL)/add_video_products")!
-            var request = URLRequest(url: url)
-            request.httpMethod = "POST"
-            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            request.httpBody = try JSONEncoder().encode(addItem)
-            _ = try await URLSession.shared.data(for: request)
+            try await WorkersAPI.post("add_video_products", body: addItem)
         } catch {
             print("❌ Add failed:", error)
             MediaProductsList.removeAll { $0.id == addItem.id }
@@ -52,12 +44,7 @@ class MediaProductsStore: ObservableObject {
         MediaProductsList[index] = updatedItem
 
         do {
-            let url = URL(string: "\(Cloudflare_Workers_URL)/update_video_products")!
-            var request = URLRequest(url: url)
-            request.httpMethod = "POST"
-            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            request.httpBody = try JSONEncoder().encode(updatedItem)
-            _ = try await URLSession.shared.data(for: request)
+            try await WorkersAPI.post("update_video_products", body: updatedItem)
         } catch {
             print("❌ Update failed:", error)
             MediaProductsList[index] = original

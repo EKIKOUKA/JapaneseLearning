@@ -16,7 +16,6 @@ struct SampleRubyWordsItem: Codable, Identifiable {
 }
 
 class SampleRubyWordsStore: ObservableObject {
-
     @Published var SampleRubyWordsList: [SampleRubyWordsItem] = []
     @Published var expandedIDs: Set<Int> = []
     @Published var isLoading = false
@@ -39,10 +38,7 @@ class SampleRubyWordsStore: ObservableObject {
     @MainActor
     func fetchAll() async {
         do {
-            let url = URL(string: "\(Cloudflare_Workers_URL)/fetch_sample_ruby_words")!
-            let (data, _) = try await URLSession.shared.data(from: url)
-            let response = try JSONDecoder().decode([SampleRubyWordsItem].self, from: data)
-            SampleRubyWordsList = response
+            SampleRubyWordsList = try await WorkersAPI.get("fetch_sample_ruby_words")
         } catch {
             isLoading = false
             print("❌ Fetch Error：\(error)")
@@ -54,12 +50,7 @@ class SampleRubyWordsStore: ObservableObject {
         SampleRubyWordsList.append(addItem)
 
         do {
-            let url = URL(string: "\(Cloudflare_Workers_URL)/add_sample_ruby_words")!
-            var request = URLRequest(url: url)
-            request.httpMethod = "POST"
-            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            request.httpBody = try JSONEncoder().encode(addItem)
-            _ = try await URLSession.shared.data(for: request)
+            try await WorkersAPI.post("add_sample_ruby_words", body: addItem)
         } catch {
             print("❌ Add failed:", error)
             SampleRubyWordsList.removeAll { $0.id == addItem.id }
@@ -73,12 +64,7 @@ class SampleRubyWordsStore: ObservableObject {
         SampleRubyWordsList[index] = updatedItem
 
         do {
-            let url = URL(string: "\(Cloudflare_Workers_URL)/update_sample_ruby_words")!
-            var request = URLRequest(url: url)
-            request.httpMethod = "POST"
-            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            request.httpBody = try JSONEncoder().encode(updatedItem)
-            _ = try await URLSession.shared.data(for: request)
+            try await WorkersAPI.post("update_sample_ruby_words", body: updatedItem)
         } catch {
             print("❌ Update failed:", error)
             SampleRubyWordsList[index] = original

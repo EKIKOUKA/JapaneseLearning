@@ -16,7 +16,6 @@ struct MemoryHardWordsItem: Codable, Identifiable {
 }
 
 class MemoryHardWordsStore: ObservableObject {
-
     @Published var MemoryHardWordsList: [MemoryHardWordsItem] = []
     @Published var expandedIDs: Set<Int> = []
     @Published var isLoading = false
@@ -41,10 +40,7 @@ class MemoryHardWordsStore: ObservableObject {
         isLoading = true
 
         do {
-            let url = URL(string: "\(Cloudflare_Workers_URL)/fetch_memory_hard_words")!
-            let (data, _) = try await URLSession.shared.data(from: url)
-            let response = try JSONDecoder().decode([MemoryHardWordsItem].self, from: data)
-            MemoryHardWordsList = response
+            MemoryHardWordsList = try await WorkersAPI.get("fetch_memory_hard_words")
             isLoading = false
         } catch {
             isLoading = false
@@ -57,12 +53,7 @@ class MemoryHardWordsStore: ObservableObject {
         MemoryHardWordsList.append(addItem)
 
         do {
-            let url = URL(string: "\(Cloudflare_Workers_URL)/add_memory_hard_words")!
-            var request = URLRequest(url: url)
-            request.httpMethod = "POST"
-            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            request.httpBody = try JSONEncoder().encode(addItem)
-            _ = try await URLSession.shared.data(for: request)
+            try await WorkersAPI.post("add_memory_hard_words", body: addItem)
         } catch {
             print("❌ Add failed:", error)
             MemoryHardWordsList.removeAll { $0.id == addItem.id }
@@ -76,12 +67,7 @@ class MemoryHardWordsStore: ObservableObject {
         MemoryHardWordsList[index] = updatedItem
 
         do {
-            let url = URL(string: "\(Cloudflare_Workers_URL)/update_memory_hard_words")!
-            var request = URLRequest(url: url)
-            request.httpMethod = "POST"
-            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            request.httpBody = try JSONEncoder().encode(updatedItem)
-            _ = try await URLSession.shared.data(for: request)
+            try await WorkersAPI.post("update_memory_hard_words", body: updatedItem)
         } catch {
             print("❌ Update failed:", error)
             MemoryHardWordsList[index] = original

@@ -10,7 +10,6 @@ import Foundation
 
 @Observable
 class VideoStore {
-
     var videos: [VideoItem] = []
     var videoList: [PlaylistListItem] = []
     var currentResumeVideoID: String?
@@ -25,11 +24,7 @@ class VideoStore {
     @MainActor
     func fetchVideos() async {
         do {
-            let url = URL(string: "\(Cloudflare_Workers_URL)/fetch_videos")!
-            let (data, _) = try await URLSession.shared.data(from: url)
-
-            let videos = try JSONDecoder().decode([VideoItem].self, from: data)
-            self.videos = videos
+            self.videos = try await WorkersAPI.get("fetch_videos")
             isLoading = false
         } catch {
             print("❌ Fetch Error：\(error)")
@@ -40,19 +35,7 @@ class VideoStore {
         guard let url = URL(string: "\(Cloudflare_Workers_URL)/add_video") else { return }
 
         do {
-            var request = URLRequest(url: url)
-            request.httpMethod = "POST"
-            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-
-            request.httpBody = try JSONEncoder().encode(video)
-
-            let (_, response) = try await URLSession.shared.data(for: request)
-
-            guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
-                print("❌ Server Save Failed")
-                return
-            }
-
+            try await WorkersAPI.post("add_video", body: video)
             videos.insert(video, at: 0)
         } catch {
             print("❌ Save add Error: \(error)")
@@ -61,15 +44,8 @@ class VideoStore {
     // 更新狀態：播放進度同步
     @MainActor
     func updateVideo(_ video: VideoItem) async {
-        guard let url = URL(string: "\(Cloudflare_Workers_URL)/update_video") else { return }
-
         do {
-            var request = URLRequest(url: url)
-            request.httpMethod = "POST"
-            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            request.httpBody = try JSONEncoder().encode(video)
-
-            _ = try await URLSession.shared.data(for: request)
+            try await WorkersAPI.post("update_video", body: video)
             print("✅ Progress Sync Success")
             if let index = videos.firstIndex(where: { $0.id == video.id }) {
                 videos[index] = video
@@ -80,22 +56,13 @@ class VideoStore {
     }
     @MainActor
     func deleteVideo(_ id: String) async {
-        guard let url = URL(string: "\(Cloudflare_Workers_URL)/del_video/\(id)") else { return }
-
-        var request = URLRequest(url: url)
-        request.httpMethod = "DELETE"
-
         do {
-            let (_, response) = try await URLSession.shared.data(for: request)
+            try await WorkersAPI.delete("del_video/\(id)")
+            await fetchVideos()
 
-            if let httpResponse = response as? HTTPURLResponse,
-               httpResponse.statusCode == 200 {
-                await fetchVideos()
-
-                if currentResumeVideoID == id {
-                    currentResumeVideoID = nil
-                    QuickActionManager.shared.clearResumeVideo()
-                }
+            if currentResumeVideoID == id {
+                currentResumeVideoID = nil
+                QuickActionManager.shared.clearResumeVideo()
             }
         } catch {
             print("❌ 刪除錯誤:", error)
@@ -106,11 +73,7 @@ class VideoStore {
     @MainActor
     func fetchVideoPlaylist() async {
         do {
-            let url = URL(string: "\(Cloudflare_Workers_URL)/fetch_video_playlist")!
-            let (data, _) = try await URLSession.shared.data(from: url)
-
-            let response = try JSONDecoder().decode([PlaylistListItem].self, from: data)
-            self.videoList = response
+            self.videoList = try await WorkersAPI.get("fetch_video_playlist")
         } catch {
             print("❌ Fetch Error：\(error)")
         }
@@ -118,13 +81,7 @@ class VideoStore {
     @MainActor
     func addVideoPlaylist(_ video: PlaylistListItem) async {
         do {
-            let url = URL(string: "\(Cloudflare_Workers_URL)/add_video_playlist")!
-            var request = URLRequest(url: url)
-            request.httpMethod = "POST"
-            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            request.httpBody = try JSONEncoder().encode(video)
-            _ = try await URLSession.shared.data(for: request)
-
+            try await WorkersAPI.post("add_video_playlist", body: video)
             await fetchVideoPlaylist()
             print("✅ Insert Success: \(video.id)")
         } catch {
@@ -134,11 +91,7 @@ class VideoStore {
     @MainActor
     func deleteVideoPlaylist(_ id: String) async {
         do {
-            let url = URL(string: "\(Cloudflare_Workers_URL)/delete_video_playlist/\(id)")!
-            var request = URLRequest(url: url)
-            request.httpMethod = "DELETE"
-            _ = try await URLSession.shared.data(for: request)
-
+            try await WorkersAPI.delete("delete_video_playlist/\(id)")
             await fetchVideoPlaylist()
         } catch {
             print("❌ Delete Error:", error)

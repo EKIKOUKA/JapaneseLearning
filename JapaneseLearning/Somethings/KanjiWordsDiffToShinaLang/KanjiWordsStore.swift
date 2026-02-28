@@ -16,7 +16,6 @@ struct KanjiWordsItem: Codable, Identifiable {
 }
 
 class KanjiWordsStore: ObservableObject {
-
     @Published var KanjiWordsList: [KanjiWordsItem] = []
     @Published var expandedIDs: Set<Int> = []
     @Published var isLoading = false
@@ -39,10 +38,7 @@ class KanjiWordsStore: ObservableObject {
     @MainActor
     func fetchAll() async {
         do {
-            let url = URL(string: "\(Cloudflare_Workers_URL)/fetch_kanji_word")!
-            let (data, _) = try await URLSession.shared.data(from: url)
-            let response = try JSONDecoder().decode([KanjiWordsItem].self, from: data)
-            KanjiWordsList = response
+            KanjiWordsList = try await WorkersAPI.get("fetch_kanji_word")
         } catch {
             isLoading = false
             print("❌ Fetch Error：\(error)")
@@ -54,12 +50,7 @@ class KanjiWordsStore: ObservableObject {
         KanjiWordsList.append(addItem)
 
         do {
-            let url = URL(string: "\(Cloudflare_Workers_URL)/add_kanji_word")!
-            var request = URLRequest(url: url)
-            request.httpMethod = "POST"
-            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            request.httpBody = try JSONEncoder().encode(addItem)
-            _ = try await URLSession.shared.data(for: request)
+            try await WorkersAPI.post("add_kanji_word", body: addItem)
         } catch {
             print("❌ Add failed:", error)
             KanjiWordsList.removeAll { $0.id == addItem.id }
@@ -73,12 +64,7 @@ class KanjiWordsStore: ObservableObject {
         KanjiWordsList[index] = updatedItem
 
         do {
-            let url = URL(string: "\(Cloudflare_Workers_URL)/update_kanji_word")!
-            var request = URLRequest(url: url)
-            request.httpMethod = "POST"
-            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            request.httpBody = try JSONEncoder().encode(updatedItem)
-            _ = try await URLSession.shared.data(for: request)
+            try await WorkersAPI.post("update_kanji_word", body: updatedItem)
         } catch {
             print("❌ Update failed:", error)
             KanjiWordsList[index] = original

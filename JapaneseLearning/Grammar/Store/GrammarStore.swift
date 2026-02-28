@@ -21,10 +21,7 @@ class GrammarStore: ObservableObject {
     @MainActor
     func fetchAll() async {
         do {
-            let url = URL(string: "\(Cloudflare_Workers_URL)/fetch_grammars")!
-            let (data, _) = try await URLSession.shared.data(from: url)
-            let response = try JSONDecoder().decode([GrammarItem].self, from: data)
-            self.grammars = response
+            self.grammars = try await WorkersAPI.get("fetch_grammars")
         } catch {
             self.isLoading = true
             print("❌ Fetch Error：\(error)")
@@ -44,13 +41,10 @@ class GrammarStore: ObservableObject {
         ]
 
         do {
-            let url = URL(string: "\(Cloudflare_Workers_URL)/grammars_toggle_important")!
-            var request = URLRequest(url: url)
-            request.httpMethod = "POST"
-            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            request.httpBody = try JSONSerialization.data(withJSONObject: updatedItem)
-
-            _ = try await URLSession.shared.data(for: request)
+            try await WorkersAPI.postRaw(
+                "grammars_toggle_important",
+                body: updatedItem
+            )
         } catch {
             print("❌ Update failed:", error)
             grammars[index].isImportant = originValue
@@ -69,13 +63,10 @@ class GrammarStore: ObservableObject {
         ]
 
         do {
-            let url = URL(string: "\(Cloudflare_Workers_URL)/grammars_toggle_marked")!
-            var request = URLRequest(url: url)
-            request.httpMethod = "POST"
-            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            request.httpBody = try JSONSerialization.data(withJSONObject: updatedItem)
-
-            _ = try await URLSession.shared.data(for: request)
+            try await WorkersAPI.postRaw(
+                "grammars_toggle_marked",
+                body: updatedItem
+            )
         } catch {
             print("❌ Update failed:", error)
             grammars[index].isMarked = originValue
@@ -87,12 +78,7 @@ class GrammarStore: ObservableObject {
         grammars.append(addItem)
 
         do {
-            let url = URL(string: "\(Cloudflare_Workers_URL)/add_grammars")!
-            var request = URLRequest(url: url)
-            request.httpMethod = "POST"
-            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            request.httpBody = try JSONEncoder().encode(addItem)
-            _ = try await URLSession.shared.data(for: request)
+            try await WorkersAPI.post("add_grammars", body: addItem)
         } catch {
             print("❌ Add failed:", error)
             grammars.removeAll { $0.id == addItem.id }
@@ -107,12 +93,7 @@ class GrammarStore: ObservableObject {
         grammars[index] = updatedItem
 
         do {
-            let url = URL(string: "\(Cloudflare_Workers_URL)/update_grammars")!
-            var request = URLRequest(url: url)
-            request.httpMethod = "POST"
-            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            request.httpBody = try JSONEncoder().encode(updatedItem)
-            _ = try await URLSession.shared.data(for: request)
+            try await WorkersAPI.post("update_grammars", body: updatedItem)
         } catch {
             print("❌ Update failed:", error)
             grammars[index] = original

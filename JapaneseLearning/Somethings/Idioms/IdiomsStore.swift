@@ -16,7 +16,6 @@ struct IdiomsItem: Codable, Identifiable {
 }
 
 class IdiomsStore: ObservableObject {
-
     @Published var IdiomsList: [IdiomsItem] = []
     @Published var expandedIDs: Set<Int> = []
     @Published var isLoading = false
@@ -39,10 +38,7 @@ class IdiomsStore: ObservableObject {
     @MainActor
     func fetchAll() async {
         do {
-            let url = URL(string: "\(Cloudflare_Workers_URL)/fetch_idioms")!
-            let (data, _) = try await URLSession.shared.data(from: url)
-            let response = try JSONDecoder().decode([IdiomsItem].self, from: data)
-            IdiomsList = response
+            IdiomsList = try await WorkersAPI.get("fetch_idioms")
         } catch {
             isLoading = true
             print("❌ Fetch Error：\(error)")
@@ -54,12 +50,7 @@ class IdiomsStore: ObservableObject {
         IdiomsList.append(addItem)
 
         do {
-            let url = URL(string: "\(Cloudflare_Workers_URL)/add_idioms")!
-            var request = URLRequest(url: url)
-            request.httpMethod = "POST"
-            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            request.httpBody = try JSONEncoder().encode(addItem)
-            _ = try await URLSession.shared.data(for: request)
+            try await WorkersAPI.post("add_idioms", body: addItem)
         } catch {
             print("❌ Add failed:", error)
             IdiomsList.removeAll { $0.id == addItem.id }
@@ -73,12 +64,7 @@ class IdiomsStore: ObservableObject {
         IdiomsList[index] = updatedItem
 
         do {
-            let url = URL(string: "\(Cloudflare_Workers_URL)/update_idioms")!
-            var request = URLRequest(url: url)
-            request.httpMethod = "POST"
-            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            request.httpBody = try JSONEncoder().encode(updatedItem)
-            _ = try await URLSession.shared.data(for: request)
+            try await WorkersAPI.post("update_idioms", body: updatedItem)
         } catch {
             print("❌ Update failed:", error)
             IdiomsList[index] = original

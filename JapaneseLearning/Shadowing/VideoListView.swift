@@ -91,23 +91,30 @@ struct VideoListView: View {
                                 .padding(.horizontal, 16)
                                 .padding(.vertical, sizeClass_regular ? 10 : 2)
 
-                                LazyVGrid(columns: columns) {
+                                ZStack {
+                                    if let currentID = selectedPlaylistID {
 
-                                    ForEach(filteredVideos) { video in
-                                        Button {
-                                            selectedVideo = video
-                                        } label: {
-                                            videoListItemView(video)
+                                        LazyVGrid(columns: columns) {
+
+                                            ForEach(filteredVideos) { video in
+                                                Button {
+                                                    selectedVideo = video
+                                                } label: {
+                                                    videoListItemView(video)
+                                                }
+                                                .buttonStyle(.plain)
+                                            }
                                         }
-                                        .buttonStyle(.plain)
+                                        .id(currentID)
+                                        .transition(.opacity)
                                     }
                                 }
+                                .animation(.easeInOut(duration: 0.5), value: selectedPlaylistID)
                                 .padding(.horizontal, 16)
                                 .padding(.bottom, 20)
                             }
                         }
                     }
-                    .animation(.spring(response: 0.5, dampingFraction: 0.8), value: selectedPlaylistID)
                     .navigationDestination(item: $selectedVideo) { video in
                         VideoContentView(videoID: video.id)
                             .toolbarColorScheme(.dark, for: .navigationBar)

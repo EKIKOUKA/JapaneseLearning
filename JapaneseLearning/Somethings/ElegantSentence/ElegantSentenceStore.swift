@@ -28,10 +28,7 @@ class ElegantSentenceStore: ObservableObject {
     @MainActor
     func fetchAll() async {
         do {
-            let url = URL(string: "\(Cloudflare_Workers_URL)/fetch_elegant_sentence")!
-            let (data, _) = try await URLSession.shared.data(from: url)
-            let response = try JSONDecoder().decode([ElegantSentenceItem].self, from: data)
-            ElegantSentenceList = response
+            ElegantSentenceList = try await WorkersAPI.get("fetch_elegant_sentence")
             try? await Task.sleep(nanoseconds: 100_000_000)
             isReady = true
         } catch {
@@ -46,12 +43,7 @@ class ElegantSentenceStore: ObservableObject {
         ElegantSentenceList.append(addItem)
 
         do {
-            let url = URL(string: "\(Cloudflare_Workers_URL)/add_elegant_sentence")!
-            var request = URLRequest(url: url)
-            request.httpMethod = "POST"
-            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            request.httpBody = try JSONEncoder().encode(addItem)
-            _ = try await URLSession.shared.data(for: request)
+            try await WorkersAPI.post("add_elegant_sentence", body: addItem)
         } catch {
             print("❌ Add failed:", error)
             ElegantSentenceList.removeAll { $0.id == addItem.id }
@@ -65,12 +57,7 @@ class ElegantSentenceStore: ObservableObject {
         ElegantSentenceList[index] = updatedItem
 
         do {
-            let url = URL(string: "\(Cloudflare_Workers_URL)/update_elegant_sentence")!
-            var request = URLRequest(url: url)
-            request.httpMethod = "POST"
-            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            request.httpBody = try JSONEncoder().encode(updatedItem)
-            _ = try await URLSession.shared.data(for: request)
+            try await WorkersAPI.post("update_elegant_sentence", body: updatedItem)
         } catch {
             print("❌ Update failed:", error)
             ElegantSentenceList[index] = original
