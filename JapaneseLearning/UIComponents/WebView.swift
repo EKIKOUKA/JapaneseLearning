@@ -276,36 +276,26 @@ struct WebView: UIViewRepresentable {
     }
 
     func jsForHost(_ host: String) -> String? {
+        var js: String?
 
-        if host.contains("netflix.com") {
-            return SiteRule.Netflix
-        }
+        if host.contains("netflix.com") { js = SiteRule.Netflix }
+        else if host.contains("hulu.jp") { js = SiteRule.Hulu }
+        else if host.contains("abema.tv") { js = SiteRule.ABEMA }
+        else if host.contains("video.unext.jp") { js = SiteRule.UNEXT }
+        else if host.contains("themoviedb.org") { js = SiteRule.THEMOVIE }
+        else if host.contains("tv.apple.com") { js = SiteRule.AppleTV }
+        else if host.contains("fod.fujitv.co") { js = SiteRule.FOD }
+        else { js = SiteRule.Others }
 
-        if host.contains("hulu.jp") {
-            return SiteRule.Hulu
-        }
+        guard let js else { return nil }
 
-        if host.contains("abema.tv") {
-            return SiteRule.ABEMA
-        }
-
-        if host.contains("video.unext.jp") {
-            return SiteRule.UNEXT
-        }
-
-        if host.contains("themoviedb.org") {
-            return SiteRule.THEMOVIE
-        }
-
-        if host.contains("tv.apple.com") {
-            return SiteRule.AppleTV
-        }
-
-        if host.contains("fod.fujitv.co") {
-            return SiteRule.FOD
-        }
-
-        return SiteRule.Others
+        // 包裝一次，所有頁面統一加 top padding
+        return """
+            (function () {
+                \(js)
+                document.body.style.paddingTop = '110px';
+            })();
+        """
     }
 
     func updateUIView(_ webView: WKWebView, context: Context) {

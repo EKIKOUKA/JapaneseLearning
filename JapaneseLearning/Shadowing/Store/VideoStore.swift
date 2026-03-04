@@ -32,8 +32,6 @@ class VideoStore {
     }
     @MainActor
     func addVideo(_ video: VideoItem) async {
-        guard let url = URL(string: "\(Cloudflare_Workers_URL)/add_video") else { return }
-
         do {
             try await WorkersAPI.post("add_video", body: video)
             videos.insert(video, at: 0)
@@ -223,20 +221,15 @@ class VideoStore {
     }
 
     private func detectYouTubeURLType(from url: String) -> YouTubeURLType {
-        guard let components = URLComponents(string: url),
-              let host = components.host else {
-            return .unknown
-        }
+        guard let components = URLComponents(string: url) else { return .unknown }
 
         let queryItems = components.queryItems ?? []
 
-        let videoID = queryItems.first(where: { $0.name == "v" })?.value
-        let playListID = queryItems.first(where: { $0.name == "list" })?.value
-
-        if let playListID {
+        if queryItems.contains(where: { $0.name == "list" }) {
             return .playlist
         }
-        if let videoID {
+
+        if queryItems.contains(where: { $0.name == "v" }) {
             return .single
         }
 

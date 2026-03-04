@@ -131,17 +131,6 @@ struct SettingsSheetGrammarView: View {
                     }
                 }
 
-                Section(header: Text("機能設定")) {
-
-                    Button {
-                        Task {
-                            await store.fetchAll()
-                        }
-                    } label: {
-                        Text("再読み込み")
-                    }
-                }
-
                 Section(header: Text("ストレージ"), footer: Text("キャッシュを削除すると、一時的に保存されたデータが削除されます。")) {
 
                     HStack {

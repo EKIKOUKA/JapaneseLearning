@@ -8,7 +8,6 @@
 import SwiftUI
 
 struct ContentView: View {
-
     @Environment(AppNavigationStore.self) private var navigationStore
     @Environment(VideoStore.self) private var videoStore
     @StateObject var grammarStore = GrammarStore()
@@ -46,13 +45,13 @@ struct ContentView: View {
                         switch destination {
                             case .list(let level, let title):
                                 GrammarListView(level: level, title: title, store: grammarStore)
-                            case .details(let id):
-                                GrammarDetailLoader(id: id, store: grammarStore)
-                        }
+                            case .details(let id, let level):
+                                GrammarDetailLoader(id: id, level: level, store: grammarStore)
+                            }
                     }
                     .navigationDestination(for: QuickActionTarget.self) { target in
-                        if case .lastGrammar(let id, _) = target {
-                            GrammarDetailLoader(id: id, store: grammarStore)
+                        if case .lastGrammar(let id, let level) = target {
+                            GrammarDetailLoader(id: id, level: level, store: grammarStore)
                         }
                     }
             }
@@ -69,7 +68,7 @@ struct ContentView: View {
                 let title = item?.title ?? "\(level) 文法"
                 grammarPath = NavigationPath()
                 grammarPath.append(GrammarNavDestination.list(level: level, title: title))
-                grammarPath.append(GrammarNavDestination.details(id: id))
+                grammarPath.append(GrammarNavDestination.details(id: id, level: level))
             } else if case .resumeVideo = target {
                 videoPath.removeLast(videoPath.count)
                 videoPath.append(target)

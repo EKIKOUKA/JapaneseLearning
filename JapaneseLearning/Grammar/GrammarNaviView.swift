@@ -54,10 +54,6 @@ struct GrammarNaviView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                 .padding(.top, 90)
-
-                if store.isLoading {
-                    ProgressLoadingView()
-                }
             }
             .padding()
             .navigationTitle("日本語文法")

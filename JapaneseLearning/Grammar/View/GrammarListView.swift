@@ -13,6 +13,7 @@ struct GrammarListView: View {
 
     @State private var searchText = ""
     @State private var showImportantOnly = false
+    @State private var isReady: Bool = false
 
     @Environment(SettingsStore.self) private var settingsStore
     @ObservedObject var store: GrammarStore
@@ -27,7 +28,7 @@ struct GrammarListView: View {
 
                     ForEach(filteredItems) { item in
 
-                        NavigationLink(value: GrammarNavDestination.details(id: item.id)) {
+                        NavigationLink(value: GrammarNavDestination.details(id: item.id, level: level)) {
                             Text(item.title)
                             if settingsStore.showGrammarListItemImportantImage {
                                 if item.isImportant {
@@ -144,10 +145,15 @@ struct GrammarListView: View {
                     }
                 }
             }
+            .opacity(store.isReady ? 1 : 0)
+            .animation(.easeIn(duration: 0.15), value: store.isReady)
             .searchable(text: $searchText, prompt: "文法を検索")
         }
         .toolbar(.hidden, for: .tabBar)
         .navigationTitle(title)
+        .task(id: level) {
+            await store.fetchList(level: level)
+        }
     }
 
     var filteredItems: [GrammarItem] {

@@ -11,17 +11,14 @@ import Combine
 class GrammarStore: ObservableObject {
     @Published var grammars: [GrammarItem] = []
     @Published var isLoading = false
-
-    init() {
-        Task { @MainActor in
-            await fetchAll()
-        }
-    }
+    @Published var isReady = false
 
     @MainActor
-    func fetchAll() async {
+    func fetchList(level: String) async {
         do {
-            self.grammars = try await WorkersAPI.get("fetch_grammars")
+            self.grammars = try await WorkersAPI.get("fetch_grammars?level=\(level)")
+            try? await Task.sleep(nanoseconds: 100_000_000)
+            self.isReady = true
         } catch {
             self.isLoading = true
             print("❌ Fetch Error：\(error)")

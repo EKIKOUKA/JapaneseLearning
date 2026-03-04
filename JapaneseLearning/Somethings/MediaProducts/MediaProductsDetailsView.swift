@@ -20,7 +20,7 @@ struct MediaProductsDetailsView: View {
             VStack {
                 if let urlString = item.detailsURL, let url = URL(string: urlString) {
                     WebView(url: url, isLoading: $isWebLoading)
-                        .ignoresSafeArea(.container, edges: .bottom)
+                        .ignoresSafeArea(.all)
                 } else {
                     ContentUnavailableView(
                         "リンクなし",
