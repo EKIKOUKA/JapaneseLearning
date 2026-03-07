@@ -125,7 +125,7 @@ class RubyUIView: UIView {
 
     var attributedText: NSAttributedString? {
         didSet {
-            guard let attr = attributedText else {
+            guard attributedText != nil else {
                 cachedFrame = nil
                 return
             }
@@ -150,14 +150,14 @@ class RubyUIView: UIView {
         super.layoutSubviews()
         if bounds.width > 0 && bounds.width != preferredMaxLayoutWidth {
             preferredMaxLayoutWidth = bounds.width
+            cachedFrame = nil
         }
     }
 
     override var intrinsicContentSize: CGSize {
-        guard let attributedText = attributedText, let framesetter = cachedFramesetter else { return .zero }
+        guard let attributedText = attributedText, let _ = cachedFramesetter else { return .zero }
 
         let width = preferredMaxLayoutWidth > 0 ? preferredMaxLayoutWidth : 100
-
         let constraints = CGSize(width: width, height: .greatestFiniteMagnitude)
         let size = CTFramesetterSuggestFrameSizeWithConstraints(cachedFramesetter!, CFRangeMake(0, attributedText.length), nil, constraints, nil)
 
@@ -166,24 +166,24 @@ class RubyUIView: UIView {
 
     override func draw(_ rect: CGRect) {
         guard let context = UIGraphicsGetCurrentContext(),
-          let _ = attributedText,
           let framesetter = cachedFramesetter else { return }
 
         context.textMatrix = .identity
         context.translateBy(x: 0, y: bounds.size.height)
         context.scaleBy(x: 1.0, y: -1.0)
 
-        let path = CGMutablePath()
-        path.addRect(bounds)
+        if cachedFrame == nil {
+            let path = CGMutablePath()
+            path.addRect(bounds)
 
-        let frame = CTFramesetterCreateFrame(
-            framesetter,
-            CFRangeMake(0, 0),
-            path,
-            nil
-        )
-
-        CTFrameDraw(frame, context)
+            cachedFrame = CTFramesetterCreateFrame(
+                framesetter,
+                CFRangeMake(0, 0),
+                path,
+                nil
+            )
+        }
+        CTFrameDraw(cachedFrame!, context)
     }
 
     private func wordAt(tapIndex: Int, in text: String) -> String? {
@@ -210,21 +210,17 @@ class RubyUIView: UIView {
 
                 // 如果本來就超過1字，直接返回
                 if tokenRange.length > 1 {
-                    let nsRange = NSRange(location: tokenRange.location,
-                                          length: tokenRange.length)
+                    let nsRange = NSRange(location: tokenRange.location, length: tokenRange.length)
                     return nsText.substring(with: nsRange)
                 }
 
                 // 2️⃣ 只有1字 → 嘗試擴展（最多４字）
-
                 var start = tokenRange.location
                 var end = tokenRange.location + 1
                 let maxLength = 4
 
                 func isKanji(_ index: Int) -> Bool {
                     guard index >= 0 && index < length else { return false }
-//                    let scalar = text[text.index(text.startIndex, offsetBy: index)].unicodeScalars.first!.value
-//                    return (0x4E00...0x9FFF).contains(scalar)
                     let char = nsText.character(at: index)
                     return (0x4E00...0x9FFF).contains(char)
                 }

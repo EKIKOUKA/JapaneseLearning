@@ -39,7 +39,7 @@ struct VideoContentView: View {
             Group {
 
                 if video == nil {
-//                    ProgressLoadingView()
+                    // ProgressLoadingView()
                     Color.clear.frame(height: 10)
                 } else {
 
@@ -192,7 +192,6 @@ struct videoContentArea: View {
                     Image(uiImage: image)
                         .resizable()
                         .scaledToFill()
-//                        .clipped()
                         .opacity(playerVM.isVideoLoading ? 1 : 0)
                 }
 
@@ -406,7 +405,7 @@ struct SubtitlesRowView: View {
             .fixedSize(horizontal: false, vertical: true)
             .padding(.vertical, 6)
             .padding(.horizontal, 20)
-            .blur(radius: isActive || blur_opacity ? 0 : 1.5)
+            .blur(radius: isActive || !blur_opacity ? 0 : 1.5)
             .opacity(!isActive || (tapHighlight && isActive) ? 0.5 : 1.0)
             .scaleEffect(isActive ? 1.02 : 1.0, anchor: .leading)
             .animation(.spring(response: 0.35, dampingFraction: 0.7), value: isActive)

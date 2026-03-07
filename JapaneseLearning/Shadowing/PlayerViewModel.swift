@@ -420,7 +420,6 @@ final class PlayerViewModel: ObservableObject {
 
         self.playPlayer()
         // 延遲一個 runloop，避免 boundary observer 在 seek 完成瞬間觸發
-//      DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
         try? await Task.sleep(nanoseconds: 100_000_000)
         self.isSeeking = false
     }
@@ -455,12 +454,10 @@ final class PlayerViewModel: ObservableObject {
 
     func playPlayer() {
         player.playImmediately(atRate: rate)
-        isPlaying = true
     }
 
     func pausePlayer() {
         player.pause()
-        isPlaying = false
     }
 
     func toggleSingleLineLoop() {

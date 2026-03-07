@@ -9,7 +9,6 @@ import SwiftUI
 import Observation
 
 struct AppSettings: Codable {
-
     // Grammar
     var showGrammarListAddButton: Bool = false
     var showGrammarListCount: Bool = true
@@ -45,7 +44,7 @@ struct AppSettings: Codable {
         }
     }
 
-    var videoSubtitleDimInactiveLines: Bool = false
+    var videoSubtitleDimInactiveLines: Bool = true
     var videoAutoJumpToNextLine: Bool = false
 
     // Somethings

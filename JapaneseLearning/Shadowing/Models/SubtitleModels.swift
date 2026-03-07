@@ -35,8 +35,12 @@ struct RubyWordRange {
 struct RubyWord: Codable, Equatable {
     let surface: String
     let reading: String?
-    let start: Int?
-    let length: Int?
+
+    init(from decoder: any Decoder) throws {
+        var container = try decoder.unkeyedContainer()
+        surface = try container.decode(String.self)
+        reading = try container.decodeIfPresent(String.self)
+    }
 }
 
 
