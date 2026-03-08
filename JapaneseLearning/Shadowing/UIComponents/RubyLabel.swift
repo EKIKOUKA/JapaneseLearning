@@ -125,12 +125,15 @@ class RubyUIView: UIView {
 
     var attributedText: NSAttributedString? {
         didSet {
-            guard attributedText != nil else {
+            guard let attributedText else {
                 cachedFrame = nil
+                cachedFramesetter = nil
                 return
             }
 
-            cachedFramesetter = CTFramesetterCreateWithAttributedString(attributedText! as CFAttributedString)
+            cachedFramesetter = CTFramesetterCreateWithAttributedString(attributedText as CFAttributedString)
+            cachedFrame = nil
+
             invalidateIntrinsicContentSize()
             setNeedsDisplay()
         }

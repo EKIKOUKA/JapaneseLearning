@@ -79,8 +79,9 @@ final class SettingsStore {
             get: { Color(uiColor: self.settings.videoSubtitleFontUIColor) },
             set: { newColor in
                 // 將 SwiftUI Color 轉回 UIColor 並存入 settings
-                self.settings.videoSubtitleFontUIColor = UIColor(newColor)
-                self.save() // 確保 UI 刷新
+                var newSettings = self.settings
+                newSettings.videoSubtitleFontUIColor = UIColor(newColor)
+                self.settings = newSettings // 確保 UI 刷新
             }
         )
     }
