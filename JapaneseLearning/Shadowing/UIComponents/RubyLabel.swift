@@ -82,7 +82,7 @@ struct RubyLabel: UIViewRepresentable {
                 ]
 
                 let annotation = CTRubyAnnotationCreate(
-                    .auto,
+                    .center,
                     .auto,
                     0.45,
                     &rubyAnnotations

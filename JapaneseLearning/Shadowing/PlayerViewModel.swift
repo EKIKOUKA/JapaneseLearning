@@ -20,6 +20,8 @@ final class PlayerViewModel: ObservableObject {
     var settingsStore: SettingsStore?
     private var loadStartTime: Date?
 
+    let synthesizer = AVSpeechSynthesizer()
+
     // Data Source (Runtime Only)
     @Published var currentVideoItem: VideoItem?
 
@@ -605,10 +607,22 @@ final class PlayerViewModel: ObservableObject {
 
             DispatchQueue.main.async {
                 self.activeLookUpWordIdentifiable = LookUpWordIdentifiable(word: word)
+
+                Task {
+                    try? await Task.sleep(nanoseconds: 450_000_000)
+                    self.speakWork(word)
+                }
             }
         } else {
             UINotificationFeedbackGenerator().notificationOccurred(.warning)
         }
+    }
+
+    func speakWork(_ word: String) {
+        let utterance = AVSpeechUtterance(string: word)
+        utterance.voice = AVSpeechSynthesisVoice(language: "en-US")
+        utterance.rate = 0.5
+        synthesizer.speak(utterance)
     }
 
     func currentLineText() -> String? {

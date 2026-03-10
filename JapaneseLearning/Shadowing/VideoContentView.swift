@@ -137,7 +137,6 @@ struct VideoContentView: View {
             Task {
                 if scenePhase == .background {
                     await playerVM.saveCurrentProgress()
-                    playerVM.playPlayer()
                 }
             }
         }
