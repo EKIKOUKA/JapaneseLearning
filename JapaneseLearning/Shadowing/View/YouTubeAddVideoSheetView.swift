@@ -52,6 +52,7 @@ struct YouTubeAddVideoSheetView: View {
                                 .tint(.red)
                             }
                         }
+                        .opacity(store.videoListIsReady ? 1 : 0)
                     }
                 }
             }
@@ -85,7 +86,9 @@ struct YouTubeAddVideoSheetView: View {
                 }
             }
             .task {
-                await store.fetchVideoPlaylist()
+                if store.videoList.isEmpty {
+                    await store.fetchVideoPlaylist()
+                }
             }
         }
     }

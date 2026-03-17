@@ -15,7 +15,6 @@ struct MediaProductsDetailsView: View {
 
     var body: some View {
         ZStack {
-
             VStack {
                 if let urlString = item.detailsURL, let url = URL(string: urlString) {
                     WebView(url: url, isLoading: $isWebLoading)

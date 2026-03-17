@@ -5,6 +5,7 @@
 //  Created by 宇都宮　誠 on R 7/11/28.
 //
 
+import SwiftUI
 import Foundation
 import Combine
 
@@ -15,10 +16,13 @@ class GrammarStore: ObservableObject {
 
     @MainActor
     func fetchList(level: String) async {
+        self.isReady = false
+
         do {
             self.grammars = try await WorkersAPI.get("fetch_grammars?level=\(level)")
-            try? await Task.sleep(nanoseconds: 100_000_000)
-            self.isReady = true
+            withAnimation(.easeIn(duration: 0.2)) {
+                self.isReady = true
+            }
         } catch {
             self.isLoading = true
             print("❌ Fetch Error：\(error)")

@@ -5,6 +5,7 @@
 //  Created by 宇都宮　誠 on R 8/01/20.
 //
 
+import SwiftUI
 import Observation
 import Foundation
 
@@ -13,7 +14,9 @@ class VideoStore {
     var videos: [VideoItem] = []
     var videoList: [PlaylistListItem] = []
     var currentResumeVideoID: String?
-    var isLoading = true
+    var isLoading = false
+    var videosIsReady: Bool = false
+    var videoListIsReady: Bool = false
 
     init() {
         Task { @MainActor in
@@ -25,8 +28,11 @@ class VideoStore {
     func fetchVideos() async {
         do {
             self.videos = try await WorkersAPI.get("fetch_videos")
-            isLoading = false
+            withAnimation(.easeIn(duration: 0.3)) {
+                videosIsReady = true
+            }
         } catch {
+            isLoading = true
             print("❌ Fetch Error：\(error)")
         }
     }
@@ -70,8 +76,14 @@ class VideoStore {
     // Playlist
     @MainActor
     func fetchVideoPlaylist() async {
+        videoListIsReady = false
+
         do {
             self.videoList = try await WorkersAPI.get("fetch_video_playlist")
+            try? await Task.sleep(nanoseconds: 100_000_000)
+            withAnimation(.easeIn(duration: 0.25)) {
+                videoListIsReady = true
+            }
         } catch {
             print("❌ Fetch Error：\(error)")
         }

@@ -5,6 +5,7 @@
 //  Created by 宇都宮　誠 on 2025/12/19.
 //
 
+import SwiftUI
 import Foundation
 import Combine
 
@@ -29,8 +30,9 @@ class ElegantSentenceStore: ObservableObject {
     func fetchAll() async {
         do {
             ElegantSentenceList = try await WorkersAPI.get("fetch_elegant_sentence")
-            try? await Task.sleep(nanoseconds: 100_000_000)
-            isReady = true
+            withAnimation(.easeIn(duration: 0.2)) {
+                isReady = true
+            }
         } catch {
             isLoading = true
             isReady = false

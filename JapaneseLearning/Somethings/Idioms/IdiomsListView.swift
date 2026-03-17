@@ -42,8 +42,9 @@ struct IdiomsListView: View {
                     }
                 }
             }
-            .animation(.snappy(duration: 0.2, extraBounce: 0), value: store.expandedIDs)
             .searchable(text: $searchText, prompt: "入力して検索")
+            .animation(.snappy(duration: 0.2, extraBounce: 0), value: store.expandedIDs)
+            .opacity(store.isReady ? 1 : 0)
 
             if store.isLoading {
                 ProgressLoadingView()

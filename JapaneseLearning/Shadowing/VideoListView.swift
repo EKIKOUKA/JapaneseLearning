@@ -106,11 +106,12 @@ struct VideoListView: View {
                                         .transition(.opacity)
                                     }
                                 }
-                                .animation(.easeInOut(duration: 0.5), value: selectedPlaylistID)
+                                .animation(.easeInOut(duration: 0.3), value: selectedCategory)
                                 .padding(.horizontal, 16)
                                 .padding(.bottom, 20)
                             }
-                        }
+                            .opacity(store.videosIsReady ? 1 : 0)
+//                        }
                     }
                     .navigationDestination(item: $selectedVideo) { video in
                         VideoContentView(videoID: video.id)

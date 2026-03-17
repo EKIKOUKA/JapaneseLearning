@@ -12,11 +12,8 @@ struct SomethingsView: View {
     @Environment(\.horizontalSizeClass) private var sizeClass
 
     var body: some View {
-
         NavigationStack {
-
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 16), count: 2), spacing: 16) {
-
                 btnTextView("支那語に無い漢字") {
                     KanjiWordsDiffToShinaLangView()
                 }

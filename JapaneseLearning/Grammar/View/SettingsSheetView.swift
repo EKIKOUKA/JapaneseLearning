@@ -127,7 +127,6 @@ struct SettingsSheetGrammarView: View {
                 }
 
                 Section(header: Text("ストレージ"), footer: Text("キャッシュを削除すると、一時的に保存されたデータが削除されます。")) {
-
                     HStack {
                         Text("使用容量")
                         Spacer()

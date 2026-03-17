@@ -37,7 +37,7 @@ struct ShadowingSettingsSheetView: View {
                     }
                 }
 
-                Section(header: Text("字幕の色を選択")) {
+                Section(header: Text("字幕の色")) {
                     ColorPicker("字幕の色", selection: settingsStore.videoSubtitleFontColor, supportsOpacity: true)
                 }
 
@@ -68,12 +68,11 @@ struct ShadowingSettingsSheetView: View {
                     }
                 }
 
-                Section(header: Text("振り仮名の表示")) {
-
+                Section(header: Text("発音の表示")) {
                     Toggle(isOn: $settingsStoreBindable.showShadowingSubtitlesRuby) {
                         VStack(alignment: .leading) {
-                            Text("振り仮名を表示")
-                            Text("漢字の上に平仮名を表示する")
+                            Text("発音を表示")
+                            Text("単語の上に発音を表示する")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }

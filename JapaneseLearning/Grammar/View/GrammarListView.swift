@@ -129,9 +129,8 @@ struct GrammarListView: View {
                     }
                 }
             }
-            .opacity(store.isReady ? 1 : 0)
-            .animation(.easeIn(duration: 0.15), value: store.isReady)
             .searchable(text: $searchText, prompt: "文法を検索")
+            .opacity(store.isReady ? 1 : 0)
         }
         .toolbar(.hidden, for: .tabBar)
         .navigationTitle(title)

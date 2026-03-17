@@ -27,11 +27,8 @@ struct MemoryHardWordsDetailsView: View {
     }
 
     var body: some View {
-
         VStack {
-
             List {
-
                 Section(header: Text("単語")) {
                     ZStack(alignment: .topLeading) {
                         if word.isEmpty {

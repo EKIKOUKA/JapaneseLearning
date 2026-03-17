@@ -5,6 +5,7 @@
 //  Created by 宇都宮　誠 on 2025/12/19.
 //
 
+import SwiftUI
 import Foundation
 import Combine
 
@@ -19,6 +20,7 @@ class MemoryHardWordsStore: ObservableObject {
     @Published var MemoryHardWordsList: [MemoryHardWordsItem] = []
     @Published var expandedIDs: Set<Int> = []
     @Published var isLoading = false
+    @Published var isReady: Bool = false
 
     func toggleExpand(_ id: Int) {
         if expandedIDs.contains(id) {
@@ -37,13 +39,13 @@ class MemoryHardWordsStore: ObservableObject {
 
     @MainActor
     func fetchAll() async {
-        isLoading = true
-
         do {
             MemoryHardWordsList = try await WorkersAPI.get("fetch_memory_hard_words")
-            isLoading = false
+            withAnimation(.easeIn(duration: 0.2)) {
+                isReady = true
+            }
         } catch {
-            isLoading = false
+            isLoading = true
             print("❌ Fetch Error：\(error)")
         }
     }

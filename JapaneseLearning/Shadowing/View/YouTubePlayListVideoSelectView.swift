@@ -18,6 +18,7 @@ struct YouTubePlayListVideoSelectView: View {
     @Environment(VideoStore.self) private var store
     @State private var videos: [PlayListVideoItem] = []
     @State private var selectedIDs = Set<String>()
+    @State private var isReady: Bool = false
 
     var body: some View {
         NavigationStack {
@@ -40,9 +41,13 @@ struct YouTubePlayListVideoSelectView: View {
                     .disabled(selectedIDs.isEmpty)
                 }
             }
+            .opacity(isReady ? 1 : 0)
         }
         .task {
             videos = await store.fetchPlaylistVideos(playlistID: playlistID)
+            withAnimation(.easeIn(duration: 0.15)) {
+                isReady = true
+            }
         }
     }
 

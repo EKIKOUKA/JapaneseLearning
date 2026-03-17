@@ -188,7 +188,7 @@ struct videoContentArea: View {
                 AVPlayerControllerView(player: playerVM.player)
                     .opacity(playerVM.isVideoLoading ? 0 : 1)
             }
-            .animation(.easeInOut(duration: 0.75), value: playerVM.isVideoLoading)
+            .animation(.easeInOut(duration: 1.0), value: playerVM.isVideoLoading)
             .frame(width: videoWidth, height: baseHeight)
             .cornerRadius(30)
             .frame(
@@ -212,7 +212,7 @@ struct videoContentArea: View {
                     drawerOffset = min(max(offset, 0), baseHeight)
                 }
                 .onEnded { _ in
-                    let shouldCollapse = drawerOffset > baseHeight * 0.35
+                    let shouldCollapse = drawerOffset > baseHeight * 0.25
 
                     if shouldCollapse {
                         withAnimation(.spring(response: 0.3, dampingFraction: 1.0)) {

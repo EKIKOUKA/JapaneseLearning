@@ -31,9 +31,7 @@ struct MediaProductsDetailsEditorView: View {
     }
 
     var body: some View {
-
         List {
-
             Section("映像作品") {
                 ZStack(alignment: .topLeading) {
                     if title.isEmpty {

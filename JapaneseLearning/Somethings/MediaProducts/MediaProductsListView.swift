@@ -27,15 +27,10 @@ struct MediaProductsListView: View {
                 ProgressLoadingView()
             } else {
                 NavigationStack {
-
                     VStack {
-
                         List {
-
                             Section {
-
                                 ForEach(filteredItems) { item in
-
                                     NavigationLink(destination: MediaProductsDetailsView(item: item, store: store)) {
                                         Text(item.title)
                                     }
@@ -80,7 +75,6 @@ struct MediaProductsListView: View {
                         .opacity(store.isReady ? 1 : 0)
                         .animation(.default, value: selectedStatus)
                         .animation(.default, value: sortOrder)
-                        .animation(.easeIn(duration: 0.15), value: store.isReady)
                         .searchable(text: $searchText, prompt: "入力して検索")
                     }
                 }
@@ -192,11 +186,8 @@ private struct SettingsSheetView: View {
         @Bindable var settingsStoreBindable = settingsStore
 
         NavigationStack {
-
             Form {
-
                 Section(header: Text("表示設定")) {
-
                     Toggle(isOn: $settingsStoreBindable.showMediaProductsListCount) {
                         VStack(alignment: .leading) {
                             Text("件数を表示")

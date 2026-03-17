@@ -5,6 +5,7 @@
 //  Created by 宇都宮　誠 on 2025/12/19.
 //
 
+import SwiftUI
 import Foundation
 import Combine
 
@@ -19,6 +20,7 @@ class SampleRubyWordsStore: ObservableObject {
     @Published var SampleRubyWordsList: [SampleRubyWordsItem] = []
     @Published var expandedIDs: Set<Int> = []
     @Published var isLoading = false
+    @Published var isReady: Bool = false
 
     func toggleExpand(_ id: Int) {
         if expandedIDs.contains(id) {
@@ -39,6 +41,9 @@ class SampleRubyWordsStore: ObservableObject {
     func fetchAll() async {
         do {
             SampleRubyWordsList = try await WorkersAPI.get("fetch_sample_ruby_words")
+            withAnimation(.easeIn(duration: 0.2)) {
+                isReady = true
+            }
         } catch {
             isLoading = false
             print("❌ Fetch Error：\(error)")

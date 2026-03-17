@@ -243,7 +243,6 @@ struct WebView: UIViewRepresentable {
     }
 
     func makeUIView(context: Context) -> WKWebView {
-
         let config = WKWebViewConfiguration()
 
         if let host = url.host {

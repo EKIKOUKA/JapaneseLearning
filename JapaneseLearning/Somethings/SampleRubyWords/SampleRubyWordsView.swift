@@ -15,13 +15,9 @@ struct SampleRubyWordsView: View {
     @State private var showSettingSheet = false
 
     var body: some View {
-
         ZStack {
-
             List {
-
                 Section {
-
                     ForEach(filteredItems) { item in
                         SampleRubyWordsItemView(
                             item: item,
@@ -46,8 +42,9 @@ struct SampleRubyWordsView: View {
                     }
                 }
             }
-            .animation(.snappy(duration: 0.2, extraBounce: 0), value: store.expandedIDs)
             .searchable(text: $searchText, prompt: "入力して検索")
+            .animation(.snappy(duration: 0.2, extraBounce: 0), value: store.expandedIDs)
+            .opacity(store.isReady ? 1 : 0)
 
             if store.isLoading {
                 ProgressLoadingView()
@@ -126,9 +123,7 @@ struct SampleRubyWordsItemView: View {
     let store: SampleRubyWordsStore
 
     var body: some View {
-
         VStack(alignment: .leading, spacing: 0) {
-
             HStack {
                 Text(item.word)
                     .font(.headline)
@@ -165,7 +160,6 @@ struct SampleRubyWordsItemView: View {
 
 
 private struct SettingsSheetView: View {
-
     @Environment(SettingsStore.self) private var settingsStore
     @ObservedObject var store: SampleRubyWordsStore
 
@@ -173,11 +167,8 @@ private struct SettingsSheetView: View {
         @Bindable var settingsStoreBindable = settingsStore
 
         NavigationStack {
-
             Form {
-
                 Section(header: Text("表示設定")) {
-
                     Toggle(isOn: $settingsStoreBindable.showSampleRubyWordsListCount) {
                         VStack(alignment: .leading) {
                             Text("件数を表示")
