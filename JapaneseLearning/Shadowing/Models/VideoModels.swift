@@ -7,6 +7,31 @@
 
 import Foundation
 
+enum PlaylistCategory: String, CaseIterable, Identifiable {
+    case shadowing
+    case `default`
+    case drama
+
+    var id: Self { self }
+
+    var title: String {
+        switch self {
+            case .shadowing: return "シャドーイング"
+            case .default: return "デフォルト"
+            case .drama: return "ドラマシーン"
+        }
+    }
+
+    var playlistID: String? {
+        switch self {
+            case .shadowing: return nil
+            case .default: return "PLEC5UjKGbYI2TeWkpUE-RocpVhqXwwk-9"
+            case .drama: return "PLEC5UjKGbYI0sAKuiEjWrH82PG_vxrLF0"
+        }
+    }
+}
+
+
 // レスポンス
 struct PlaylistResponse: Decodable {
     let nextPageToken: String?
@@ -56,6 +81,7 @@ struct VideoItem: Identifiable, Hashable, Codable {
     var rate: Float? = nil
     let thumbnailURL: URL?
     var playlistID: String?
+    var videoAspectRatio: CGFloat
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -64,6 +90,7 @@ struct VideoItem: Identifiable, Hashable, Codable {
         case rate
         case thumbnailURL = "thumbnail"
         case playlistID = "playlist_id"
+        case videoAspectRatio = "video_aspectr_atio"
     }
 }
 

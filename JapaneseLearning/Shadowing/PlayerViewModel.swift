@@ -45,6 +45,9 @@ final class PlayerViewModel: ObservableObject {
     @Published var nowPlayingTitle: String = ""
     @Published var nowPlayingArtwork: UIImage?
 
+    private var videoAspectRatio: CGFloat = 1.7777777777777777 // video 16.0 / 9.0
+    private var hasResolvedAspectRatio = false
+
     // Loopup Status
     struct LookUpWordIdentifiable: Identifiable {
         let id = UUID()
@@ -61,6 +64,7 @@ final class PlayerViewModel: ObservableObject {
     private var boundaryObserver: Any?
     private var loopObserver: Any?
     private var captionBoundaryObserver: Any?
+    private var presentationSizeObserver: NSKeyValueObservation?
 
 
     init() {
@@ -140,6 +144,23 @@ final class PlayerViewModel: ObservableObject {
         item.canUseNetworkResourcesForLiveStreamingWhilePaused = true
 
         player.replaceCurrentItem(with: item)
+
+        presentationSizeObserver = item.observe(\.presentationSize, options: [.new]) { [weak self] item, _ in
+            guard let self else { return }
+
+            let size = item.presentationSize
+            guard size.width > 0 && size.height > 0 else { return }
+            let ratio = size.width / size.height
+
+            DispatchQueue.main.async {
+                if !self.hasResolvedAspectRatio {
+                    self.hasResolvedAspectRatio = true
+                    self.videoAspectRatio = ratio
+                    self.saveVideoAspectRatio()
+                }
+            }
+        }
+
         // 監聽系統拖動進度條或任何時間跳躍
         NotificationCenter.default.addObserver(
             self,
@@ -217,6 +238,15 @@ final class PlayerViewModel: ObservableObject {
             time: time_formatted
         )
         videoStore.currentResumeVideoID = videoItem.id
+    }
+
+    func saveVideoAspectRatio() {
+        guard let videoItem = currentVideoItem else { return }
+        if videoItem.videoAspectRatio != videoAspectRatio {
+            var updatedVideo = videoItem
+            updatedVideo.videoAspectRatio = videoAspectRatio
+            videoStore.updateVideoAspectRatio(updatedVideo)
+        }
     }
 
     @MainActor
@@ -297,11 +327,14 @@ final class PlayerViewModel: ObservableObject {
         guard nextIndex < captions.count else { return }
 
         let nextLine = captions[nextIndex]
+        // gap 可能為負數（TTML 有時會出現下一句 begin 早於上一句 end 的情況）
         let gap = nextLine.start - currentLine.end
-        let endTime = CMTime(seconds: currentLine.end, preferredTimescale: 600)
+        // 如果出現重疊字幕，優先以 nextLine.start 作為切換時間
+        let triggerSeconds = nextLine.start < currentLine.end ? nextLine.start : currentLine.end
+        let triggerTime = CMTime(seconds: triggerSeconds, preferredTimescale: 600)
 
         captionBoundaryObserver = player.addBoundaryTimeObserver(
-            forTimes: [NSValue(time: endTime)],
+            forTimes: [NSValue(time: triggerTime)],
             queue: .main
         ) { [weak self] in
             Task { @MainActor [weak self] in
@@ -319,6 +352,7 @@ final class PlayerViewModel: ObservableObject {
                     self.isSeeking = false
                     self.setupNextCaptionBoundaryObserver()
                 } else {
+                    // gap <= 0 表示字幕重疊，或幾乎無間隔
                     if gap <= 0.05 {
                         // 直接切換到下一行，並重新設置下一行的結束監聽
                         self.currentCaptionIndex = nextIndex
@@ -514,6 +548,9 @@ final class PlayerViewModel: ObservableObject {
 
         rateObserver?.invalidate()
         rateObserver = nil
+
+        presentationSizeObserver?.invalidate()
+        presentationSizeObserver = nil
 
         // 清循環狀態
         isLoopingSingleLine = false

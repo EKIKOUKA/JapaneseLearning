@@ -32,7 +32,7 @@ struct VideoContentView: View {
             let isLandscape = geo.size.width > geo.size.height
 
             let videoWidth = isLandscape ? fullWidth * 0.5 : (fullWidth - 36)
-            let currentVideoHeight = videoWidth * 9 / 16
+            let currentVideoHeight = videoWidth / (video?.videoAspectRatio ?? 1.7777777777777777)
 
             Group {
                 if video == nil {
@@ -45,8 +45,9 @@ struct VideoContentView: View {
                                 playerVM: playerVM,
                                 drawerOffset: $drawerOffset,
                                 lastDragOffset: $lastDragOffset,
-                                maxDrawerOffset: maxDrawerOffset,
+                                maxDrawerOffset: currentVideoHeight,
                                 containerWidth: fullWidth,
+                                videoAspectRatio: video?.videoAspectRatio ?? 1.7777777777777777,
                                 isLandscape: isLandscape
                             )
 
@@ -166,11 +167,12 @@ struct videoContentArea: View {
     @Binding var lastDragOffset: CGFloat
     let maxDrawerOffset: CGFloat
     let containerWidth: CGFloat
+    let videoAspectRatio: CGFloat
     let isLandscape: Bool
 
     var body: some View {
         let videoWidth = max(0, isLandscape ? containerWidth * 0.5 : (containerWidth - 36))
-        let baseHeight = max(0, videoWidth * 9 / 16)
+        let baseHeight = max(0, videoWidth / videoAspectRatio)
 
         VStack(spacing: 0) {
             if isLandscape {
@@ -195,6 +197,7 @@ struct videoContentArea: View {
                 height: isLandscape ? baseHeight : max(0, baseHeight - drawerOffset),
                 alignment: .bottom
             )
+            .aspectRatio(videoAspectRatio, contentMode: .fill)
             .clipped()
 
             if isLandscape {
@@ -639,7 +642,8 @@ struct AVPlayerControllerView: UIViewControllerRepresentable {
         player.allowsExternalPlayback = true
         vc.showsPlaybackControls = true
         vc.allowsPictureInPicturePlayback = false
-        vc.videoGravity = .resizeAspect
+        vc.videoGravity = .resizeAspectFill
+
         return vc
     }
 

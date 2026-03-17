@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import Foundation
 
 struct VideoListView: View {
     @Environment(VideoStore.self) private var store
@@ -20,26 +19,18 @@ struct VideoListView: View {
     @State private var pendingDeleteVideo: VideoItem?
     @State private var retryImageLoad = UUID()
 
-    private let defaultID = "PLEC5UjKGbYI2TeWkpUE-RocpVhqXwwk-9"
-    private let othersID = "others"
-    @State private var selectedPlaylistID: String? = "others"
+    @State private var selectedCategory: PlaylistCategory = .shadowing
 
     private var filteredVideos: [VideoItem] {
-        if selectedPlaylistID == defaultID {
-            return store.videos.filter { $0.playlistID == defaultID }
-        } else {
-            return store.videos.filter { $0.playlistID != defaultID } // != id1 && != id2
-        }
-    }
-    private var playlistCategories: [String] {
-        [othersID, defaultID]
-    }
-    private func shortTitle(for id: String?) -> String {
+        let targetID = selectedCategory.playlistID
+        let knownPlaylistIDs = PlaylistCategory.allCases.compactMap { $0.playlistID }
 
-        if id == defaultID {
-            return "デフォルト"
-        } else {
-            return "シャドーイング"
+        return store.videos.filter { video in
+            if let id = targetID {
+                return video.playlistID == id
+            } else {
+                return !knownPlaylistIDs.contains(video.playlistID ?? "")
+            }
         }
     }
 
@@ -76,11 +67,10 @@ struct VideoListView: View {
 //                            .padding(.top, 180)
 //                        } else {
                             VStack(spacing: 12) {
-
-                                Picker("Category", selection: $selectedPlaylistID) {
-                                    ForEach(playlistCategories, id: \.self) { id in
-                                        Text(shortTitle(for: id))
-                                            .tag(id as String?)
+                                Picker("Category", selection: $selectedCategory) {
+                                    ForEach(PlaylistCategory.allCases) { category in
+                                        Text(category.title)
+                                            .tag(category)
                                     }
                                 }
                                 .pickerStyle(.palette)
@@ -89,22 +79,18 @@ struct VideoListView: View {
                                 .padding(.vertical, sizeClass_regular ? 10 : 2)
 
                                 ZStack {
-                                    if let currentID = selectedPlaylistID {
-
-                                        LazyVGrid(columns: columns) {
-
-                                            ForEach(filteredVideos) { video in
-                                                Button {
-                                                    selectedVideo = video
-                                                } label: {
-                                                    videoListItemView(video)
-                                                }
-                                                .buttonStyle(.plain)
+                                    LazyVGrid(columns: columns) {
+                                        ForEach(filteredVideos) { video in
+                                            Button {
+                                                selectedVideo = video
+                                            } label: {
+                                                videoListItemView(video)
                                             }
+                                            .buttonStyle(.plain)
                                         }
-                                        .id(currentID)
-                                        .transition(.opacity)
                                     }
+                                    .id(selectedCategory.id)
+                                    .transition(.opacity)
                                 }
                                 .animation(.easeInOut(duration: 0.3), value: selectedCategory)
                                 .padding(.horizontal, 16)
@@ -137,35 +123,23 @@ struct VideoListView: View {
                 }
             }
         }
-        .sheet(isPresented: $showSettingSheet) {
-            ShadowingSettingsSheetView()
-                .presentationDetents(sizeClass_regular ? [.large] : [.medium, .large])
-                .presentationDragIndicator(.visible)
-        }
         .sheet(isPresented: $showAddSheet) {
             YouTubeAddVideoSheetView { result in
                 switch result {
                     case .addedVideo:
-                        if selectedPlaylistID != othersID {
-                            selectedPlaylistID = othersID
-                        }
-
+                        selectedCategory = .shadowing
                     case .addedVideosFromPlaylist(let playlistID):
-                        if playlistID == defaultID {
-                            if selectedPlaylistID != defaultID {
-                                selectedPlaylistID = defaultID
-                            }
-                        } else {
-                            if selectedPlaylistID != othersID {
-                                selectedPlaylistID = othersID
-                            }
-                        }
-
+                        selectedCategory = PlaylistCategory.allCases.first {
+                            $0.playlistID == playlistID
+                        } ?? .shadowing
                     default:
                         break
                 }
             }
-            .presentationDetents(sizeClass_regular ? [.large] : [.medium, .large])
+        }
+        .sheet(isPresented: $showSettingSheet) {
+            ShadowingSettingsSheetView()
+                .presentationDetents([.medium, .large])
         }
         .alert("この動画を削除しますか？",
                isPresented: $showDeleteAlert,

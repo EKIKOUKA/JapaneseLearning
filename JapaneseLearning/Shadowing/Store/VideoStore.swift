@@ -59,6 +59,20 @@ class VideoStore {
         }
     }
     @MainActor
+    func updateVideoAspectRatio(_ video: VideoItem) {
+        Task {
+            do {
+                try await WorkersAPI.post("update_video_aspectr_atio", body: video)
+                print("✅ videoAspectRatio Update Success")
+                if let index = videos.firstIndex(where: { $0.id == video.id }) {
+                    videos[index] = video
+                }
+            } catch {
+                print("❌ Update Error: \(error)")
+            }
+        }
+    }
+    @MainActor
     func deleteVideo(_ id: String) async {
         do {
             try await WorkersAPI.delete("del_video/\(id)")
@@ -170,7 +184,8 @@ class VideoStore {
                     id: item.id,
                     title: item.title,
                     thumbnailURL: item.thumbnailURL,
-                    playlistID: playlistID
+                    playlistID: playlistID,
+                    videoAspectRatio: 1.7777777777777777
                 )
             )
         }
@@ -195,7 +210,8 @@ class VideoStore {
                     id: videoID,
                     title: title,
                     thumbnailURL: thumbURL,
-                    playlistID: nil
+                    playlistID: nil,
+                    videoAspectRatio: 1.7777777777777777
                 )
                 await addVideo(newVideo)
 
