@@ -8,7 +8,7 @@
 import Foundation
 
 enum WorkersAPI {
-    private static let baseURL = Cloudflare_Workers_URL
+    private static let baseURL = Config.CloudflareWorkersURL
 
     // MARK: - GET
     static func get<T: Decodable>(_ path: String) async throws -> T {

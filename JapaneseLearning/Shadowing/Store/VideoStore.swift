@@ -130,7 +130,7 @@ class VideoStore {
 
         let session = URLSession(configuration: config)
 
-        let serverURL = "\(Cloudflare_Workers_URL)/get_video?id=\(videoID)"
+        let serverURL = "\(Config.CloudflareWorkersURL)/get_video?id=\(videoID)"
         guard let url = URL(string: serverURL) else {
             print("❌ invalid url:", serverURL)
             throw URLError(.badURL)
