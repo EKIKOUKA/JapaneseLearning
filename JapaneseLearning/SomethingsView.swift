@@ -8,7 +8,6 @@
 import SwiftUI
 
 struct SomethingsView: View {
-
     @State private var settingsStore = SettingsStore()
     @Environment(\.horizontalSizeClass) private var sizeClass
 

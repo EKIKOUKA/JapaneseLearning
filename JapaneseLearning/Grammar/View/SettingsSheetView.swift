@@ -8,7 +8,6 @@
 import SwiftUI
 
 struct SettingsSheetGrammarView: View {
-
     @Environment(SettingsStore.self) private var settingsStore
     @ObservedObject var store: GrammarStore
 
@@ -72,15 +71,11 @@ struct SettingsSheetGrammarView: View {
 
     var body: some View {
         @Bindable var settingsStoreBindable = settingsStore
-
         @State var storageBytes = getAppStorageSize()
 
         NavigationStack {
-
             Form {
-
                 Section(header: Text("表示設定")) {
-
                     Toggle(isOn: $settingsStoreBindable.showGrammarListAddButton) {
                         VStack(alignment: .leading) {
                             Text("新規追加ボタンを表示")

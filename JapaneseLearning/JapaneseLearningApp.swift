@@ -9,7 +9,6 @@ import SwiftUI
 
 @main
 struct JapaneseLearningApp: App {
-
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @State private var navigationStore = AppNavigationStore.shared
     @State private var videoStore = VideoStore()
@@ -23,9 +22,7 @@ struct JapaneseLearningApp: App {
     }
 
     var body: some Scene {
-
         WindowGroup {
-
             ContentView()
                 .environment(settingsStore)
                 .environment(navigationStore)

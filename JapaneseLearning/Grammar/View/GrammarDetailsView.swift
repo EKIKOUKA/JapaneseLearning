@@ -20,11 +20,8 @@ struct GrammarDetailsView: View {
     @State private var examplesHeight: CGFloat = .zero
 
     var body: some View {
-
         VStack {
-
             List {
-
                 Section(header: Text("説明")) {
                     SelectableUITextView(text: item.meaning, height: $meaningHeight)
                         .frame(height: meaningHeight)

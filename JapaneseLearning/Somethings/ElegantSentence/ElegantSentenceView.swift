@@ -8,22 +8,18 @@
 import SwiftUI
 
 struct ElegantSentenceView: View {
-
     @Environment(SettingsStore.self) private var settingsStore
     @StateObject var store = ElegantSentenceStore()
     @State private var searchText = ""
     @State private var showSettingSheet = false
 
     var body: some View {
-
         VStack {
             if store.isLoading {
                 ProgressLoadingView()
             } else {
                 List {
-
                     Section {
-
                         ForEach(filteredItems, id: \.self) { index in
                             let item = $store.ElegantSentenceList[index]
 
@@ -54,7 +50,6 @@ struct ElegantSentenceView: View {
                 .searchable(text: $searchText, prompt: "入力して検索")
                 .opacity(store.isLoading ? 0 : 1)
                 .opacity(store.isReady ? 1 : 0)
-                .animation(.easeIn(duration: 0.2), value: store.isReady)
             }
         }
         .navigationTitle("国語美文")
@@ -102,21 +97,15 @@ struct ElegantSentenceView: View {
     }
 }
 
-
 private struct SettingsSheetView: View {
-
     @Environment(SettingsStore.self) private var settingsStore
     @ObservedObject var store: ElegantSentenceStore
 
     var body: some View {
         @Bindable var settingsStoreBindable = settingsStore
-
         NavigationStack {
-
             Form {
-
                 Section(header: Text("表示設定")) {
-
                     Toggle(isOn: $settingsStoreBindable.showElegantSentenceListCount) {
                         VStack(alignment: .leading) {
                             Text("件数を表示")

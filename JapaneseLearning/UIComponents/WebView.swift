@@ -203,7 +203,6 @@ enum SiteRule {
 }
 
 struct WebView: UIViewRepresentable {
-
     let url: URL
     @Binding var isLoading: Bool
 

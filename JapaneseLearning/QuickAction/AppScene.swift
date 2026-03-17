@@ -11,7 +11,6 @@ import UserNotifications
 let appNaviStoreShared = AppNavigationStore.shared
 
 class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
-
     func application(
         _ application: UIApplication,
         configurationForConnecting connectingSceneSession: UISceneSession,
@@ -29,7 +28,6 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         sceneConfig.delegateClass = SceneDelegate.self
         return sceneConfig
     }
-
 
     func application(
         _ application: UIApplication,
@@ -66,7 +64,6 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         completionHandler([.banner, .sound])
     }
 
-
     // 🔹 推播成功取得 token
     func application(
         _ application: UIApplication,
@@ -88,7 +85,6 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
 }
 
 class SceneDelegate: UIResponder, UIWindowSceneDelegate {
-
     func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
         if let shortcutItem = connectionOptions.shortcutItem {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {

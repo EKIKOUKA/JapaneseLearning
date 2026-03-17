@@ -8,9 +8,7 @@
 import SwiftUI
 
 struct ProgressLoadingView: View {
-
     var body: some View {
-
         VStack(spacing: 12) {
             ProgressView()
                 .progressViewStyle(CircularProgressViewStyle())

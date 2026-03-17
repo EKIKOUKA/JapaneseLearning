@@ -14,7 +14,6 @@ struct MediaProductsDetailsView: View {
     @State private var isReady = false
 
     var body: some View {
-
         ZStack {
 
             VStack {

@@ -19,15 +19,10 @@ struct GrammarListView: View {
     @ObservedObject var store: GrammarStore
 
     var body: some View {
-
         VStack {
-
             List {
-
                 Section {
-
                     ForEach(filteredItems) { item in
-
                         NavigationLink(value: GrammarNavDestination.details(id: item.id, level: level)) {
                             Text(item.title)
                             if settingsStore.showGrammarListItemImportantImage {
@@ -40,6 +35,7 @@ struct GrammarListView: View {
                                         .cornerRadius(6)
                                 }
                             }
+
                             if item.isMarked {
                                 Image(systemName: "bookmark.fill")
                                     .font(.system(size: 11))
@@ -49,6 +45,7 @@ struct GrammarListView: View {
                                     .background(Color.red)
                                     .clipShape(Capsule())
                             }
+
                             if settingsStore.showGrammarListAllItemTag, level == "All" {
                                 Text(item.level)
                                     .font(.system(size: 12))
@@ -96,27 +93,14 @@ struct GrammarListView: View {
             }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-//                    Menu {
-                        Button {
-                            withAnimation {
-                                showImportantOnly.toggle()
-                            }
-                        } label: {
-//                            Text("重要のみ")
-                            Image(systemName: showImportantOnly ? "star.fill" : "line.3.horizontal.decrease") // star
-                                .foregroundStyle(showImportantOnly ? .yellow : .primary)
+                    Button {
+                        withAnimation {
+                            showImportantOnly.toggle()
                         }
-
-                        /* if level != "All" {
-                            NavigationLink {
-                                GrammarDetailsEditorView()
-                            } label: {
-                                Label("新規追加", systemImage: "plus")
-                            }
-                        } */
-//                    } label: {
-                            Image(systemName: "line.3.horizontal.decrease")
-//                    }
+                    } label: {
+                        Image(systemName: showImportantOnly ? "star.fill" : "line.3.horizontal.decrease")
+                            .foregroundStyle(showImportantOnly ? .yellow : .primary)
+                    }
                 }
 
                 if settingsStore.showGrammarListAddButton && level != "All" {
@@ -168,28 +152,5 @@ struct GrammarListView: View {
                 searchText.isEmpty || item.title.localizedCaseInsensitiveContains(searchText)
             }
             .sorted { $0.title < $1.title }
-            /* if searchText.isEmpty {
-                switch level {
-                    case "N1": return store.grammars.filter { $0.level == "N1" }.sorted { $0.title < $1.title }
-                    case "N2": return store.grammars.filter { $0.level == "N2" }.sorted { $0.title < $1.title }
-                    case "N3": return store.grammars.filter { $0.level == "N3" }.sorted { $0.title < $1.title }
-                    case "N4": return store.grammars.filter { $0.level == "N4" }.sorted { $0.title < $1.title }
-                    case "N5": return store.grammars.filter { $0.level == "N5" }.sorted { $0.title < $1.title }
-                    case "Others": return store.grammars.filter { $0.level == "Others" }.sorted { $0.title < $1.title }
-                    case "日本語": return store.grammars.sorted { $0.title < $1.title }
-                    default: return []
-                }
-            } else {
-                switch level {
-                    case "N1": return store.grammars.filter { $0.level == "N1" && $0.title.localizedCaseInsensitiveContains(searchText) }.sorted { $0.title < $1.title }
-                    case "N2": return store.grammars.filter { $0.level == "N2" && $0.title.localizedCaseInsensitiveContains(searchText) }.sorted { $0.title < $1.title }
-                    case "N3": return store.grammars.filter { $0.level == "N3" && $0.title.localizedCaseInsensitiveContains(searchText) }.sorted { $0.title < $1.title }
-                    case "N4": return store.grammars.filter { $0.level == "N4" && $0.title.localizedCaseInsensitiveContains(searchText) }.sorted { $0.title < $1.title }
-                    case "N5": return store.grammars.filter { $0.level == "N5" && $0.title.localizedCaseInsensitiveContains(searchText) }.sorted { $0.title < $1.title }
-                    case "Others": return store.grammars.filter { $0.level == "Others" && $0.title.localizedCaseInsensitiveContains(searchText) }.sorted { $0.title < $1.title }
-                    case "日本語": return store.grammars.filter { $0.title.localizedCaseInsensitiveContains(searchText) }.sorted { $0.title < $1.title }
-                    default: return []
-                }
-            } */
     }
 }

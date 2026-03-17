@@ -8,7 +8,6 @@
 import SwiftUI
 
 struct SelectableUITextView: UIViewRepresentable {
-
     let text: String
     @Binding var height: CGFloat
 

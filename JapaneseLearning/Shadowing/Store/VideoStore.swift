@@ -110,7 +110,7 @@ class VideoStore {
             throw URLError(.badURL)
         }
 
-        let (data, response) = try await session.data(from: url) // URLSession.shared
+        let (data, response) = try await session.data(from: url)
 
         guard let httpResponse = response as? HTTPURLResponse,
               200..<300 ~= httpResponse.statusCode else {
@@ -176,7 +176,6 @@ class VideoStore {
                 if videos.contains(where: { $0.id == videoID }) {
                     return .invalid
                 }
-
                 let title = await fetchTitle(videoID)
                 let thumbURL = URL(string: "https://img.youtube.com/vi/\(videoID)/hqdefault.jpg")
 
@@ -186,26 +185,21 @@ class VideoStore {
                     thumbnailURL: thumbURL,
                     playlistID: nil
                 )
-
                 await addVideo(newVideo)
 
                 return .addedVideo(newVideo)
-
             case .playlist:
                 guard let listID = extractPlaylistID(from: url) else {
                     return .invalid
                 }
-
                 if videoList.contains(where: { $0.id == listID }) {
                     return .invalid
                 }
-
                 let meta = await fetchPlaylistMeta(playlistID: listID)
                 await addVideoPlaylist(meta)
                 await fetchVideoPlaylist()
 
                 return .addedPlaylist
-
             case .unknown:
                 return .invalid
         }
@@ -256,9 +250,9 @@ class VideoStore {
 
         return nil
     }
+
     @MainActor
     func fetchPlaylistVideos(playlistID: String) async -> [PlayListVideoItem] {
-
         var allVideos: [PlayListVideoItem] = []
         var nextPageToken: String? = nil
 
@@ -273,10 +267,8 @@ class VideoStore {
                 let response = try JSONDecoder().decode(PlaylistResponse.self, from: data)
 
                 let pageVideos = response.items.compactMap { item -> PlayListVideoItem? in
-                    guard
-                        let id = item.snippet.resourceId.videoId,
-                        let thumbURL = item.snippet.thumbnails.medium?.url
-                    else { return nil }
+                    guard let id = item.snippet.resourceId.videoId,
+                        let thumbURL = item.snippet.thumbnails.medium?.url else { return nil }
 
                     return PlayListVideoItem(
                         id: id,
@@ -287,20 +279,18 @@ class VideoStore {
 
                 allVideos.append(contentsOf: pageVideos)
                 nextPageToken = response.nextPageToken
-
             } while nextPageToken != nil
-
         } catch {
             print("❌ fetchPlaylistVideos error:", error)
         }
 
         return allVideos
     }
+
     private func makePlaylistVideoURL(
         playlistId: String,
         pageToken: String?
     ) -> URL {
-
         var comp = URLComponents(string: "https://www.googleapis.com/youtube/v3/playlistItems")!
         comp.queryItems = [
             .init(name: "part", value: "snippet"),
@@ -315,12 +305,12 @@ class VideoStore {
 
         return comp.url!
     }
+
     func getExistingVideoListIDs() -> Set<String> {
         return Set(videoList.map { $0.id })
     }
 
     private func makePlaylistMetaURL(playlistID: String) -> URL {
-
         var comp = URLComponents(string: "https://www.googleapis.com/youtube/v3/playlists")!
         comp.queryItems = [
             .init(name: "part", value: "snippet,contentDetails"),
@@ -330,9 +320,9 @@ class VideoStore {
 
         return comp.url!
     }
+
     @MainActor
     func fetchPlaylistMeta(playlistID: String) async -> PlaylistListItem {
-
         let url = makePlaylistMetaURL(playlistID: playlistID)
 
         do {

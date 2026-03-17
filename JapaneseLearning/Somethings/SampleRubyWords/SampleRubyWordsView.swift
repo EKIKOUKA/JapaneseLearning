@@ -7,52 +7,7 @@
 
 import SwiftUI
 
-struct SampleRubyWordsItemView: View {
-    let item: SampleRubyWordsItem
-    let isExpanded: Bool
-    let showRuby: Bool
-    let store: SampleRubyWordsStore
-
-    var body: some View {
-
-        VStack(alignment: .leading, spacing: 0) {
-
-            HStack {
-                Text(item.word)
-                    .font(.headline)
-                if showRuby {
-                    Text(item.ruby)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-                Spacer()
-                Image(systemName: "chevron.right")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .rotationEffect(.degrees(isExpanded ? 90 : 0))
-            }
-            .zIndex(1)
-            .contentShape(Rectangle())
-            .onTapGesture {
-                store.toggleExpand(item.id ?? 8964)
-            }
-
-            VStack(alignment: .leading, spacing: 0) {
-                Text(item.meaning)
-                    .font(.body)
-                    .foregroundStyle(.secondary)
-                    .padding(.vertical, 4)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .fixedSize(horizontal: false, vertical: true)
-            .frame(height: isExpanded ? nil : 0, alignment: .top)
-            .clipped()
-        }
-    }
-}
-
 struct SampleRubyWordsView: View {
-
     @Environment(SettingsStore.self) private var settingsStore
     @StateObject private var store = SampleRubyWordsStore()
     @State private var showRuby: Bool = false
@@ -161,6 +116,50 @@ struct SampleRubyWordsView: View {
             .filter { item in
                 searchText.isEmpty || item.word.localizedCaseInsensitiveContains(searchText)
             }
+    }
+}
+
+struct SampleRubyWordsItemView: View {
+    let item: SampleRubyWordsItem
+    let isExpanded: Bool
+    let showRuby: Bool
+    let store: SampleRubyWordsStore
+
+    var body: some View {
+
+        VStack(alignment: .leading, spacing: 0) {
+
+            HStack {
+                Text(item.word)
+                    .font(.headline)
+                if showRuby {
+                    Text(item.ruby)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .rotationEffect(.degrees(isExpanded ? 90 : 0))
+            }
+            .zIndex(1)
+            .contentShape(Rectangle())
+            .onTapGesture {
+                store.toggleExpand(item.id ?? 8964)
+            }
+
+            VStack(alignment: .leading, spacing: 0) {
+                Text(item.meaning)
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+                    .padding(.vertical, 4)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(height: isExpanded ? nil : 0, alignment: .top)
+            .clipped()
+        }
     }
 }
 

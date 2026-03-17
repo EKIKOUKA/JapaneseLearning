@@ -19,7 +19,6 @@ struct GrammarDetailLoader: View {
     @ObservedObject var store: GrammarStore
 
     var body: some View {
-
         Group {
             if let item = store.grammars.first(where: { $0.id == id }) {
                 GrammarDetailsView(item: item, store: store)

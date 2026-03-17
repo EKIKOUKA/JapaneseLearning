@@ -8,7 +8,6 @@
 import SwiftUI
 
 struct GrammarDetailsEditorView: View {
-
     let item: GrammarItem
     let isNew: Bool // edit or add
     @ObservedObject var store: GrammarStore
@@ -32,11 +31,8 @@ struct GrammarDetailsEditorView: View {
     }
     
     var body: some View {
-
         VStack {
-
             List {
-
                 Section(header: Text("文型")) {
                     ZStack(alignment: .topLeading) {
                         if title.isEmpty {

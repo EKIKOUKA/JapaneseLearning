@@ -14,11 +14,8 @@ struct YouTubeAddVideoSheetView: View {
     let onComplete: (AddYouTubeResult) -> Void
 
     var body: some View {
-
         NavigationStack {
-
             List {
-
                 Section("YouTube リンク") {
                     URLInputView(inputURL: $inputURL)
                 }
@@ -98,9 +95,7 @@ struct URLInputView: View {
     @Binding var inputURL: String
 
     var body: some View {
-
         VStack {
-
             ZStack(alignment: .topLeading) {
                 if inputURL.isEmpty {
                     Text("YouTube動画かリストのリンク")
@@ -120,9 +115,7 @@ struct PlaylistListRow: View {
     let videoList: PlaylistListItem
 
     var body: some View {
-
         HStack {
-
             AsyncImage(url: videoList.thumbnailURL) { img in
                 img.resizable().scaledToFill()
             } placeholder: {

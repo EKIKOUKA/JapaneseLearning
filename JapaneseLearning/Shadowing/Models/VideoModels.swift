@@ -1,5 +1,5 @@
 //
-//  YouTubeVideoModels.swift
+//  VideoModels.swift
 //  JapaneseLearning
 //
 //  Created by 宇都宮　誠 on R 8/01/21.
@@ -8,7 +8,6 @@
 import Foundation
 
 // レスポンス
-
 struct PlaylistResponse: Decodable {
     let nextPageToken: String?
     let items: [PlaylistItem]
@@ -50,15 +49,12 @@ struct PlayListContentDetails: Decodable {
 
 
 // リストアイテム構造
-
 struct VideoItem: Identifiable, Hashable, Codable {
     let id: String
     let title: String
-    let thumbnailURL: URL?
-
     var currentTime: Double? = nil
     var rate: Float? = nil
-
+    let thumbnailURL: URL?
     var playlistID: String?
 
     enum CodingKeys: String, CodingKey {

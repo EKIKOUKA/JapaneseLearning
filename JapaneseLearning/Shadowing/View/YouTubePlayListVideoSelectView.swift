@@ -9,7 +9,6 @@ import SwiftUI
 import Foundation
 
 struct YouTubePlayListVideoSelectView: View {
-
     let playlistID: String
     let listTitle: String
     let existingVideoListIDs: Set<String>
@@ -21,9 +20,7 @@ struct YouTubePlayListVideoSelectView: View {
     @State private var selectedIDs = Set<String>()
 
     var body: some View {
-
         NavigationStack {
-
             List(videos) { video in
                 playlistRow(video)
             }
@@ -51,7 +48,6 @@ struct YouTubePlayListVideoSelectView: View {
 
     @ViewBuilder
     private func playlistRow(_ video: PlayListVideoItem) -> some View {
-
         let isDisabled = existingVideoListIDs.contains(video.id)
         let isSelected = selectedIDs.contains(video.id)
 

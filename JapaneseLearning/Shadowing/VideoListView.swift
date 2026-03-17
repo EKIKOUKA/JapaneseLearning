@@ -9,7 +9,6 @@ import SwiftUI
 import Foundation
 
 struct VideoListView: View {
-
     @Environment(VideoStore.self) private var store
     @Environment(AppNavigationStore.self) private var navigationStore
     @Environment(\.horizontalSizeClass) private var sizeClass
@@ -48,11 +47,9 @@ struct VideoListView: View {
         let sizeClass_regular = sizeClass == .regular
 
         Group {
-
             if store.isLoading {
                 ProgressLoadingView()
             } else {
-
                 GeometryReader { geo in
                     let isLandscape = geo.size.width > geo.size.height
 
@@ -67,17 +64,17 @@ struct VideoListView: View {
                     }()
 
                     ScrollView {
-                        if store.videos.isEmpty {
-                            VStack(spacing: 16) {
-                                Image(systemName: "folder")
-                                    .font(.system(size: 100))
-                                    .foregroundStyle(.secondary)
-                                Text("内容が見つかりません")
-                                    .foregroundStyle(.secondary)
-                            }
-                            .frame(maxWidth: .infinity)
-                            .padding(.top, 180)
-                        } else {
+//                        if store.videos.isEmpty {
+//                            VStack(spacing: 16) {
+//                                Image(systemName: "folder")
+//                                    .font(.system(size: 100))
+//                                    .foregroundStyle(.secondary)
+//                                Text("内容が見つかりません")
+//                                    .foregroundStyle(.secondary)
+//                            }
+//                            .frame(maxWidth: .infinity)
+//                            .padding(.top, 180)
+//                        } else {
                             VStack(spacing: 12) {
 
                                 Picker("Category", selection: $selectedPlaylistID) {
@@ -174,6 +171,7 @@ struct VideoListView: View {
                presenting: pendingDeleteVideo) { video in
             Button("削除", role: .destructive) {
                 store.videos.removeAll { $0.id == video.id }
+
                 Task {
                     await store.deleteVideo(video.id)
                 }

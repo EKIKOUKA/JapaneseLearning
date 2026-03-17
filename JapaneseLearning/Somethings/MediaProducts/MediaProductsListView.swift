@@ -22,7 +22,6 @@ struct MediaProductsListView: View {
     }
 
     var body: some View {
-
         VStack {
             if store.isLoading {
                 ProgressLoadingView()
@@ -186,7 +185,6 @@ struct MediaProductsListView: View {
 
 
 private struct SettingsSheetView: View {
-
     @Environment(SettingsStore.self) private var settingsStore
     @ObservedObject var store: MediaProductsStore
 

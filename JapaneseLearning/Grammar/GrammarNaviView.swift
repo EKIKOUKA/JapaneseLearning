@@ -26,11 +26,8 @@ struct GrammarNaviView: View {
         let sizeClass_regular = sizeClass == .regular
 
         Group { // NavigationStack
-
             ZStack {
-
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 16), count: 2), spacing: 16) {
-
                     ForEach(GrammarAllLevels.grammarList.indices, id: \.self) { index in
                         let item = GrammarAllLevels.grammarList[index]
 

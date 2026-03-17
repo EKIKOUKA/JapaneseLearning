@@ -13,7 +13,6 @@ import MediaPlayer
 
 @MainActor
 final class PlayerViewModel: ObservableObject {
-
     // Core Components
     let player = AVPlayer()
     var videoStore: VideoStore!
@@ -135,8 +134,8 @@ final class PlayerViewModel: ObservableObject {
         print("setupPlaye()")
         let asset = AVURLAsset(url: url)
         let item = AVPlayerItem(asset: asset)
-        item.audioTimePitchAlgorithm = .timeDomain
 
+        item.audioTimePitchAlgorithm = .timeDomain
         item.preferredForwardBufferDuration = 6
         item.canUseNetworkResourcesForLiveStreamingWhilePaused = true
 
@@ -154,7 +153,6 @@ final class PlayerViewModel: ObservableObject {
             Task { @MainActor [weak self] in
                 guard let self = self else { return }
                 if item.status == .readyToPlay {
-                    print("readyToPlay")
                     if let startTime = self.loadStartTime {
                         let duration = Date().timeIntervalSince(startTime)
                         print("⏱️ 視頻加載耗時: \(String(format: "%.2f", duration)) 秒")
@@ -197,12 +195,6 @@ final class PlayerViewModel: ObservableObject {
                 self.player.playImmediately(atRate: videoRate)
                 self.tempRate = videoRate
                 self.isVideoLoading = false
-
-                if videoProgress > 0 {
-                    print("🎯 進度恢復成功: \(videoProgress)s, 語速: \(videoRate)x")
-                } else {
-                    print("▶️ 首次播放，自動開始")
-                }
             }
         }
     }
@@ -365,12 +357,10 @@ final class PlayerViewModel: ObservableObject {
                 switch player.timeControlStatus {
                     case .playing:
                         self.isPlaying = true
-
                         // 🔹 檢查是否被系統修改 rate
                         if player.rate != self.rate {
                             player.playImmediately(atRate: self.rate)
                         }
-
                         self.updateNowPlayingPlaybackRate(self.rate)
                         self.setupNowPlaying()
                     case .paused:

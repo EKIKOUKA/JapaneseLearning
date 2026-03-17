@@ -36,7 +36,6 @@ class QuickActionManager {
     }
 
     private func updateShortcutItem(type: QuickActionType, title: String, subtitle: String?, iconName: String, userInfo: [String: String]) {
-
         var existingItems = UIApplication.shared.shortcutItems ?? []
 
         let secureUserInfo: [String: NSSecureCoding] = userInfo.reduce(into: [:]) { result, element in

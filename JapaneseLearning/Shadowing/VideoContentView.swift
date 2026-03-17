@@ -23,13 +23,11 @@ struct VideoContentView: View {
     @State private var drawerOffset: CGFloat = 0
     @State private var lastDragOffset: CGFloat = 0
     @State private var buttonAppearOffset: CGFloat = -15
-    let maxDrawerOffset: CGFloat = 201
 
     var body: some View {
         @State var sizeClass_regular = sizeClass == .regular
 
         GeometryReader { geo in
-
             let fullWidth = geo.size.width
             let isLandscape = geo.size.width > geo.size.height
 
@@ -37,16 +35,12 @@ struct VideoContentView: View {
             let currentVideoHeight = videoWidth * 9 / 16
 
             Group {
-
                 if video == nil {
                     // ProgressLoadingView()
                     Color.clear.frame(height: 10)
                 } else {
-
                     ZStack {
-
                         AdaptiveStack(isSideBySide: isLandscape) {
-
                             videoContentArea(
                                 playerVM: playerVM,
                                 drawerOffset: $drawerOffset,
@@ -148,7 +142,6 @@ struct videoCoverView: View {
     let sizeClass_regular: Bool
 
     var body: some View {
-
         if let image = playerVM.nowPlayingArtwork {
             Canvas { context, size in
                 context.draw(
@@ -176,7 +169,6 @@ struct videoContentArea: View {
     let isLandscape: Bool
 
     var body: some View {
-
         let videoWidth = max(0, isLandscape ? containerWidth * 0.5 : (containerWidth - 36))
         let baseHeight = max(0, videoWidth * 9 / 16)
 
@@ -186,7 +178,6 @@ struct videoContentArea: View {
             }
 
             ZStack {
-
                 if playerVM.isVideoLoading, let image = playerVM.nowPlayingArtwork {
                     Image(uiImage: image)
                         .resizable()
@@ -250,7 +241,6 @@ struct playResumeVideoView: View {
     }
 
     var body: some View {
-
         Button {
             withAnimation(.interpolatingSpring(stiffness: 120, damping: 13)) {
                 drawerOffset = 0
@@ -300,9 +290,7 @@ struct SubtitlesContentView: View {
     @State private var scrollTargetID: String?
 
     var body: some View {
-
         ScrollView {
-
             VStack(spacing: 12) {
                 Color.clear.frame(height: 2)
                 ForEach(Array(playerVM.captions.indices), id: \.self) { index in
@@ -377,7 +365,6 @@ struct SubtitlesRowView: View {
         let blur_opacity = settingsStore.videoSubtitleDimInactiveLines
 
         ZStack(alignment: .leading) {
-
             RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .fill(Color.white.opacity(tapHighlight ? 0.15 : 0))
 
@@ -433,9 +420,7 @@ struct VideoControlView: View {
     @ObservedObject var playerVM: PlayerViewModel
 
     var body: some View {
-
         HStack {
-
             /* Button {
                 if let text = playerVM.currentLineText() {
                     print("Current line:", text)
@@ -454,7 +439,6 @@ struct VideoControlView: View {
             .buttonStyle(.plain)
 
             HStack {
-
                 Image(systemName: "tortoise.fill")
                     .foregroundColor(.secondary)
                     .onTapGesture {
@@ -465,7 +449,6 @@ struct VideoControlView: View {
                     }
 
                 ZStack {
-
                     GeometryReader { geo in
                         let minRate: Double = 0.50
                         let maxRate: Double = 1.25
@@ -538,7 +521,6 @@ struct VideoSubtitleFontSizeSliderView: View {
         @Bindable var settingsStoreBindable = settingsStore
 
         HStack {
-
             Image(systemName: "textformat.size.smaller")
                 .foregroundColor(.secondary)
                 .onTapGesture {
@@ -554,7 +536,6 @@ struct VideoSubtitleFontSizeSliderView: View {
                 }
 
             ZStack {
-
                 GeometryReader { geo in
                     let minTempSizeScale: Double = 0.80
                     let maxTempSizeScale: Double = 1.20

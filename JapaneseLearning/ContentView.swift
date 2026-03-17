@@ -19,7 +19,6 @@ struct ContentView: View {
         @Bindable var nav = navigationStore
 
         TabView(selection: $nav.selectedTab) {
-
             NavigationStack(path: $videoPath) {
                 VideoListView()
                 .navigationDestination(for: QuickActionTarget.self) { target in

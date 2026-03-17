@@ -9,7 +9,6 @@ import Foundation
 
 @Observable
 class AppNavigationStore {
-
     static let shared = AppNavigationStore()
 
     var quickActionTarget: QuickActionTarget?

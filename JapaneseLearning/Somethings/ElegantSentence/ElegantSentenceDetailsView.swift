@@ -24,13 +24,9 @@ struct ElegantSentenceDetailsView: View {
     }
 
     var body: some View {
-
         VStack {
-
             List {
-
                 Section {
-
                     ZStack(alignment: .topLeading) {
                         if sentence.isEmpty {
                             Text("文を入力…")

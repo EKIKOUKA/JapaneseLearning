@@ -8,7 +8,6 @@
 import SwiftUI
 
 struct ShadowingSettingsSheetView: View {
-
     @Environment(SettingsStore.self) private var settingsStore
     var playerVM: PlayerViewModel?
 
@@ -16,9 +15,7 @@ struct ShadowingSettingsSheetView: View {
         @Bindable var settingsStoreBindable = settingsStore
 
         NavigationStack {
-
             Form {
-
                 if let player_vm = playerVM {
                     Section(header: Text("動画の再生コントロール")) {
                         VideoControlView(playerVM: player_vm)

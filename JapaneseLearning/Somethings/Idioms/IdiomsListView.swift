@@ -7,50 +7,6 @@
 
 import SwiftUI
 
-struct IdiomsItemsView: View {
-    let item: IdiomsItem
-    let isExpanded: Bool
-    let showRuby: Bool
-    let store: IdiomsStore
-
-    var body: some View {
-
-        VStack(alignment: .leading, spacing: 0) {
-
-            HStack {
-                Text(item.word)
-                    .font(.headline)
-                if showRuby {
-                    Text(item.ruby)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-                Spacer()
-                Image(systemName: "chevron.right")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .rotationEffect(.degrees(isExpanded ? 90 : 0))
-            }
-            .zIndex(1)
-            .contentShape(Rectangle())
-            .onTapGesture {
-                store.toggleExpand(item.id ?? 8964)
-            }
-
-            VStack(alignment: .leading, spacing: 0) {
-                Text(item.meaning)
-                    .font(.body)
-                    .foregroundStyle(.secondary)
-                    .padding(.vertical, 4)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .fixedSize(horizontal: false, vertical: true)
-            .frame(height: isExpanded ? nil : 0, alignment: .top)
-            .clipped()
-        }
-    }
-}
-
 struct IdiomsListView: View {
     @Environment(SettingsStore.self) private var settingsStore
     @StateObject private var store = IdiomsStore()
@@ -59,13 +15,9 @@ struct IdiomsListView: View {
     @State private var showSettingSheet = false
 
     var body: some View {
-
         ZStack {
-
             List {
-
                 Section {
-
                     ForEach(filteredItems) { item in
                         IdiomsItemsView(
                             item: item,
@@ -163,6 +115,47 @@ struct IdiomsListView: View {
     }
 }
 
+struct IdiomsItemsView: View {
+    let item: IdiomsItem
+    let isExpanded: Bool
+    let showRuby: Bool
+    let store: IdiomsStore
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack {
+                Text(item.word)
+                    .font(.headline)
+                if showRuby {
+                    Text(item.ruby)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .rotationEffect(.degrees(isExpanded ? 90 : 0))
+            }
+            .zIndex(1)
+            .contentShape(Rectangle())
+            .onTapGesture {
+                store.toggleExpand(item.id ?? 8964)
+            }
+
+            VStack(alignment: .leading, spacing: 0) {
+                Text(item.meaning)
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+                    .padding(.vertical, 4)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(height: isExpanded ? nil : 0, alignment: .top)
+            .clipped()
+        }
+    }
+}
 
 private struct SettingsSheetView: View {
     @Environment(SettingsStore.self) private var settingsStore
@@ -172,11 +165,8 @@ private struct SettingsSheetView: View {
         @Bindable var settingsStoreBindable = settingsStore
 
         NavigationStack {
-
             Form {
-
                 Section(header: Text("表示設定")) {
-
                     Toggle(isOn: $settingsStoreBindable.showIdiomsListCount) {
                         VStack(alignment: .leading) {
                             Text("件数を表示")
