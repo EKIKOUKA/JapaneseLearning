@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		7F086B9A2F6ABDE900288521 /* README.md in Sources */ = {isa = PBXBuildFile; fileRef = 7F086B992F6ABDE600288521 /* README.md */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		0EFF48002F378D38008832D6 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -17,8 +21,9 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		0EFF47FC2F378D38008832D6 /* JapaneseLearningTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = JapaneseLearningTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		7FF22E8E2ED7EC6600603529 /* JapaneseLearning.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = JapaneseLearning.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		0EFF47FC2F378D38008832D6 /* JapaneseLearningTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; name = JapaneseLearningTests.xctest; path = "/Users/cmstudent/Downloads/JapaneseLearning/build/Debug-iphoneos/JapaneseLearning.app/PlugIns/JapaneseLearningTests.xctest"; sourceTree = "<absolute>"; };
+		7F086B992F6ABDE600288521 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = README.md; sourceTree = "<group>"; };
+		7FF22E8E2ED7EC6600603529 /* JapaneseLearning.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; name = JapaneseLearning.app; path = "/Users/cmstudent/Downloads/JapaneseLearning/build/Debug-iphoneos/JapaneseLearning.app"; sourceTree = "<absolute>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -32,11 +37,6 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		0EFF47FD2F378D38008832D6 /* JapaneseLearningTests */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = JapaneseLearningTests;
-			sourceTree = "<group>";
-		};
 		7FF22E902ED7EC6600603529 /* JapaneseLearning */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
@@ -69,18 +69,8 @@
 			isa = PBXGroup;
 			children = (
 				7FF22E902ED7EC6600603529 /* JapaneseLearning */,
-				0EFF47FD2F378D38008832D6 /* JapaneseLearningTests */,
-				7FF22E8F2ED7EC6600603529 /* Products */,
+				7F086B992F6ABDE600288521 /* README.md */,
 			);
-			sourceTree = "<group>";
-		};
-		7FF22E8F2ED7EC6600603529 /* Products */ = {
-			isa = PBXGroup;
-			children = (
-				7FF22E8E2ED7EC6600603529 /* JapaneseLearning.app */,
-				0EFF47FC2F378D38008832D6 /* JapaneseLearningTests.xctest */,
-			);
-			name = Products;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -98,9 +88,6 @@
 			);
 			dependencies = (
 				0EFF48012F378D38008832D6 /* PBXTargetDependency */,
-			);
-			fileSystemSynchronizedGroups = (
-				0EFF47FD2F378D38008832D6 /* JapaneseLearningTests */,
 			);
 			name = JapaneseLearningTests;
 			packageProductDependencies = (
@@ -162,7 +149,7 @@
 			packageReferences = (
 			);
 			preferredProjectObjectVersion = 77;
-			productRefGroup = 7FF22E8F2ED7EC6600603529 /* Products */;
+			productRefGroup = 7FF22E852ED7EC6600603529;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -201,6 +188,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				7F086B9A2F6ABDE900288521 /* README.md in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

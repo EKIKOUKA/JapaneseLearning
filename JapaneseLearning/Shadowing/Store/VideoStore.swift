@@ -124,34 +124,15 @@ class VideoStore {
 
     // video url/captions
     func fetchVideoDataFromServer(_ videoID: String) async throws -> VideoData {
-        let config = URLSessionConfiguration.ephemeral
-        config.requestCachePolicy = .reloadIgnoringLocalCacheData
-        config.urlCache = nil
-
-        let session = URLSession(configuration: config)
-
-        let serverURL = "\(Config.CloudflareWorkersURL)/get_video?id=\(videoID)"
-        guard let url = URL(string: serverURL) else {
-            print("❌ invalid url:", serverURL)
-            throw URLError(.badURL)
-        }
-
-        let (data, response) = try await session.data(from: url)
-
-        guard let httpResponse = response as? HTTPURLResponse,
-              200..<300 ~= httpResponse.statusCode else {
-            throw URLError(.badServerResponse)
-        }
-
-        let video_decoded = try JSONDecoder().decode(VideoResponse.self, from: data)
+        let video_decoded: VideoResponse = try await WorkersAPI.get("get_video?id=\(videoID)")
 
         guard let videoURL = URL(string: video_decoded.url),
               let captionsURL = URL(string: video_decoded.captions) else {
             throw URLError(.badURL)
         }
 
-        async let (captionData, _) = try await session.data(from: captionsURL)
-        let captions = try await JSONDecoder().decode([CaptionLine].self, from: captionData)
+        let (captionData, _) = try await URLSession.shared.data(from: captionsURL)
+        let captions = try JSONDecoder().decode([CaptionLine].self, from: captionData)
 
         return VideoData(
             url: videoURL,

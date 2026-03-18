@@ -30,7 +30,7 @@ struct ShadowingSettingsSheetView: View {
                     Toggle(isOn: $settingsStoreBindable.videoAutoJumpToNextLine) {
                         VStack(alignment: .leading) {
                             Text("次の文へ即ジャンプ")
-                            Text("再生中の行が終わったらすぐ次の文へ即ジャンプする")
+                            Text("再生中の行の話が終わったらすぐ次の文へ即ジャンプする")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }

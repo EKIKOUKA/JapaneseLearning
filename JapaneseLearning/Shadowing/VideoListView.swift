@@ -156,7 +156,7 @@ struct VideoListView: View {
 
     private func videoListItemView(_ video: VideoItem) -> some View {
         var thumbnailRatio: CGFloat {
-            sizeClass == .regular ? (16.0 / 9.0) : (341.0 / 160.0)
+            sizeClass == .regular ? (16.0 / 9.0) : (330.0 / 160.0)
         }
 
         return VStack(alignment: .leading, spacing: 12) {
