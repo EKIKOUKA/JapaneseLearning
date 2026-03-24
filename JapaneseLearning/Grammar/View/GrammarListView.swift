@@ -135,7 +135,10 @@ struct GrammarListView: View {
         .toolbar(.hidden, for: .tabBar)
         .navigationTitle(title)
         .task(id: level) {
-            await store.fetchList(level: level)
+            if store.currentLevel != level {
+                store.currentLevel = level
+                await store.fetchList(level: level)
+            }
         }
     }
 

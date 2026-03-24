@@ -6,10 +6,6 @@
 	objectVersion = 77;
 	objects = {
 
-/* Begin PBXBuildFile section */
-		7F086B9A2F6ABDE900288521 /* README.md in Sources */ = {isa = PBXBuildFile; fileRef = 7F086B992F6ABDE600288521 /* README.md */; };
-/* End PBXBuildFile section */
-
 /* Begin PBXContainerItemProxy section */
 		0EFF48002F378D38008832D6 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -21,9 +17,9 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		0EFF47FC2F378D38008832D6 /* JapaneseLearningTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; name = JapaneseLearningTests.xctest; path = "/Users/cmstudent/Downloads/JapaneseLearning/build/Debug-iphoneos/JapaneseLearning.app/PlugIns/JapaneseLearningTests.xctest"; sourceTree = "<absolute>"; };
 		7F086B992F6ABDE600288521 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = README.md; sourceTree = "<group>"; };
-		7FF22E8E2ED7EC6600603529 /* JapaneseLearning.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; name = JapaneseLearning.app; path = "/Users/cmstudent/Downloads/JapaneseLearning/build/Debug-iphoneos/JapaneseLearning.app"; sourceTree = "<absolute>"; };
+		7F4336D12F70600400783EE3 /* JapaneseLearning.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = JapaneseLearning.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		7F4336D22F70600400783EE3 /* JapaneseLearningTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = JapaneseLearningTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -70,6 +66,8 @@
 			children = (
 				7FF22E902ED7EC6600603529 /* JapaneseLearning */,
 				7F086B992F6ABDE600288521 /* README.md */,
+				7F4336D12F70600400783EE3 /* JapaneseLearning.app */,
+				7F4336D22F70600400783EE3 /* JapaneseLearningTests.xctest */,
 			);
 			sourceTree = "<group>";
 		};
@@ -93,7 +91,7 @@
 			packageProductDependencies = (
 			);
 			productName = JapaneseLearningTests;
-			productReference = 0EFF47FC2F378D38008832D6 /* JapaneseLearningTests.xctest */;
+			productReference = 7F4336D22F70600400783EE3 /* JapaneseLearningTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
 		7FF22E8D2ED7EC6600603529 /* JapaneseLearning */ = {
@@ -115,7 +113,7 @@
 			packageProductDependencies = (
 			);
 			productName = JapaneseGrammar;
-			productReference = 7FF22E8E2ED7EC6600603529 /* JapaneseLearning.app */;
+			productReference = 7F4336D12F70600400783EE3 /* JapaneseLearning.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -188,7 +186,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				7F086B9A2F6ABDE900288521 /* README.md in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

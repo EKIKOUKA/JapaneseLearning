@@ -17,42 +17,32 @@ struct ShadowingSettingsSheetView: View {
         NavigationStack {
             Form {
                 if let player_vm = playerVM {
-                    Section(header: Text("動画の再生コントロール")) {
+                    Section(footer: Text("動画の再生をコントロールします")) {
                         VideoControlView(playerVM: player_vm)
                     }
                 }
 
-                Section(header: Text("動画字幕のサイズ")) {
+                Section(footer: Text("字幕のサイズを調整します")) {
                     VideoSubtitleFontSizeSliderView()
                 }
 
-                Section(header: Text("即ジャンプ")) {
+                Section(footer: Text("再生中の行の話が終了すると、自動的に次の文へ移動します")) {
                     Toggle(isOn: $settingsStoreBindable.videoAutoJumpToNextLine) {
-                        VStack(alignment: .leading) {
-                            Text("次の文へ即ジャンプ")
-                            Text("再生中の行の話が終わったらすぐ次の文へ即ジャンプする")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
+                        Text("次の文へ自動移動")
                     }
                 }
 
-                Section(header: Text("字幕の色")) {
+                Section(footer: Text("字幕の色を変更します")) {
                     ColorPicker("字幕の色", selection: settingsStore.videoSubtitleFontColor, supportsOpacity: true)
                 }
 
-                Section(header: Text("動画字幕表示の強調")) {
+                Section(footer: Text("再生中の行を強調し、他の字幕を控えめに表示します")) {
                     Toggle(isOn: $settingsStoreBindable.videoSubtitleDimInactiveLines) {
-                        VStack(alignment: .leading) {
-                            Text("非表示行を目立たせない")
-                            Text("再生中の行を見やすい強調して表示する、他の字幕を弱めます")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
+                        Text("再生中の字幕を強調表示")
                     }
                 }
 
-                Section(header: Text("字幕のフォント")) {
+                Section(footer: Text("字幕のフォントを変更します")) {
                     Picker("フォント", selection: $settingsStoreBindable.videoSubtitleFontStyle) {
                         ForEach(VideoSubtitleRubyFontStyle.allCases, id: \.self) { fontStyle in
                             Text(fontStyle.displayName).tag(fontStyle)
@@ -60,7 +50,7 @@ struct ShadowingSettingsSheetView: View {
                     }
                 }
 
-                Section(header: Text("スクロールアニメーション")) {
+                Section(footer: Text("スクロール時のアニメーションを変更します")) {
                     Picker("アニメーション", selection: $settingsStoreBindable.videoSubtitleLineWithAnimation) {
                         ForEach(VideoSubtitleLineWithAnimation.allCases, id: \.self) { animation in
                             Text(animation.displayName).tag(animation)
@@ -68,17 +58,13 @@ struct ShadowingSettingsSheetView: View {
                     }
                 }
 
-                Section(header: Text("発音の表示")) {
+                Section(footer: Text("単語の上に発音（ルビ）を表示します")) {
                     Toggle(isOn: $settingsStoreBindable.showShadowingSubtitlesRuby) {
-                        VStack(alignment: .leading) {
-                            Text("発音を表示")
-                            Text("単語の上に発音を表示する")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
+                        Text("発音を表示")
                     }
                 }
             }
+            .contentMargins(.top, 0)
             .navigationTitle("シャドーイング設定")
             .navigationBarTitleDisplayMode(.inline)
         }

@@ -11,6 +11,7 @@ import Combine
 
 class GrammarStore: ObservableObject {
     @Published var grammars: [GrammarItem] = []
+    @Published var currentLevel: String = ""
     @Published var isLoading = false
     @Published var isReady = false
 
