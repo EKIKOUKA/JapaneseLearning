@@ -29,6 +29,9 @@ struct SettingsSheetGrammarView: View {
         }
     } ()
 
+
+    @State var storageBytes: Int64 = 0
+
     func folderSize(at url: URL) -> Int64 {
         let fileManager = FileManager.default
         guard let enumerator = fileManager.enumerator(
@@ -71,7 +74,6 @@ struct SettingsSheetGrammarView: View {
 
     var body: some View {
         @Bindable var settingsStoreBindable = settingsStore
-        @State var storageBytes = getAppStorageSize()
 
         NavigationStack {
             Form {
@@ -136,8 +138,10 @@ struct SettingsSheetGrammarView: View {
 
                     Button {
                         Task {
-                            clearAppCache()
-                            storageBytes = getAppStorageSize()
+                            await clearAppCache()
+                            DispatchQueue.main.async {
+                                storageBytes = getAppStorageSize()
+                            }
                         }
                     } label: {
                         Text("キャッシュを削除")
@@ -154,19 +158,23 @@ struct SettingsSheetGrammarView: View {
             }
             .navigationTitle("日本語勉学に設定")
             .navigationBarTitleDisplayMode(.inline)
+            .onAppear {
+                storageBytes = getAppStorageSize()
+            }
         }
     }
 
-    func clearAppCache() {
-        // 清 URLSession cache
+    func clearAppCache() async {
+        // URLSession cache
         URLCache.shared.removeAllCachedResponses()
 
-        // 清 tmp
         let fileManager = FileManager.default
         let tmpURL = fileManager.temporaryDirectory
-        try? fileManager.removeItem(at: tmpURL)
 
-        // 3️⃣ 重新建立 tmp
-        try? fileManager.createDirectory(at: tmpURL, withIntermediateDirectories: true)
+        if let files = try? fileManager.contentsOfDirectory(at: tmpURL, includingPropertiesForKeys: nil) {
+            for file in files {
+                try? fileManager.removeItem(at: file)
+            }
+        }
     }
 }

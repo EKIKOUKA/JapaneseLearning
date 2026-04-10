@@ -38,7 +38,7 @@ struct VideoListView: View {
         let sizeClass_regular = sizeClass == .regular
 
         Group {
-            if store.isLoading {
+            if !store.videosIsReady {
                 ProgressLoadingView()
             } else {
                 GeometryReader { geo in
@@ -46,26 +46,24 @@ struct VideoListView: View {
 
                     let columns: [GridItem] = {
                         if sizeClass_regular { // iPad
-                            return Array(repeating: GridItem(.flexible(), spacing: 16),
-                                         count: isLandscape ? 3 : 2)
+                            return Array(repeating: GridItem(.flexible(), spacing: 16), count: isLandscape ? 3 : 2)
                         } else { // iPhone
-                            return Array(repeating: GridItem(.flexible(), spacing: 16),
-                                         count: isLandscape ? 2 : 1)
+                            return Array(repeating: GridItem(.flexible(), spacing: 16), count: isLandscape ? 2 : 1)
                         }
                     }()
 
                     ScrollView {
-//                        if store.videos.isEmpty {
-//                            VStack(spacing: 16) {
-//                                Image(systemName: "folder")
-//                                    .font(.system(size: 100))
-//                                    .foregroundStyle(.secondary)
-//                                Text("内容が見つかりません")
-//                                    .foregroundStyle(.secondary)
-//                            }
-//                            .frame(maxWidth: .infinity)
-//                            .padding(.top, 180)
-//                        } else {
+                        if store.videos.isEmpty {
+                            VStack(spacing: 16) {
+                                Image(systemName: "folder")
+                                    .font(.system(size: 100))
+                                    .foregroundStyle(.secondary)
+                                Text("内容が見つかりません")
+                                    .foregroundStyle(.secondary)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.top, 180)
+                        } else {
                             VStack(spacing: 12) {
                                 Picker("Category", selection: $selectedCategory) {
                                     ForEach(PlaylistCategory.allCases) { category in
@@ -97,7 +95,7 @@ struct VideoListView: View {
                                 .padding(.bottom, 20)
                             }
                             .opacity(store.videosIsReady ? 1 : 0)
-//                        }
+                        }
                     }
                     .navigationDestination(item: $selectedVideo) { video in
                         VideoContentView(videoID: video.id)

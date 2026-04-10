@@ -651,11 +651,6 @@ final class PlayerViewModel: ObservableObject {
         utterance.rate = 0.5
         synthesizer.speak(utterance)
     }
-
-    func currentLineText() -> String? {
-        guard currentCaptionIndex < captions.count else { return nil }
-        return captions[currentCaptionIndex].text
-    }
 }
 
 extension Notification.Name {

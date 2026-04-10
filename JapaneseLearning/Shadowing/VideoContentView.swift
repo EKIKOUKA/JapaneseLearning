@@ -39,7 +39,7 @@ struct VideoContentView: View {
                     // ProgressLoadingView()
                     Color.clear.frame(height: 10)
                 } else {
-                    ZStack {
+                    ZStack(alignment: .top) {
                         AdaptiveStack(isSideBySide: isLandscape) {
                             videoContentArea(
                                 playerVM: playerVM,
@@ -257,25 +257,24 @@ struct playResumeVideoView: View {
                 Image(systemName: "chevron.down")
                     .font(.system(size: 13, weight: .semibold))
             }
-            .foregroundColor(.primary)
+            .foregroundColor(.primary.opacity(0.89))
             .labelStyle(.titleAndIcon)
             .padding(.horizontal, 14)
             .padding(.vertical, 8)
-            .background {
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(.ultraThinMaterial)
-            }
-            .overlay {
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .stroke(.white.opacity(0.1), lineWidth: 0.5)
-            }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .padding(.top, 5)
+        .background(
+            .ultraThinMaterial,
+            in: Capsule()
+        )
+        .overlay {
+            Capsule()
+                .stroke(.white.opacity(0.25), lineWidth: 0.8)
+        }
+        .shadow(color: .black.opacity(0.15), radius: 12, y: 6)
+        .padding(.top, 8)
         .offset(y: buttonAppearOffset)
         .opacity(isCollapsed ? 0.9 : 0)
         .allowsHitTesting(isCollapsed)
-        .shadow(color: .black.opacity(0.12), radius: 10, y: 4)
         .onChange(of: isCollapsed) { _, isVisible in
             if isVisible {
                 buttonAppearOffset = -15
@@ -324,11 +323,11 @@ struct SubtitlesContentView: View {
             guard let newID = new else { return }
 
             if settingsStore.videoSubtitleLineWithAnimation == .easeInOut {
-                withAnimation(.easeInOut(duration: 0.4)) {
+                withAnimation(.easeInOut(duration: 0.5)) {
                     scrollTargetID = newID
                 }
             } else {
-                withAnimation(.timingCurve(0.4, 0.0, 0.2, 1.0, duration: 0.32)) { // .spring()
+                withAnimation(.timingCurve(0.4, 0.0, 0.2, 1.0, duration: 0.5)) {
                     scrollTargetID = newID
                 }
             }
@@ -337,7 +336,7 @@ struct SubtitlesContentView: View {
             if let currentLineId = playerVM.currentLineID {
 
                 if settingsStore.videoSubtitleLineWithAnimation == .easeInOut {
-                    withAnimation(.easeInOut(duration: 0.4)) {
+                    withAnimation(.easeInOut(duration: 0.5)) {
                         scrollTargetID = currentLineId
                     }
                 } else {
@@ -424,15 +423,6 @@ struct VideoControlView: View {
 
     var body: some View {
         HStack {
-            /* Button {
-                if let text = playerVM.currentLineText() {
-                    print("Current line:", text)
-                } else {
-                    print("No active line")
-                }
-            } label: {
-                Image(systemName: "text.quote")
-            } */
             Button {
                 NotificationCenter.default.post(name: .scrollToCurrentLine, object: nil)
             } label: {

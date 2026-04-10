@@ -28,7 +28,7 @@ class VideoStore {
     func fetchVideos() async {
         do {
             self.videos = try await WorkersAPI.get("fetch_videos")
-            withAnimation(.easeIn(duration: 0.3)) {
+            withAnimation(.easeIn(duration: 0.5)) {
                 videosIsReady = true
             }
         } catch {
