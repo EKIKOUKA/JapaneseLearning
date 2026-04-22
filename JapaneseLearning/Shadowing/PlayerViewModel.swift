@@ -451,7 +451,6 @@ final class PlayerViewModel: ObservableObject {
     }
 
     private func addLoopObserver(endTime: CMTime) {
-
         loopObserver = player.addBoundaryTimeObserver(
             forTimes: [NSValue(time: endTime)],
             queue: .main

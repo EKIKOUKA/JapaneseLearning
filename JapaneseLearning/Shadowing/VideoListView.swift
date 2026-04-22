@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import Kingfisher
 
 struct VideoListView: View {
     @Environment(VideoStore.self) private var store
@@ -161,42 +162,22 @@ struct VideoListView: View {
             Color.clear
                 .aspectRatio(thumbnailRatio, contentMode: .fit)
                 .overlay {
-                    // 2️⃣ 圖片在 overlay 裡填滿容器
-                    AsyncImage(url: video.thumbnailURL) { phase in
-                        switch phase {
-                            case .success(let image):
-                                image
-                                    .resizable()
-                                    .scaledToFill()
-                                    .transition(.opacity)
-                                    .animation(.easeIn(duration: 0.5), value: video.thumbnailURL)
-                            case .empty:
-                                ZStack {
-                                    Rectangle()
-                                        .fill(Color(.tertiarySystemFill))
-                                    ProgressView()
-                                        .progressViewStyle(.circular)
-                                }
-                            case .failure:
-                                ZStack {
-                                    Rectangle()
-                                        .fill(Color(.tertiarySystemFill))
+                    KFImage(video.thumbnailURL)
+                        .placeholder {
+                            ZStack {
+                                Color(.tertiarySystemFill)
+                                if video.thumbnailURL == nil {
                                     Image(systemName: "photo")
-                                        .font(.largeTitle)
-                                        .foregroundStyle(.secondary)
-                                }
-                                .onAppear {
-                                    retryImageLoad = UUID()
-                                }
-                            @unknown default:
-                                ZStack {
-                                    Rectangle()
-                                        .fill(Color(.tertiarySystemFill))
+                                } else {
                                     ProgressView()
                                 }
+                            }
                         }
-                    }
-                    .id(retryImageLoad)
+                        .resizable()
+                        .retry(maxCount: 1, interval: .seconds(1))
+                        .fade(duration: 0.2)
+                        .cancelOnDisappear(true)
+                        .scaledToFill()
                 }
                 .clipShape(RoundedRectangle(cornerRadius: 20))
                 .contentShape(Rectangle())

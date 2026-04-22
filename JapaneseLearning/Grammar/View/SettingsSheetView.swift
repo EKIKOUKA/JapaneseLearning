@@ -134,6 +134,8 @@ struct SettingsSheetGrammarView: View {
                         Spacer()
                         Text(formattedStorageSize(storageBytes))
                             .foregroundStyle(.secondary)
+                            .contentTransition(.numericText())
+                            .animation(.smooth(duration: 0.5), value: storageBytes)
                     }
 
                     Button {
@@ -169,8 +171,13 @@ struct SettingsSheetGrammarView: View {
         URLCache.shared.removeAllCachedResponses()
 
         let fileManager = FileManager.default
-        let tmpURL = fileManager.temporaryDirectory
 
+        if let cachesURL = fileManager.urls(for: .cachesDirectory, in: .userDomainMask).first {
+            try? fileManager.removeItem(at: cachesURL)
+            try? fileManager.createDirectory(at: cachesURL, withIntermediateDirectories: true)
+        }
+
+        let tmpURL = fileManager.temporaryDirectory
         if let files = try? fileManager.contentsOfDirectory(at: tmpURL, includingPropertiesForKeys: nil) {
             for file in files {
                 try? fileManager.removeItem(at: file)

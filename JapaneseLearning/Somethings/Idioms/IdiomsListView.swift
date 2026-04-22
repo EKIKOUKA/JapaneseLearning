@@ -123,37 +123,31 @@ struct IdiomsItemsView: View {
     let store: IdiomsStore
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
+        DisclosureGroup(
+            isExpanded: Binding(
+                get: {
+                    store.expandedIDs.contains(item.id ?? -1)
+                },
+                set: { _ in
+                    store.toggleExpand(item.id ?? 8964)
+                }
+            )
+        ) {
+            Text(item.meaning)
+                .font(.body)
+                .foregroundStyle(.secondary)
+        } label: {
             HStack {
                 Text(item.word)
                     .font(.headline)
+
                 if showRuby {
                     Text(item.ruby)
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
-                Spacer()
-                Image(systemName: "chevron.right")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .rotationEffect(.degrees(isExpanded ? 90 : 0))
             }
-            .zIndex(1)
             .contentShape(Rectangle())
-            .onTapGesture {
-                store.toggleExpand(item.id ?? 8964)
-            }
-
-            VStack(alignment: .leading, spacing: 0) {
-                Text(item.meaning)
-                    .font(.body)
-                    .foregroundStyle(.secondary)
-                    .padding(.vertical, 4)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .fixedSize(horizontal: false, vertical: true)
-            .frame(height: isExpanded ? nil : 0, alignment: .top)
-            .clipped()
         }
     }
 }

@@ -135,10 +135,8 @@ struct GrammarDetailsEditorView: View {
                 Button {
                     saveChanges()
                 } label: {
-                    Image(systemName: "checkmark") // checkmark.seal checkmark.circle
-//                            .font(.title2)
-//                        Image(systemName: "checkmark.app")
-//                        Image(systemName: "checkmark.shield")
+                    Image(systemName: "checkmark")
+//                       .font(.title2)
                 }
             }
         }
