@@ -89,7 +89,7 @@ struct IdiomsListView: View {
                             store.expandAll()
                         }
                     } label: {
-                        Label("全部展開・折りたたむ", systemImage: "chevron.up.chevron.down")
+                        Label("全て展開・折り畳む", systemImage: "chevron.up.chevron.down")
                     }
                 } label: {
                     Image(systemName: "ellipsis")

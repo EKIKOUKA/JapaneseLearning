@@ -14,28 +14,23 @@ struct SomethingsView: View {
     var body: some View {
         NavigationStack {
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 16), count: 2), spacing: 16) {
-                btnTextView("支那語に無い漢字") {
-                    KanjiWordsDiffToShinaLangView()
-                }
-
-                btnTextView("覚えにくい単語") {
-                    MemoryHardWordsView()
-                }
-
                 btnTextView("国語美文") {
                     ElegantSentenceView()
                 }
-
+                btnTextView("映像作品リスト") {
+                    MediaProductsListView()
+                }
+                btnTextView("支那語に無い漢字") {
+                    KanjiWordsDiffToShinaLangView()
+                }
+                btnTextView("覚えにくい単語") {
+                    MemoryHardWordsView()
+                }
                 btnTextView("慣用句") {
                     IdiomsListView()
                 }
-
                 btnTextView("同じ発音の言葉") {
                     SampleRubyWordsView()
-                }
-
-                btnTextView("映像作品リスト") {
-                    MediaProductsListView()
                 }
             }
             .padding()
