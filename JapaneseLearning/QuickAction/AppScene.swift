@@ -20,7 +20,7 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
             if shortcutItem.type == QuickActionType.resumeVideo.rawValue {
                 appNaviStoreShared.selectedTab = 0
             } else if shortcutItem.type == QuickActionType.recentGrammar.rawValue {
-                appNaviStoreShared.selectedTab = 2
+                appNaviStoreShared.selectedTab = 3
             }
         }
 
@@ -108,7 +108,7 @@ func handleShortcut(_ item: UIApplicationShortcutItem) {
         let grammarIDString = item.userInfo?["grammarID"] as? String,
         let grammarID = Int(grammarIDString),
         let level = item.userInfo?["level"] as? String {
-            appNaviStoreShared.selectedTab = 2
+            appNaviStoreShared.selectedTab = 3
             appNaviStoreShared.quickActionTarget = .lastGrammar(id: grammarID, level: level)
     }
 }

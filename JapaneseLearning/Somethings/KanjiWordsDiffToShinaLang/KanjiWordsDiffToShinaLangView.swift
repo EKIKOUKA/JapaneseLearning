@@ -13,6 +13,7 @@ struct KanjiWordsDiffToShinaLangView: View {
     @State private var showRuby: Bool = false
     @State private var searchText: String = ""
     @State private var showSettingSheet = false
+    @State private var sortOrder: KanjiWordsSortOrder = .word
 
     var body: some View {
         ZStack {
@@ -42,9 +43,9 @@ struct KanjiWordsDiffToShinaLangView: View {
                     }
                 }
             }
-            .searchable(text: $searchText, prompt: "入力して検索")
-            .animation(.snappy(duration: 0.2, extraBounce: 0), value: store.expandedIDs)
             .opacity(store.isReady ? 1 : 0)
+            .animation(.default, value: sortOrder)
+            .searchable(text: $searchText, prompt: "入力して検索")
 
             if store.isLoading {
                 ProgressLoadingView()
@@ -74,6 +75,18 @@ struct KanjiWordsDiffToShinaLangView: View {
                         showSettingSheet = true
                     } label: {
                         Label("表示設定", systemImage: "gear")
+                    }
+                    Divider()
+
+                    Menu {
+                        Picker("表示順序", selection: $sortOrder) {
+                            ForEach(KanjiWordsSortOrder.allCases) { order in
+                                Text(order.displayName)
+                                    .tag(order)
+                            }
+                        }
+                    } label: {
+                        Label("表示順序", systemImage: "arrow.up.arrow.down")
                     }
                     Divider()
 
@@ -109,10 +122,17 @@ struct KanjiWordsDiffToShinaLangView: View {
     }
 
     var filteredItems: [KanjiWordsItem] {
-        store.KanjiWordsList
+        let filtered = store.KanjiWordsList
             .filter { item in
                 searchText.isEmpty || item.word.localizedCaseInsensitiveContains(searchText)
             }
+
+        switch sortOrder {
+            case .createdAt:
+                return filtered.sorted(using: KeyPathComparator(\.createdAt, order: .forward))
+            case .word:
+                return filtered.sorted(using: KeyPathComparator(\.word))
+        }
     }
 }
 

@@ -53,7 +53,7 @@ private struct ScrollIndicatorConfigurator: UIViewRepresentable {
 }
 
 extension View {
-    func ScrollIndicatorStyle(_ style: UIScrollView.IndicatorStyle) -> some View {
+    func scrollIndicatorStyle(_ style: UIScrollView.IndicatorStyle) -> some View {
         modifier(ScrollIndicatorStyleModifier(style: style))
     }
 }

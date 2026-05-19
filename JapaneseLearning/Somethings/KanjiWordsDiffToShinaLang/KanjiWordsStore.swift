@@ -10,10 +10,35 @@ import Foundation
 import Combine
 
 struct KanjiWordsItem: Codable, Identifiable {
-    var id: Int? = nil
+    var id: Int?
     var word: String
     var ruby: String
     var meaning: String
+    var createdAt: String?
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case word
+        case ruby
+        case meaning
+        case createdAt = "created_at"
+    }
+}
+
+enum KanjiWordsSortOrder: String, CaseIterable, Identifiable {
+    case createdAt
+    case word
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+            case .createdAt:
+                return "作成日"
+            case .word:
+                return "タイトル"
+        }
+    }
 }
 
 class KanjiWordsStore: ObservableObject {

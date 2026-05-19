@@ -10,7 +10,6 @@ import Kingfisher
 
 struct VideoListView: View {
     @Environment(VideoStore.self) private var store
-    @Environment(AppNavigationStore.self) private var navigationStore
     @Environment(\.horizontalSizeClass) private var sizeClass
     @State private var showAddSheet = false
     @State private var showSettingSheet = false
@@ -99,7 +98,7 @@ struct VideoListView: View {
                         }
                     }
                     .navigationDestination(item: $selectedVideo) { video in
-                        VideoContentView(videoID: video.id)
+                        VideoDetailsView(videoID: video.id)
                             .toolbarColorScheme(.dark, for: .navigationBar)
                     }
                 }
@@ -155,7 +154,7 @@ struct VideoListView: View {
 
     private func videoListItemView(_ video: VideoItem) -> some View {
         var thumbnailRatio: CGFloat {
-            sizeClass == .regular ? (16.0 / 9.0) : (330.0 / 160.0)
+            sizeClass == .regular ? (16.0 / 9.0) : (320.0 / 160.0)
         }
 
         return VStack(alignment: .leading, spacing: 12) {

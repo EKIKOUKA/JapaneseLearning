@@ -117,7 +117,7 @@ struct MediaProductsListView: View {
                             }
 
                             Menu {
-                                Picker("", selection: $selectedStatus) {
+                                Picker("表示状態", selection: $selectedStatus) {
                                     ForEach(WatchStatus.allCases) { status in
                                         Text(status.displayName)
                                             .tag(status)
@@ -170,9 +170,9 @@ struct MediaProductsListView: View {
 
         switch sortOrder {
             case .createdAt:
-                return categoryFiltered.sorted { $0.createdAt ?? "" < $1.createdAt ?? "" }
+                return categoryFiltered.sorted(using: KeyPathComparator(\.createdAt, order: .forward))
             case .title:
-                return categoryFiltered.sorted { $0.title < $1.title }
+                return categoryFiltered.sorted(using: KeyPathComparator(\.title))
         }
     }
 }
