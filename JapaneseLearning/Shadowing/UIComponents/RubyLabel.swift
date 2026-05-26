@@ -9,7 +9,8 @@ import SwiftUI
 
 struct RubyLabel: UIViewRepresentable {
     let text: String
-    let rubyWords: [RubyWord]
+    let rubyRanges: [RubyWordRange]
+    let cachedAttributedString: NSAttributedString
     let fontSizeScale: Double
     let fontStyle: VideoSubtitleRubyFontStyle
     let fontColor: UIColor
@@ -27,15 +28,28 @@ struct RubyLabel: UIViewRepresentable {
 
     func updateUIView(_ uiView: RubyUIView, context: Context) {
         uiView.onTapLine = onTapLine
-        let key = "\(text)|\(fontSizeScale)|\(fontStyle)|\(fontColor)"
+        uiView.onTapWord = onTapWord
+
+        let rubyEnabled = !rubyRanges.isEmpty
+        let key = "\(text)|\(rubyEnabled)|\(fontSizeScale)|\(fontStyle)|\(fontColor)"
 
         if uiView.contentKey != key {
             uiView.contentKey = key
-            uiView.attributedText = buildAttributedString()
+
+            let baseAttributedString: NSAttributedString
+            if rubyEnabled {
+                baseAttributedString = cachedAttributedString
+            } else {
+                baseAttributedString = NSAttributedString(string: text)
+            }
+
+            uiView.attributedText = buildAttributedString(
+                base: baseAttributedString
+            )
         }
     }
 
-    private func buildAttributedString() -> NSAttributedString {
+    private func buildAttributedString(base: NSAttributedString) -> NSAttributedString {
         let style = NSMutableParagraphStyle()
         style.lineSpacing = 6
         style.alignment = .left
@@ -43,7 +57,7 @@ struct RubyLabel: UIViewRepresentable {
         let baseFontSize: CGFloat = 28
         let baseFont: UIFont
         let baseFontSystem = UIFont.systemFont(ofSize: baseFontSize * fontSizeScale)
-        
+
         switch fontStyle {
             case .system:
                 baseFont = UIFont.systemFont(ofSize: baseFontSize * fontSizeScale, weight: .medium)
@@ -51,56 +65,18 @@ struct RubyLabel: UIViewRepresentable {
                 baseFont = UIFont(name: fontStyle.rawValue, size: baseFontSize * fontSizeScale) ?? baseFontSystem
         }
 
-        let cleanText = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        let attr = NSMutableAttributedString(
-            string: cleanText,
-            attributes: [
+        let mutable = NSMutableAttributedString(attributedString: base)
+
+        mutable.addAttributes(
+            [
                 .font: baseFont,
                 .foregroundColor: fontColor,
                 .paragraphStyle: style
-            ]
+            ],
+            range: NSRange(location: 0, length: mutable.length)
         )
 
-        var searchStart = cleanText.startIndex
-
-        for ruby in rubyWords {
-            guard !ruby.surface.isEmpty,
-                let reading = ruby.reading,
-                !reading.isEmpty,
-                reading != ruby.surface
-            else { continue }
-
-            if let range = cleanText.range(
-                of: ruby.surface,
-                range: searchStart..<cleanText.endIndex
-            ) {
-                let nsRange = NSRange(range, in: cleanText)
-
-                var rubyAnnotations: [Unmanaged<CFString>?] = [
-                    Unmanaged.passRetained(reading as CFString),
-                    nil, nil, nil
-                ]
-
-                let annotation = CTRubyAnnotationCreate(
-                    .center,
-                    .auto,
-                    0.45,
-                    &rubyAnnotations
-                )
-
-                attr.addAttribute(
-                    kCTRubyAnnotationAttributeName as NSAttributedString.Key,
-                    value: annotation,
-                    range: nsRange
-                )
-
-                attr.addAttribute(.font, value: baseFont, range: nsRange)
-
-                searchStart = range.upperBound
-            }
-        }
-
-        return attr
+        return mutable
     }
 }
 
@@ -300,7 +276,7 @@ class RubyUIView: UIView {
             }
         }
 
-        // 6. 執行 wordAt
+        // MARK: - 6. 執行 wordAt （空白點擊問題）
         if characterIndex != -1 && characterIndex < attributedText.length {
             let text = attributedText.string
             let nsText = text as NSString

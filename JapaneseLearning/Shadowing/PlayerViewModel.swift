@@ -63,8 +63,8 @@ final class PlayerViewModel: ObservableObject {
     private var isSeeking = false
     private var boundaryObserver: Any?
     private var loopObserver: Any?
-    private var captionBoundaryObserver: Any?
     private var presentationSizeObserver: NSKeyValueObservation?
+    private var captionPollingTimer: Timer?
 
 
     init() {
@@ -216,6 +216,7 @@ final class PlayerViewModel: ObservableObject {
                 self.player.playImmediately(atRate: videoRate)
                 self.tempRate = videoRate
                 self.isVideoLoading = false
+                self.startCaptionPolling()
             }
         }
     }
@@ -252,25 +253,75 @@ final class PlayerViewModel: ObservableObject {
     @MainActor
     private func updateCaptionIndexForSeek(to time: Double) {
         guard !captions.isEmpty else { return }
-
-        // 🛠️ 容錯値：解決 seek 落在 10.49999 而目標是 10.5 的問題
         let epsilon = 0.05
 
-        // 🔥 優化：快速檢査 (Hot Path)
-        // 先檢査「当前正在顯示的這句」是不是還在時間範囲内？如果是，直接 return
+        if currentCaptionIndex >= captions.count {
+            currentCaptionIndex = captions.count - 1
+        }
+
+        // 🔥 Hot Path
+        // current
         if currentCaptionIndex < captions.count {
-            let currentLine = captions[currentCaptionIndex]
-            // 稍微放寬一点 epsilon 容錯
-            if time >= (currentLine.start - epsilon) &&
-                time < currentLine.end &&
-                currentLineID != nil {
+            let current = captions[currentCaptionIndex]
+
+            if time >= (current.start - epsilon) && time < current.end {
+                if currentLineID != current.id {
+                    currentLineID = current.id
+                }
                 return
             }
         }
 
+        // previous
+        if currentCaptionIndex > 0 {
+            let previousIndex = currentCaptionIndex - 1
+            let previous = captions[previousIndex]
+
+            if time >= (previous.start - epsilon) && time < previous.end {
+                currentCaptionIndex = previousIndex
+
+                if currentLineID != previous.id {
+                    currentLineID = previous.id
+                }
+                return
+            }
+        }
+
+        // next
+        if currentCaptionIndex + 1 < captions.count {
+            let nextIndex = currentCaptionIndex + 1
+            let next = captions[nextIndex]
+
+            if time >= (next.start - epsilon) && time < next.end {
+                currentCaptionIndex = nextIndex
+
+                if currentLineID != next.id {
+                    currentLineID = next.id
+                }
+                return
+            }
+        }
+
+        // 🔥 Fallback Binary Search
+        let targetIndex = binarySearchCaptionIndex(time: time)
+        guard let targetIndex else { return }
+
+        currentCaptionIndex = targetIndex
+        let targetLine = captions[targetIndex]
+
+        if currentLineID != targetLine.id {
+            currentLineID = targetLine.id
+        }
+    }
+
+    private func binarySearchCaptionIndex(time: Double) -> Int? {
+        guard !captions.isEmpty else { return nil }
+
+        let epsilon = 0.05
+
         var left = 0
         var right = captions.count - 1
-        var resultIndex: Int? = nil
+        var resultIndex: Int?
 
         while left <= right {
             let mid = (left + right) / 2
@@ -286,20 +337,12 @@ final class PlayerViewModel: ObservableObject {
             }
         }
 
-        // 如果沒有精確落在區間內，則取「最後一個 start <= time 的行」
         if resultIndex == nil {
             let fallbackIndex = max(0, min(right, captions.count - 1))
             resultIndex = fallbackIndex
         }
 
-        guard let finalIndex = resultIndex else { return }
-
-        if finalIndex != currentCaptionIndex || currentLineID == nil {
-            currentCaptionIndex = finalIndex
-            currentLineID = captions[finalIndex].id
-            // 🔥 重要：重置辺界監聽器，讓它從新位置開始盯哨
-            setupNextCaptionBoundaryObserver()
-        }
+        return resultIndex
     }
 
     @objc
@@ -310,77 +353,87 @@ final class PlayerViewModel: ObservableObject {
         updateCaptionIndexForSeek(to: time)
     }
 
-    // 1. 動態設置「下一個」辺界監聽
-    private func setupNextCaptionBoundaryObserver() {
-        // 移除舊的監聽
-        if let observer = captionBoundaryObserver {
-            player.removeTimeObserver(observer)
-            captionBoundaryObserver = nil
-        }
+    private func startCaptionPolling() {
+        stopCaptionPolling()
 
-        guard currentCaptionIndex < captions.count else { return }
-        let currentLine = captions[currentCaptionIndex]
-        guard player.currentItem != nil else { return }
+        captionPollingTimer = Timer.scheduledTimer(withTimeInterval: 0.15, repeats: true) { [weak self] _ in
+            guard let self else { return }
 
-        // 如果已経是最後一行，或者没有字幕，就不用設監聽了
-        let nextIndex = currentCaptionIndex + 1
-        guard nextIndex < captions.count else { return }
-
-        let nextLine = captions[nextIndex]
-        // gap 可能為負數（TTML 有時會出現下一句 begin 早於上一句 end 的情況）
-        let gap = nextLine.start - currentLine.end
-        // 如果出現重疊字幕，優先以 nextLine.start 作為切換時間
-        let triggerSeconds = nextLine.start < currentLine.end ? nextLine.start : currentLine.end
-        let triggerTime = CMTime(seconds: triggerSeconds, preferredTimescale: 600)
-
-        captionBoundaryObserver = player.addBoundaryTimeObserver(
-            forTimes: [NSValue(time: triggerTime)],
-            queue: .main
-        ) { [weak self] in
-            Task { @MainActor [weak self] in
-                guard let self = self else { return }
+            Task { @MainActor in
                 guard !self.isSeeking else { return }
+                guard self.player.currentItem != nil else { return }
+                guard !self.captions.isEmpty else { return }
 
-                if let store = settingsStore, store.videoAutoJumpToNextLine, gap >= 0.5 {
-                    // 🔥 立即跳到下一句 start
-                    let startTime = CMTime(seconds: nextLine.start, preferredTimescale: 600)
-                    self.isSeeking = true
-                    await self.player.seek(to: startTime, toleranceBefore: .zero, toleranceAfter: .zero)
+                let currentTime = self.player.currentTime().seconds
+                guard currentTime.isFinite else { return }
 
-                    self.currentCaptionIndex = nextIndex
-                    self.currentLineID = nextLine.id
-                    self.isSeeking = false
-                    self.setupNextCaptionBoundaryObserver()
-                } else {
-                    // gap <= 0 表示字幕重疊，或幾乎無間隔
-                    if gap <= 0.05 {
-                        // 直接切換到下一行，並重新設置下一行的結束監聽
-                        self.currentCaptionIndex = nextIndex
-                        self.currentLineID = nextLine.id
-                        self.setupNextCaptionBoundaryObserver()
-                    } else {
-                        // 正常播放模式：兩句之間有微小間隙（例如 0.2 秒），才設置下一個監聽等它自然走到下一句
-                        self.observeNaturalStartTime(for: nextLine, at: nextIndex)
-                    }
-                }
+                self.updateCaptionIndexForPlayback(currentTime)
             }
         }
     }
 
-    /// 監聽自然播放到下一句 start
-    private func observeNaturalStartTime(for line: CaptionLine, at index: Int) {
-        let startTime = CMTime(seconds: line.start, preferredTimescale: 600)
-        captionBoundaryObserver = player.addBoundaryTimeObserver(
-            forTimes: [NSValue(time: startTime)],
-            queue: .main
-        ) { [weak self] in
-            Task { @MainActor [weak self] in
-                guard let self = self else { return }
-                self.currentCaptionIndex = index
-                self.currentLineID = line.id
-                setupNextCaptionBoundaryObserver()
+    private func stopCaptionPolling() {
+        captionPollingTimer?.invalidate()
+        captionPollingTimer = nil
+    }
+
+    private func updateCaptionIndexForPlayback(_ time: Double) {
+        guard !captions.isEmpty else { return }
+        let epsilon = 0.05
+
+        if currentCaptionIndex >= captions.count {
+            currentCaptionIndex = captions.count - 1
+        }
+        let currentLine = captions[currentCaptionIndex]
+
+        // 🔥 先判定 current
+        if time >= (currentLine.start - epsilon) && time < currentLine.end {
+            if currentLineID != currentLine.id {
+                currentLineID = currentLine.id
+            }
+            // 🔥 只有 overlap 時才提前切 next
+            if currentCaptionIndex + 1 < captions.count {
+                let nextIndex = currentCaptionIndex + 1
+                let nextLine = captions[nextIndex]
+                if nextLine.start < currentLine.end && time >= (nextLine.start - epsilon) {
+                    currentCaptionIndex = nextIndex
+                    currentLineID = nextLine.id
+                }
+            }
+
+            return
+        }
+
+        // 🔥 處理字幕重疊
+        // 下一句開始了就立刻切換，不再等上一句 end
+        if currentCaptionIndex + 1 < captions.count {
+            let nextIndex = currentCaptionIndex + 1
+            let nextLine = captions[nextIndex]
+
+            let gap = nextLine.start - currentLine.end
+            // 🔥 Auto Jump
+            // 如果兩句之間空白超過 0.5 秒，直接跳過空白
+            if let store = settingsStore,
+               store.videoAutoJumpToNextLine,
+               gap >= 0.5,
+               time >= (currentLine.end - epsilon),
+               time < nextLine.start {
+                let startTime = CMTime(seconds: nextLine.start, preferredTimescale: 600)
+                isSeeking = true
+                player.seek(to: startTime, toleranceBefore: .zero, toleranceAfter: .zero) { [weak self] _ in
+                    guard let self else { return }
+
+                    Task { @MainActor in
+                        self.currentCaptionIndex = nextIndex
+                        self.currentLineID = nextLine.id
+                        self.isSeeking = false
+                    }
+                }
+
+                return
             }
         }
+        updateCaptionIndexForSeek(to: time)
     }
 
     private func observePlaybackState() {
@@ -437,8 +490,6 @@ final class PlayerViewModel: ObservableObject {
         // 🟢 2️⃣ 立即同步 index（避免閃一下）,這是用戸点撃的瞬間反饋
         currentCaptionIndex = index
         currentLineID = line.id
-        // 重置監聽器（因為 Index 変了）
-        setupNextCaptionBoundaryObserver()
 
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
 
@@ -457,7 +508,6 @@ final class PlayerViewModel: ObservableObject {
         ) { [weak self] in
             Task { @MainActor [weak self] in
                 guard let self = self else { return }
-
                 guard self.isLoopingSingleLine else { return }
 
                 guard self.currentCaptionIndex < self.captions.count else { return }
@@ -504,7 +554,6 @@ final class PlayerViewModel: ObservableObject {
 
     func seek(to seconds: Double, completion: (@Sendable (Bool) -> Void)? = nil) {
         let time = CMTime(seconds: seconds, preferredTimescale: 600)
-
         isSeeking = true
 
         player.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero) { [weak self] finished in
@@ -525,10 +574,7 @@ final class PlayerViewModel: ObservableObject {
         pausePlayer()
 
         // 解除 time observer
-        if let observer = captionBoundaryObserver {
-            player.removeTimeObserver(observer)
-            captionBoundaryObserver = nil
-        }
+        stopCaptionPolling()
         removeLoopObserver()
 
         // Remove observer for time jumped
