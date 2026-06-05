@@ -88,8 +88,8 @@ class GrammarStore: ObservableObject {
     }
 
     @MainActor
-    func grammarUpdate(_ id: Int, updatedItem: GrammarItem) async {
-        guard let index = grammars.firstIndex(where: { $0.id == id }) else { return }
+    func grammarUpdate(_ updatedItem: GrammarItem) async {
+        guard let index = grammars.firstIndex(where: { $0.id == updatedItem.id }) else { return }
 
         let original = grammars[index]
         grammars[index] = updatedItem

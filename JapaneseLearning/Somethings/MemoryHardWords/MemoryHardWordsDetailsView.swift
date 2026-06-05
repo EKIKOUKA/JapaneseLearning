@@ -49,34 +49,24 @@ struct MemoryHardWordsDetailsView: View {
                 }) {
                     Image(systemName: "checkmark")
                 }
+                .disabled(word.isWhitespaceOrNewLine || ruby.isWhitespaceOrNewLine)
             }
         }
     }
 
     private func saveChanges() {
-        if word.isEmpty {
-            UINotificationFeedbackGenerator().notificationOccurred(.error)
-            return
-        }
-
         Task {
+            let item = MemoryHardWordsItem(
+                id: isNew ? nil : item.id,
+                word: word,
+                ruby: ruby,
+                meaning: meaning
+            )
+
             if isNew {
-                await store.MemoryHardWordsAdd(
-                    MemoryHardWordsItem(
-                        word: word,
-                        ruby: ruby,
-                        meaning: meaning
-                    )
-                )
+                await store.MemoryHardWordsAdd(item)
             } else {
-                await store.MemoryHardWordsUpdate(
-                    MemoryHardWordsItem(
-                        id: item.id,
-                        word: word,
-                        ruby: ruby,
-                        meaning: meaning
-                    )
-                )
+                await store.MemoryHardWordsUpdate(item)
             }
 
             await MainActor.run {

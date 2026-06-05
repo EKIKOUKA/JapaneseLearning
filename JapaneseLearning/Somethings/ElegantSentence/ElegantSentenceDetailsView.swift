@@ -40,30 +40,22 @@ struct ElegantSentenceDetailsView: View {
                 }) {
                     Image(systemName: "checkmark")
                 }
+                .disabled(sentence.isWhitespaceOrNewLine)
             }
         }
     }
 
     private func saveChanges() {
-        if sentence.isEmpty {
-            UINotificationFeedbackGenerator().notificationOccurred(.error)
-            return
-        }
-
         Task {
+            let item = ElegantSentenceItem(
+                id: isNew ? nil : item.id,
+                sentence: sentence
+            )
+
             if isNew {
-                await store.ElegantSentenceAdd(
-                    ElegantSentenceItem(
-                        sentence: sentence
-                    )
-                )
+                await store.ElegantSentenceAdd(item)
             } else {
-                await store.ElegantSentenceUpdate(
-                    ElegantSentenceItem(
-                        id: item.id,
-                        sentence: sentence
-                    )
-                )
+                await store.ElegantSentenceUpdate(item)
             }
 
             await MainActor.run {

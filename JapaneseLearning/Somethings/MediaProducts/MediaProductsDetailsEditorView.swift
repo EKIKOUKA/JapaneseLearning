@@ -71,39 +71,27 @@ struct MediaProductsDetailsEditorView: View {
                 } label: {
                     Image(systemName: "checkmark")
                 }
+                .disabled(title.isWhitespaceOrNewLine || detailsURL.isWhitespaceOrNewLine)
             }
         }
         .navigationTitle(isNew ? "新規追加" : item.title)
     }
 
     private func saveChanges() {
-        if title.isEmpty {
-            UINotificationFeedbackGenerator().notificationOccurred(.error)
-            return
-        }
-
         Task {
+            let item = MediaProductsItem(
+                id: isNew ? nil : item.id,
+                title: title,
+                category: category,
+                status: status,
+                detailsURL: detailsURL,
+                memo: memo
+            )
+
             if isNew {
-                await store.MediaProductsAdd(
-                    MediaProductsItem(
-                        title: title,
-                        category: category,
-                        status: status,
-                        detailsURL: detailsURL,
-                        memo: memo
-                    )
-                )
+                await store.MediaProductsAdd(item)
             } else {
-                await store.MediaProductsUpdate(
-                    MediaProductsItem(
-                        id: item.id,
-                        title: title,
-                        category: category,
-                        status: status,
-                        detailsURL: detailsURL,
-                        memo: memo
-                    )
-                )
+                await store.MediaProductsUpdate(item)
             }
 
             await MainActor.run {

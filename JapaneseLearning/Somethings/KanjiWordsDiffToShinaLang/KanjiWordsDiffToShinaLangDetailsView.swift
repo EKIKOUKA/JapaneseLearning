@@ -49,34 +49,24 @@ struct KanjiWordsDiffToShinaLangDetailsView: View {
                 }) {
                     Image(systemName: "checkmark")
                 }
+                .disabled(word.isWhitespaceOrNewLine || ruby.isWhitespaceOrNewLine)
             }
         }
     }
 
     private func saveChanges() {
-        if word.isEmpty {
-            UINotificationFeedbackGenerator().notificationOccurred(.error)
-            return
-        }
-
         Task {
+            let item = KanjiWordsItem(
+                id: isNew ? nil : item.id,
+                word: word,
+                ruby: ruby,
+                meaning: meaning
+            )
+
             if isNew {
-                await store.KanjiWordsAdd(
-                    KanjiWordsItem(
-                        word: word,
-                        ruby: ruby,
-                        meaning: meaning
-                    )
-                )
+                await store.KanjiWordsAdd(item)
             } else {
-                await store.KanjiWordsUpdate(
-                    KanjiWordsItem(
-                        id: item.id,
-                        word: word,
-                        ruby: ruby,
-                        meaning: meaning
-                    )
-                )
+                await store.KanjiWordsUpdate(item)
             }
 
             await MainActor.run {

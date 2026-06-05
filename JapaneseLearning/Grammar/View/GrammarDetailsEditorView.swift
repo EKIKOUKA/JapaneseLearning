@@ -61,18 +61,13 @@ struct GrammarDetailsEditorView: View {
                     saveChanges()
                 } label: {
                     Image(systemName: "checkmark")
-//                       .font(.title2)
                 }
+                .disabled(title.isWhitespaceOrNewLine || meaning.isWhitespaceOrNewLine || examples.isWhitespaceOrNewLine)
             }
         }
     }
 
     private func saveChanges() {
-        if title.isEmpty {
-            UINotificationFeedbackGenerator().notificationOccurred(.error)
-            return
-        }
-
         let grammar_item = GrammarItem(
             id: item.id,
             title: title,
@@ -89,7 +84,7 @@ struct GrammarDetailsEditorView: View {
             if isNew {
                 await store.grammarAdd(grammar_item)
             } else {
-                await store.grammarUpdate(item.id, updatedItem: grammar_item)
+                await store.grammarUpdate(grammar_item)
             }
 
             await MainActor.run {

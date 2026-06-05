@@ -49,34 +49,24 @@ struct IdiomsDetailsView: View {
                 }) {
                     Image(systemName: "checkmark")
                 }
+                .disabled(word.isWhitespaceOrNewLine || ruby.isWhitespaceOrNewLine)
             }
         }
     }
 
     private func saveChanges() {
-        if word.isEmpty {
-            UINotificationFeedbackGenerator().notificationOccurred(.error)
-            return
-        }
-
         Task {
+            let item = IdiomsItem(
+                id: isNew ? nil : item.id,
+                word: word,
+                ruby: ruby,
+                meaning: meaning
+            )
+
             if isNew {
-                await store.IdiomsAdd(
-                    IdiomsItem(
-                        word: word,
-                        ruby: ruby,
-                        meaning: meaning
-                    )
-                )
+                await store.IdiomsAdd(item)
             } else {
-                await store.IdiomsUpdate(
-                    IdiomsItem(
-                        id: item.id,
-                        word: word,
-                        ruby: ruby,
-                        meaning: meaning
-                    )
-                )
+                await store.IdiomsUpdate(item)
             }
 
             await MainActor.run {

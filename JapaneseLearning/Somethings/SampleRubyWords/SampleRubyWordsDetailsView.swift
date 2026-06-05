@@ -49,34 +49,24 @@ struct SampleRubyWordsDetailsView: View {
                 }) {
                     Image(systemName: "checkmark")
                 }
+                .disabled(word.isWhitespaceOrNewLine || ruby.isWhitespaceOrNewLine)
             }
         }
     }
 
     private func saveChanges() {
-        if word.isEmpty {
-            UINotificationFeedbackGenerator().notificationOccurred(.error)
-            return
-        }
-
         Task {
+            let item = SampleRubyWordsItem(
+                id: isNew ? nil : item.id,
+                word: word,
+                ruby: ruby,
+                meaning: meaning
+            )
+
             if isNew {
-                await store.SampleRubyWordsAdd(
-                    SampleRubyWordsItem(
-                        word: word,
-                        ruby: ruby,
-                        meaning: meaning
-                    )
-                )
+                await store.SampleRubyWordsAdd(item)
             } else {
-                await store.SampleRubyWordsUpdate(
-                    SampleRubyWordsItem(
-                        id: item.id,
-                        word: word,
-                        ruby: ruby,
-                        meaning: meaning
-                    )
-                )
+                await store.SampleRubyWordsUpdate(item)
             }
 
             await MainActor.run {
