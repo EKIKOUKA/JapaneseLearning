@@ -94,7 +94,7 @@ struct MediaProductsDetailsEditorView: View {
             .listRowInsets(EdgeInsets(top: 6, leading: 10, bottom: 6, trailing: 5))
         }
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
+            ToolbarItem(placement: .confirmationAction) {
                 Button {
                     saveChanges()
                 } label: {

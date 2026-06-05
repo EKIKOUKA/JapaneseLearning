@@ -45,7 +45,7 @@ struct ElegantSentenceDetailsView: View {
         }
         .navigationTitle(isNew ? "新規追加" : "編集")
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
+            ToolbarItem(placement: .confirmationAction) {
                 Button(action: {
                     saveChanges()
                 }) {

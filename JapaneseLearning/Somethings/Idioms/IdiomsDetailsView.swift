@@ -75,7 +75,7 @@ struct IdiomsDetailsView: View {
         }
         .navigationTitle(isNew ? "新規追加" : item.word)
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
+            ToolbarItem(placement: .confirmationAction) {
                 Button(action: {
                     saveChanges()
                 }) {

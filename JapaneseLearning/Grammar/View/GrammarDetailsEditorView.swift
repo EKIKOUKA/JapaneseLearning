@@ -131,7 +131,7 @@ struct GrammarDetailsEditorView: View {
         }
         .navigationTitle(isNew ? "新規追加" : item.title)
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
+            ToolbarItem(placement: .confirmationAction) {
                 Button {
                     saveChanges()
                 } label: {
