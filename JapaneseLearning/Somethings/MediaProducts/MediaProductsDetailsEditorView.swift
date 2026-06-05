@@ -32,17 +32,8 @@ struct MediaProductsDetailsEditorView: View {
 
     var body: some View {
         List {
-            Section("映像作品") {
-                ZStack(alignment: .topLeading) {
-                    if title.isEmpty {
-                        Text("タイトルを入力…")
-                            .foregroundColor(.gray)
-                            .padding(.horizontal, 5)
-                            .padding(.vertical, 8)
-                    }
-
-                    TextEditor(text: $title)
-                }
+            Section(header: Text("映像作品")) {
+                TextField("タイトルを入力…", text: $title, axis: .vertical)
             }
             .listRowInsets(EdgeInsets(top: 6, leading: 10, bottom: 6, trailing: 5))
 
@@ -64,34 +55,15 @@ struct MediaProductsDetailsEditorView: View {
                 }
             }
 
-            Section("詳細リンク") {
-                ZStack(alignment: .topLeading) {
-                    if detailsURL.isEmpty {
-                        Text("詳細リンクを入力…")
-                            .foregroundColor(.gray)
-                            .padding(.horizontal, 5)
-                            .padding(.vertical, 8)
-                    }
-
-                    TextEditor(text: $detailsURL)
-                        .frame(minHeight: 62)
-                }
+            Section(header: Text("詳細リンク")) {
+                TextField("詳細リンクを入力…", text: $detailsURL, axis: .vertical)
+                    .lineLimit(2...)
             }
-            .listRowInsets(EdgeInsets(top: 6, leading: 10, bottom: 6, trailing: 5))
 
-            Section("メモ") {
-                ZStack(alignment: .topLeading) {
-                    if memo.isEmpty {
-                        Text("メモを入力…")
-                            .foregroundColor(.gray)
-                            .padding(.horizontal, 5)
-                            .padding(.vertical, 8)
-                    }
-
-                    TextEditor(text: $memo)
-                }
+            Section(header: Text("メモ")) {
+                TextField("メモを入力…", text: $memo, axis: .vertical)
+                    .lineLimit(1...)
             }
-            .listRowInsets(EdgeInsets(top: 6, leading: 10, bottom: 6, trailing: 5))
         }
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {

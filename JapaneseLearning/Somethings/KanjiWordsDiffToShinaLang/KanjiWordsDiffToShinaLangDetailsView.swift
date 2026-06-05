@@ -30,45 +30,18 @@ struct KanjiWordsDiffToShinaLangDetailsView: View {
         VStack {
             List {
                 Section(header: Text("単語")) {
-                    ZStack(alignment: .topLeading) {
-                        if word.isEmpty {
-                            Text("単語を入力…")
-                                .foregroundColor(.gray)
-                                .padding(.horizontal, 5)
-                                .padding(.vertical, 8)
-                        }
-
-                        TextEditor(text: $word)
-                            .frame(height: 39)
-                    }
+                    TextField("単語を入力…", text: $word)
                 }
                 .listRowInsets(EdgeInsets(top: 10, leading: 10, bottom: 10, trailing: 2))
 
                 Section(header: Text("発音")) {
-                    ZStack(alignment: .topLeading) {
-                        if ruby.isEmpty {
-                            Text("発音を入力…")
-                                .foregroundColor(.gray)
-                                .padding(.horizontal, 5)
-                                .padding(.vertical, 8)
-                        }
-                        TextEditor(text: $ruby)
-                            .frame(height: 39)
-                    }
+                    TextField("発音を入力…", text: $ruby)
                 }
                 .listRowInsets(EdgeInsets(top: 10, leading: 10, bottom: 10, trailing: 2))
 
                 Section(header: Text("説明")) {
-                    ZStack(alignment: .topLeading) {
-                        if meaning.isEmpty {
-                            Text("説明を入力…")
-                                .foregroundColor(.gray)
-                                .padding(.horizontal, 5)
-                                .padding(.vertical, 8)
-                        }
-                        TextEditor(text: $meaning)
-                            .frame(minHeight: 39)
-                    }
+                    TextField("説明を入力…", text: $meaning, axis: .vertical)
+                        .lineLimit(2...)
                 }
                 .listRowInsets(EdgeInsets(top: 10, leading: 10, bottom: 10, trailing: 2))
             }

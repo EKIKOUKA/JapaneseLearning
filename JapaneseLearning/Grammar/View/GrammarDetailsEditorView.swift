@@ -34,97 +34,31 @@ struct GrammarDetailsEditorView: View {
         VStack {
             List {
                 Section(header: Text("文型")) {
-                    ZStack(alignment: .topLeading) {
-                        if title.isEmpty {
-                            Text("文型を入力…")
-                                .foregroundColor(.gray)
-                                .padding(.horizontal, 5)
-                                .padding(.vertical, 8)
-                        }
-
-                        TextEditor(text: $title)
-                            .frame(minHeight: 39)
-                    }
+                    TextField("文型を入力…", text: $title)
                 }
                 .listRowInsets(EdgeInsets(top: 10, leading: 10, bottom: 10, trailing: 2))
 
                 Section(header: Text("説明")) {
-//                        TextEditor(text: $meaning)
-//                            .frame(minHeight: 54)
-//                            .padding(5)
-//                            .background(Color(.red))
-//                            .cornerRadius(8)
-//                            .padding(.bottom, 15)
-                    ZStack(alignment: .topLeading) {
-                        if meaning.isEmpty {
-                            Text("説明を入力…")
-                                .foregroundColor(.gray)
-                                .padding(.horizontal, 5)
-                                .padding(.vertical, 8)
-                        }
-                        TextEditor(text: $meaning)
-                            .frame(minHeight: 54)
-                    }
+                    TextField("説明を入力…", text: $meaning, axis: .vertical)
+                        .lineLimit(2...)
                 }
                 .listRowInsets(EdgeInsets(top: 10, leading: 10, bottom: 10, trailing: 2))
 
                 Section(header: Text("接続")) {
-//                        TextEditor(text: $connection)
-//                            .frame(minHeight: 54)
-//                            .padding(5)
-//                            .background(Color(.systemGray6))
-//                            .cornerRadius(8)
-//                            .padding(.bottom, 15)
-                    ZStack(alignment: .topLeading) {
-                        if connection.isEmpty {
-                            Text("接続を入力…")
-                                .foregroundColor(.gray)
-                                .padding(.horizontal, 5)
-                                .padding(.vertical, 8)
-                        }
-                        TextEditor(text: $connection)
-                            .frame(minHeight: 54)
-                    }
+                    TextField("接続を入力…", text: $connection, axis: .vertical)
+                        .lineLimit(2...)
                 }
                 .listRowInsets(EdgeInsets(top: 10, leading: 10, bottom: 10, trailing: 2))
 
                 Section(header: Text("メモ")) {
-//                        TextEditor(text: $notes)
-//                            .frame(minHeight: 54)
-//                            .padding(5)
-//                            .background(Color(.systemGray6))
-//                            .cornerRadius(8)
-//                            .padding(.bottom, 15)
-                    ZStack(alignment: .topLeading) {
-                        if notes.isEmpty {
-                            Text("メモを入力…")
-                                .foregroundColor(.gray)
-                                .padding(.horizontal, 5)
-                                .padding(.vertical, 8)
-                        }
-                        TextEditor(text: $notes)
-                            .frame(minHeight: 62)
-                    }
+                    TextField("メモを入力…", text: $notes, axis: .vertical)
+                        .lineLimit(2...)
                 }
                 .listRowInsets(EdgeInsets(top: 10, leading: 10, bottom: 10, trailing: 2))
 
                 Section(header: Text("例文")) {
-//                        TextEditor(text: $examples)
-//                            .frame(minHeight: 150)
-//                            .padding(5)
-//                            .background(Color(.systemGray6))
-//                            .cornerRadius(8)
-
-                    ZStack(alignment: .topLeading) {
-                        if examples.isEmpty {
-                            Text("例文を入力…")
-                                .foregroundColor(.gray)
-                                .padding(.horizontal, 5)
-                                .padding(.vertical, 8)
-                        }
-                        TextEditor(text: $examples)
-                            .frame(minHeight: 150)
-                    }
+                    TextField("例文を入力…", text: $examples, axis: .vertical)
+                        .lineLimit(5...)
                 }
                 .listRowInsets(EdgeInsets(top: 10, leading: 10, bottom: 10, trailing: 2))
             }

@@ -17,7 +17,8 @@ struct YouTubeAddVideoSheetView: View {
         NavigationStack {
             List {
                 Section("YouTube リンク") {
-                    URLInputView(inputURL: $inputURL)
+                    TextField("YouTube動画または再生リストのリンク", text: $inputURL, axis: .vertical)
+                        .lineLimit(2...3)
                 }
 
                 if !store.videoList.isEmpty {
@@ -89,26 +90,6 @@ struct YouTubeAddVideoSheetView: View {
                 if store.videoList.isEmpty {
                     await store.fetchVideoPlaylist()
                 }
-            }
-        }
-    }
-}
-
-struct URLInputView: View {
-    @Binding var inputURL: String
-
-    var body: some View {
-        VStack {
-            ZStack(alignment: .topLeading) {
-                if inputURL.isEmpty {
-                    Text("YouTube動画かリストのリンク")
-                        .foregroundColor(.secondary)
-                        .padding(.leading, 4)
-                        .padding(.top, 8)
-                }
-                TextEditor(text: $inputURL)
-                    .scrollContentBackground(.hidden)
-                    .frame(minHeight: 83)
             }
         }
     }

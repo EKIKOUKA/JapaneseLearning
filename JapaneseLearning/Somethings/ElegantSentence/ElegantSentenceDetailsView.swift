@@ -27,18 +27,8 @@ struct ElegantSentenceDetailsView: View {
         VStack {
             List {
                 Section {
-                    ZStack(alignment: .topLeading) {
-                        if sentence.isEmpty {
-                            Text("文を入力…")
-                                .foregroundColor(.gray)
-                                .padding(.horizontal, 5)
-                                .padding(.vertical, 8)
-                        }
-
-                        TextEditor(text: $sentence)
-                            .font(.system(size: 20))
-                            .frame(minHeight: 128)
-                    }
+                    TextField("文を入力…", text: $sentence, axis: .vertical)
+                        .lineLimit(2...)
                 }
                 .listRowInsets(EdgeInsets(top: 5, leading: 10, bottom: 5, trailing: 3))
             }
