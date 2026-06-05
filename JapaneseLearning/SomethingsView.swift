@@ -20,7 +20,7 @@ struct SomethingsView: View {
                 btnTextView("映像作品リスト") {
                     MediaProductsListView()
                 }
-                btnTextView("支那語に無い漢字") {
+                btnTextView("台湾語に無い漢字") {
                     KanjiWordsDiffToShinaLangView()
                 }
                 btnTextView("覚えにくい単語") {

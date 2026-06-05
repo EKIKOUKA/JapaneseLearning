@@ -30,7 +30,6 @@ struct ElegantSentenceDetailsView: View {
                     TextField("文を入力…", text: $sentence, axis: .vertical)
                         .lineLimit(2...)
                 }
-                .listRowInsets(EdgeInsets(top: 5, leading: 10, bottom: 5, trailing: 3))
             }
         }
         .navigationTitle(isNew ? "新規追加" : "編集")

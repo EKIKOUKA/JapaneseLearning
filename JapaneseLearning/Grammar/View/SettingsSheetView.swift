@@ -13,7 +13,7 @@ struct SettingsSheetGrammarView: View {
 
     let isoCountries: [(code: String, name: String)] = {
         let overrides: [String: String] = [
-            "TW": "台湾（中華民国）",
+            "TW": "台湾（🇹🇼中華民国）",
             "CN": "中国（支那、西朝鮮）",
             "JP": "大日本帝国"
         ]

@@ -36,31 +36,22 @@ struct GrammarDetailsEditorView: View {
                 Section(header: Text("文型")) {
                     TextField("文型を入力…", text: $title)
                 }
-                .listRowInsets(EdgeInsets(top: 10, leading: 10, bottom: 10, trailing: 2))
-
                 Section(header: Text("説明")) {
                     TextField("説明を入力…", text: $meaning, axis: .vertical)
                         .lineLimit(2...)
                 }
-                .listRowInsets(EdgeInsets(top: 10, leading: 10, bottom: 10, trailing: 2))
-
                 Section(header: Text("接続")) {
                     TextField("接続を入力…", text: $connection, axis: .vertical)
                         .lineLimit(2...)
                 }
-                .listRowInsets(EdgeInsets(top: 10, leading: 10, bottom: 10, trailing: 2))
-
                 Section(header: Text("メモ")) {
                     TextField("メモを入力…", text: $notes, axis: .vertical)
                         .lineLimit(2...)
                 }
-                .listRowInsets(EdgeInsets(top: 10, leading: 10, bottom: 10, trailing: 2))
-
                 Section(header: Text("例文")) {
                     TextField("例文を入力…", text: $examples, axis: .vertical)
                         .lineLimit(5...)
                 }
-                .listRowInsets(EdgeInsets(top: 10, leading: 10, bottom: 10, trailing: 2))
             }
         }
         .navigationTitle(isNew ? "新規追加" : item.title)

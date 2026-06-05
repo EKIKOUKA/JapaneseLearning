@@ -35,7 +35,6 @@ struct MediaProductsDetailsEditorView: View {
             Section(header: Text("映像作品")) {
                 TextField("タイトルを入力…", text: $title, axis: .vertical)
             }
-            .listRowInsets(EdgeInsets(top: 6, leading: 10, bottom: 6, trailing: 5))
 
             Section("作品分類") {
                 Picker("作品分類", selection: $category) {

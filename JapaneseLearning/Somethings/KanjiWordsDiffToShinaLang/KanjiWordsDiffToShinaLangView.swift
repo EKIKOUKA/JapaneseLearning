@@ -51,7 +51,7 @@ struct KanjiWordsDiffToShinaLangView: View {
                 ProgressLoadingView()
             }
         }
-        .navigationTitle("支那語に無い漢字")
+        .navigationTitle("台湾語に無い漢字")
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
