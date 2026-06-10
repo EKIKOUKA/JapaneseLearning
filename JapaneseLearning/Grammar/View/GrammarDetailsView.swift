@@ -11,39 +11,34 @@ struct GrammarDetailsView: View {
     let item: GrammarItem
     @ObservedObject var store: GrammarStore
     @Environment(SettingsStore.self) private var settingsStore
-
     @State private var isReady = false
-
-    @State private var meaningHeight: CGFloat = .zero
-    @State private var connectionHeight: CGFloat = .zero
-    @State private var notesHeight: CGFloat = .zero
-    @State private var examplesHeight: CGFloat = .zero
 
     var body: some View {
         VStack {
             List {
                 Section(header: Text("説明")) {
-                    SelectableUITextView(text: item.meaning, height: $meaningHeight)
-                        .frame(height: meaningHeight)
+                    Text(item.meaning)
+                        .textSelection(.enabled)
+                        .font(.system(size: 19))
                 }
-
                 if item.connection != nil, item.connection != "" {
                     Section(header: Text("接続")) {
-                        SelectableUITextView(text: item.connection ?? "", height: $connectionHeight)
-                            .frame(height: connectionHeight)
+                        Text(item.connection ?? "")
+                            .textSelection(.enabled)
+                            .font(.system(size: 19))
                     }
                 }
-
                 if item.notes != nil, item.notes != "" {
                     Section(header: Text("メモ")) {
-                        SelectableUITextView(text: item.notes ?? "", height: $notesHeight)
-                            .frame(height: notesHeight)
+                        Text(item.notes ?? "")
+                            .textSelection(.enabled)
+                            .font(.system(size: 19))
                     }
                 }
-
                 Section(header: Text("例文")) {
-                    SelectableUITextView(text: item.examples, height: $examplesHeight)
-                        .frame(height: examplesHeight)
+                    Text(item.examples)
+                        .textSelection(.enabled)
+                        .font(.system(size: 19))
                 }
             }
             .listStyle(.insetGrouped)

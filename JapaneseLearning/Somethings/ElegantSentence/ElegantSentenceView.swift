@@ -20,19 +20,15 @@ struct ElegantSentenceView: View {
             } else {
                 List {
                     Section {
-                        ForEach(filteredItems, id: \.self) { index in
-                            let item = $store.ElegantSentenceList[index]
-
+                        ForEach(filteredItems) { item in
                             HStack {
-                                SelectableUITextView(
-                                    text: store.ElegantSentenceList[index].sentence,
-                                    height: item.height
-                                )
-                                .frame(height: store.ElegantSentenceList[index].height)
+                                Text(item.sentence)
+                                    .textSelection(.enabled)
+                                    .font(.system(size: 19))
                             }
                             .swipeActions {
                                 NavigationLink {
-                                    ElegantSentenceDetailsView(item: store.ElegantSentenceList[index], store: store)
+                                    ElegantSentenceDetailsView(item: item, store: store)
                                 } label: {
                                     Image(systemName: "highlighter")
                                 }
@@ -90,10 +86,11 @@ struct ElegantSentenceView: View {
         }
     }
 
-    var filteredItems: [Int] {
-        store.ElegantSentenceList.indices.filter { index in
-            searchText.isEmpty || store.ElegantSentenceList[index].sentence.localizedCaseInsensitiveContains(searchText)
-        }
+    var filteredItems: [ElegantSentenceItem] {
+        store.ElegantSentenceList
+            .filter { item in
+                searchText.isEmpty || item.sentence.localizedCaseInsensitiveContains(searchText)
+            }
     }
 }
 

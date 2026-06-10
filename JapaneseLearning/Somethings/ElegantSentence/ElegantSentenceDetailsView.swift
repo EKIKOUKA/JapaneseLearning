@@ -14,7 +14,6 @@ struct ElegantSentenceDetailsView: View {
     @Environment(\.dismiss) var dismiss
 
     @State private var sentence: String
-    @State private var sentenceHeight: CGFloat = .zero
 
     init(item: ElegantSentenceItem, store: ElegantSentenceStore, isNew: Bool = false) {
         self.item = item

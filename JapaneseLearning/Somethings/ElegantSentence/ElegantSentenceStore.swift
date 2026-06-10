@@ -12,13 +12,6 @@ import Combine
 struct ElegantSentenceItem: Codable, Identifiable {
     var id: Int? = nil
     var sentence: String
-
-    var height: CGFloat = .zero
-
-    enum CodingKeys: String, CodingKey {
-        case id
-        case sentence
-    }
 }
 
 class ElegantSentenceStore: ObservableObject {
