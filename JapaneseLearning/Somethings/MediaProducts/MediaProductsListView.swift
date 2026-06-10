@@ -55,7 +55,7 @@ struct MediaProductsListView: View {
                                                 .tag(category)
                                         }
                                     }
-                                    .pickerStyle(.segmented)
+                                    .pickerStyle(.tabs)
                                     .listRowInsets(EdgeInsets(
                                         top: 10,
                                         leading: 0,

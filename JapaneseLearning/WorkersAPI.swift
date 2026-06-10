@@ -50,16 +50,6 @@ enum WorkersAPI {
         try validate(response)
     }
 
-    // MARK: - DELETE
-    static func delete(_ path: String) async throws {
-        let url = URL(string: "\(baseURL)/\(path)")!
-        var request = URLRequest(url: url)
-        request.httpMethod = "DELETE"
-
-        let (_, response) = try await URLSession.shared.data(for: request)
-        try validate(response)
-    }
-
     // MARK: - Response Validation
     private static func validate(_ response: URLResponse) throws {
         guard let http = response as? HTTPURLResponse else {

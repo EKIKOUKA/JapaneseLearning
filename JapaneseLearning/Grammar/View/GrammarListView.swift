@@ -13,7 +13,6 @@ struct GrammarListView: View {
 
     @State private var searchText = ""
     @State private var showImportantOnly = false
-    @State private var isReady: Bool = false
 
     @Environment(SettingsStore.self) private var settingsStore
     @ObservedObject var store: GrammarStore
@@ -25,6 +24,7 @@ struct GrammarListView: View {
                     ForEach(filteredItems) { item in
                         NavigationLink(value: GrammarNavDestination.details(id: item.id, level: level)) {
                             Text(item.title)
+
                             if settingsStore.showGrammarListItemImportantImage {
                                 if item.isImportant {
                                     Image(systemName: "star.fill")
@@ -110,7 +110,7 @@ struct GrammarListView: View {
                         NavigationLink {
                             GrammarDetailsEditorView(
                                 item: GrammarItem(
-                                    id: 8964,
+                                    id: -1,
                                     title: "",
                                     level: level,
                                     meaning: "",

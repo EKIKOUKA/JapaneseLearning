@@ -10,7 +10,7 @@ import Foundation
 import Combine
 
 struct IdiomsItem: Codable, Identifiable {
-    var id: Int? = nil
+    var id: Int?
     var word: String
     var ruby: String
     var meaning: String

@@ -36,7 +36,7 @@ struct MediaProductsDetailsEditorView: View {
                 TextField("タイトルを入力…", text: $title, axis: .vertical)
             }
 
-            Section("作品分類") {
+            Section(header: Text("作品分類")) {
                 Picker("作品分類", selection: $category) {
                     ForEach(MediaCategory.allCases) { category in
                         Text(category.displayName)
@@ -45,7 +45,7 @@ struct MediaProductsDetailsEditorView: View {
                 }
             }
 
-            Section("観る状態") {
+            Section(header: Text("観る状態")) {
                 Picker("観る状態", selection: $status) {
                     ForEach(WatchStatus.allCases) { status in
                         Text(status.displayName)

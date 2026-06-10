@@ -129,7 +129,7 @@ struct SampleRubyWordsItemView: View {
                     store.expandedIDs.contains(item.id ?? -1)
                 },
                 set: { _ in
-                    store.toggleExpand(item.id ?? 8964)
+                    store.toggleExpand(item.id ?? -1)
                 }
             )
         ) {
