@@ -122,7 +122,22 @@ class VideoStore {
         }
     }
 
-    // video url/captions
+    @MainActor
+    func reorderVideos(_ reorderedVideos: [VideoItem], for category: PlaylistCategory) {
+        var iterator = reorderedVideos.makeIterator()
+
+        videos = videos.map { video in
+            if belongsToCategory(video, category: category) {
+                return iterator.next() ?? video
+            }
+
+            return video
+        }
+
+        saveVideoCache()
+    }
+
+    // MARK: - Video Details & Captions Fetching
     func fetchVideoDataFromServer(_ videoID: String) async throws -> VideoData {
         let video_decoded: VideoResponse = try await WorkersAPI.get("get_video?id=\(videoID)")
 

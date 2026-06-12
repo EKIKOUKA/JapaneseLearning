@@ -97,9 +97,11 @@ struct VideoListView: View {
                             .opacity(store.videosIsReady ? 1 : 0)
                         }
                     }
-                    .navigationDestination(item: $selectedVideo) { video in
-                        VideoDetailsView(videoID: video.id)
-                            .toolbarColorScheme(.dark, for: .navigationBar)
+                    .swipeActionsContainer()
+                    .reorderContainer(for: VideoItem.self) { difference in
+                        var reordered = filteredVideos
+                        reordered.apply(difference: difference)
+                        store.reorderVideos(reordered, for: selectedCategory)
                     }
                 }
             }
@@ -139,17 +141,47 @@ struct VideoListView: View {
             ShadowingSettingsSheetView()
                 .presentationDetents([.medium, .large])
         }
-        .alert("この動画を削除しますか？",
-               isPresented: $showDeleteAlert,
-               presenting: pendingDeleteVideo) { video in
-            Button("削除", role: .destructive) {
-                store.videos.removeAll { $0.id == video.id }
+    }
 
-                Task {
-                    await store.deleteVideo(video.id)
-                }
+    private var categoryPicker: some View {
+        Picker("Category", selection: $selectedCategory) {
+            ForEach(PlaylistCategory.allCases) { category in
+                Text(category.title)
+                    .tag(category)
             }
         }
+        .pickerStyle(.tabs)
+        .controlSize(sizeClassIsRegular ? .large : .regular)
+        .padding(.horizontal, 16)
+        .padding(.vertical, sizeClassIsRegular ? 10 : 2)
+    }
+
+    private func videoGrid(columns: [GridItem]) -> some View {
+        LazyVGrid(columns: columns) {
+            ForEach(filteredVideos) { video in
+                NavigationLink(destination: VideoDetailsView(videoID: video.id)) {
+                    videoListItemView(video)
+                }
+                .buttonStyle(.plain)
+                .swipeActions {
+                    Button(role: .destructive) {
+                        withAnimation(.spring(duration: 0.35)) {
+                            store.videos.removeAll { $0.id == video.id }
+                        }
+
+                        Task {
+                            await store.deleteVideo(video.id)
+                        }
+                    } label: {
+                        Image(systemName: "trash")
+                    }
+                }
+            }
+            .reorderable()
+        }
+        .id(selectedCategory.id)
+        .transition(.opacity)
+        .animation(.snappy(duration: 0.35), value: filteredVideoIDs)
     }
 
     private func videoListItemView(_ video: VideoItem) -> some View {
@@ -192,10 +224,39 @@ struct VideoListView: View {
         .frame(maxWidth: .infinity)
         .background(Color(.secondarySystemBackground))
         .cornerRadius(25)
-        .onLongPressGesture {
-            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-            pendingDeleteVideo = video
-            showDeleteAlert = true
+    }
+
+    private func handleAddResult(_ result: AddYouTubeResult) {
+        switch result {
+            case .addedVideo:
+                selectedCategory = .shadowing
+            case .addedVideoFromPlaylist(let playlistID):
+                selectedCategory = PlaylistCategory.allCases.first {
+                    $0.playlistID == playlistID
+                } ?? .shadowing
+            default:
+                break
         }
+    }
+}
+
+extension Array {
+    mutating func apply<CollectionID: Hashable & Sendable>(
+        difference: ReorderDifference<Element.ID, CollectionID>
+    ) where Element: Identifiable, Element.ID: Sendable {
+        guard let sourceIndex = firstIndex(where: { $0.id == difference.sources[0] }) else { return }
+        let movedItem = remove(at: sourceIndex)
+
+        var destination: Int
+
+        switch difference.destination.position {
+            case let .before(value):
+                guard let index = firstIndex(where: { $0.id == value }) else { return }
+                destination = index
+            case .end:
+                destination = endIndex
+        }
+
+        insert(movedItem, at: destination)
     }
 }
