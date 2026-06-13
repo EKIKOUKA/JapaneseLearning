@@ -134,6 +134,7 @@ struct IdiomsItemsView: View {
             )
         ) {
             Text(item.meaning)
+                .textSelection(.enabled)
                 .font(.body)
                 .foregroundStyle(.secondary)
         } label: {
