@@ -7,10 +7,20 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		0E768A5F2F91046500918FFD /* Kingfisher in Frameworks */ = {isa = PBXBuildFile; productRef = 0E768A5E2F91046500918FFD /* Kingfisher */; };
+		0ECD350F2FDC32340033EF2E /* Kingfisher in Frameworks */ = {isa = PBXBuildFile; productRef = 0ECD350E2FDC32340033EF2E /* Kingfisher */; };
+		0EDB25B92FE449FD0091E0BF /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0EDB25B82FE449FD0091E0BF /* WidgetKit.framework */; };
+		0EDB25BB2FE449FD0091E0BF /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0EDB25BA2FE449FD0091E0BF /* SwiftUI.framework */; };
+		0EDB25CC2FE449FF0091E0BF /* VideoStatusExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 0EDB25B72FE449FC0091E0BF /* VideoStatusExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		0EDB25CA2FE449FF0091E0BF /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 7FF22E862ED7EC6600603529 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 0EDB25B62FE449FC0091E0BF;
+			remoteInfo = VideoStatusExtension;
+		};
 		0EFF48002F378D38008832D6 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 7FF22E862ED7EC6600603529 /* Project object */;
@@ -20,7 +30,24 @@
 		};
 /* End PBXContainerItemProxy section */
 
+/* Begin PBXCopyFilesBuildPhase section */
+		0EDB25D12FE449FF0091E0BF /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				0EDB25CC2FE449FF0091E0BF /* VideoStatusExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
+		0EDB25B72FE449FC0091E0BF /* VideoStatusExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = VideoStatusExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		0EDB25B82FE449FD0091E0BF /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
+		0EDB25BA2FE449FD0091E0BF /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		7F086B992F6ABDE600288521 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = README.md; sourceTree = "<group>"; };
 		7F4336D12F70600400783EE3 /* JapaneseLearning.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = JapaneseLearning.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		7F4336D22F70600400783EE3 /* JapaneseLearningTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = JapaneseLearningTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -34,9 +61,32 @@
 			);
 			target = 7FF22E8D2ED7EC6600603529 /* JapaneseLearning */;
 		};
+		0EDB25D02FE449FF0091E0BF /* Exceptions for "VideoStatus" folder in "VideoStatusExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 0EDB25B62FE449FC0091E0BF /* VideoStatusExtension */;
+		};
+		0EDB25D32FE44C400091E0BF /* Exceptions for "VideoStatus" folder in "JapaneseLearning" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				VideoStatusLiveActivity.swift,
+			);
+			target = 7FF22E8D2ED7EC6600603529 /* JapaneseLearning */;
+		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		0EDB25BC2FE449FD0091E0BF /* VideoStatus */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				0EDB25D32FE44C400091E0BF /* Exceptions for "VideoStatus" folder in "JapaneseLearning" target */,
+				0EDB25D02FE449FF0091E0BF /* Exceptions for "VideoStatus" folder in "VideoStatusExtension" target */,
+			);
+			path = VideoStatus;
+			sourceTree = "<group>";
+		};
 		7FF22E902ED7EC6600603529 /* JapaneseLearning */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
@@ -48,6 +98,15 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		0EDB25B42FE449FC0091E0BF /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				0EDB25BB2FE449FD0091E0BF /* SwiftUI.framework in Frameworks */,
+				0EDB25B92FE449FD0091E0BF /* WidgetKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		0EFF47F92F378D38008832D6 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -59,13 +118,22 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				0E768A5F2F91046500918FFD /* Kingfisher in Frameworks */,
+				0ECD350F2FDC32340033EF2E /* Kingfisher in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		0E4D55312FD8033E00954110 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				0EDB25B82FE449FD0091E0BF /* WidgetKit.framework */,
+				0EDB25BA2FE449FD0091E0BF /* SwiftUI.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		7FF22E852ED7EC6600603529 = {
 			isa = PBXGroup;
 			children = (
@@ -73,12 +141,37 @@
 				7F086B992F6ABDE600288521 /* README.md */,
 				7F4336D12F70600400783EE3 /* JapaneseLearning.app */,
 				7F4336D22F70600400783EE3 /* JapaneseLearningTests.xctest */,
+				0EDB25BC2FE449FD0091E0BF /* VideoStatus */,
+				0E4D55312FD8033E00954110 /* Frameworks */,
+				0EDB25B72FE449FC0091E0BF /* VideoStatusExtension.appex */,
 			);
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		0EDB25B62FE449FC0091E0BF /* VideoStatusExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 0EDB25CD2FE449FF0091E0BF /* Build configuration list for PBXNativeTarget "VideoStatusExtension" */;
+			buildPhases = (
+				0EDB25B32FE449FC0091E0BF /* Sources */,
+				0EDB25B42FE449FC0091E0BF /* Frameworks */,
+				0EDB25B52FE449FC0091E0BF /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				0EDB25BC2FE449FD0091E0BF /* VideoStatus */,
+			);
+			name = VideoStatusExtension;
+			packageProductDependencies = (
+			);
+			productName = VideoStatusExtension;
+			productReference = 0EDB25B72FE449FC0091E0BF /* VideoStatusExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		0EFF47FB2F378D38008832D6 /* JapaneseLearningTests */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 0EFF48022F378D38008832D6 /* Build configuration list for PBXNativeTarget "JapaneseLearningTests" */;
@@ -106,17 +199,19 @@
 				7FF22E8A2ED7EC6600603529 /* Sources */,
 				7FF22E8B2ED7EC6600603529 /* Frameworks */,
 				7FF22E8C2ED7EC6600603529 /* Resources */,
+				0EDB25D12FE449FF0091E0BF /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				0EDB25CB2FE449FF0091E0BF /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				7FF22E902ED7EC6600603529 /* JapaneseLearning */,
 			);
 			name = JapaneseLearning;
 			packageProductDependencies = (
-				0E768A5E2F91046500918FFD /* Kingfisher */,
+				0ECD350E2FDC32340033EF2E /* Kingfisher */,
 			);
 			productName = JapaneseGrammar;
 			productReference = 7F4336D12F70600400783EE3 /* JapaneseLearning.app */;
@@ -129,9 +224,12 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
-				LastSwiftUpdateCheck = 2640;
+				LastSwiftUpdateCheck = 2700;
 				LastUpgradeCheck = 2610;
 				TargetAttributes = {
+					0EDB25B62FE449FC0091E0BF = {
+						CreatedOnToolsVersion = 27.0;
+					};
 					0EFF47FB2F378D38008832D6 = {
 						CreatedOnToolsVersion = 26.2;
 						TestTargetID = 7FF22E8D2ED7EC6600603529;
@@ -151,7 +249,7 @@
 			mainGroup = 7FF22E852ED7EC6600603529;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				0E768A5D2F91046500918FFD /* XCRemoteSwiftPackageReference "Kingfisher" */,
+				0ECD350D2FDC32340033EF2E /* XCRemoteSwiftPackageReference "Kingfisher" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 7FF22E852ED7EC6600603529;
@@ -160,11 +258,19 @@
 			targets = (
 				7FF22E8D2ED7EC6600603529 /* JapaneseLearning */,
 				0EFF47FB2F378D38008832D6 /* JapaneseLearningTests */,
+				0EDB25B62FE449FC0091E0BF /* VideoStatusExtension */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		0EDB25B52FE449FC0091E0BF /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		0EFF47FA2F378D38008832D6 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -182,6 +288,13 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		0EDB25B32FE449FC0091E0BF /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		0EFF47F82F378D38008832D6 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -199,6 +312,11 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		0EDB25CB2FE449FF0091E0BF /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 0EDB25B62FE449FC0091E0BF /* VideoStatusExtension */;
+			targetProxy = 0EDB25CA2FE449FF0091E0BF /* PBXContainerItemProxy */;
+		};
 		0EFF48012F378D38008832D6 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 7FF22E8D2ED7EC6600603529 /* JapaneseLearning */;
@@ -207,6 +325,80 @@
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
+		0EDB25CE2FE449FF0091E0BF /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 8YG68RBKNK;
+				DRIVERKIT_DEPLOYMENT_TARGET = 27.0;
+				GCC_C_LANGUAGE_STANDARD = c23;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = VideoStatus/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = VideoStatus;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 27.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.makoto.JapaneseLearning.VideoStatus;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TVOS_DEPLOYMENT_TARGET = 27.0;
+				WATCHOS_DEPLOYMENT_TARGET = 27.0;
+				XROS_DEPLOYMENT_TARGET = 27.0;
+			};
+			name = Debug;
+		};
+		0EDB25CF2FE449FF0091E0BF /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 8YG68RBKNK;
+				DRIVERKIT_DEPLOYMENT_TARGET = 27.0;
+				GCC_C_LANGUAGE_STANDARD = c23;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = VideoStatus/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = VideoStatus;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 27.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.makoto.JapaneseLearning.VideoStatus;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TVOS_DEPLOYMENT_TARGET = 27.0;
+				WATCHOS_DEPLOYMENT_TARGET = 27.0;
+				XROS_DEPLOYMENT_TARGET = 27.0;
+			};
+			name = Release;
+		};
 		0EFF48032F378D38008832D6 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -259,7 +451,7 @@
 				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
-				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_CXX_LANGUAGE_STANDARD = "c++23";
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
 				CLANG_ENABLE_OBJC_WEAK = YES;
@@ -287,11 +479,11 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
-				DEVELOPMENT_TEAM = 7FSNM3UXLU;
+				DEVELOPMENT_TEAM = 8YG68RBKNK;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
-				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_C_LANGUAGE_STANDARD = c23;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_OPTIMIZATION_LEVEL = 0;
@@ -305,7 +497,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
@@ -314,6 +506,7 @@
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 6.0;
 			};
 			name = Debug;
 		};
@@ -325,7 +518,7 @@
 				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
-				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_CXX_LANGUAGE_STANDARD = "c++23";
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
 				CLANG_ENABLE_OBJC_WEAK = YES;
@@ -353,11 +546,11 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				DEVELOPMENT_TEAM = 7FSNM3UXLU;
+				DEVELOPMENT_TEAM = 8YG68RBKNK;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
-				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_C_LANGUAGE_STANDARD = c23;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
@@ -365,13 +558,14 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = iphoneos;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_VERSION = 6.0;
 				VALIDATE_PRODUCT = YES;
 			};
 			name = Release;
@@ -387,7 +581,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 20;
 				DEVELOPMENT_TEAM = 8YG68RBKNK;
-				DRIVERKIT_DEPLOYMENT_TARGET = 25.0;
+				DRIVERKIT_DEPLOYMENT_TARGET = 27.0;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
@@ -397,17 +591,18 @@
 				INFOPLIST_FILE = JapaneseLearning/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "日本語勉学";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.education";
-				INFOPLIST_KEY_NSFaceIDUsageDescription = 1;
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
+				INFOPLIST_KEY_NSSupportsLiveActivitiesFrequentUpdates = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				MACOSX_DEPLOYMENT_TARGET = 27.0;
 				MARKETING_VERSION = 0.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.makoto.JapaneseLearning;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -422,8 +617,11 @@
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
-				SWIFT_VERSION = 5.0;
+				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
+				TVOS_DEPLOYMENT_TARGET = 27.0;
+				WATCHOS_DEPLOYMENT_TARGET = 27.0;
+				XROS_DEPLOYMENT_TARGET = 27.0;
 			};
 			name = Debug;
 		};
@@ -438,7 +636,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 20;
 				DEVELOPMENT_TEAM = 8YG68RBKNK;
-				DRIVERKIT_DEPLOYMENT_TARGET = 25.0;
+				DRIVERKIT_DEPLOYMENT_TARGET = 27.0;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
@@ -448,17 +646,18 @@
 				INFOPLIST_FILE = JapaneseLearning/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "日本語勉学";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.education";
-				INFOPLIST_KEY_NSFaceIDUsageDescription = 1;
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
+				INFOPLIST_KEY_NSSupportsLiveActivitiesFrequentUpdates = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				MACOSX_DEPLOYMENT_TARGET = 27.0;
 				MARKETING_VERSION = 0.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.makoto.JapaneseLearning;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -473,14 +672,26 @@
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
-				SWIFT_VERSION = 5.0;
+				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
+				TVOS_DEPLOYMENT_TARGET = 27.0;
+				WATCHOS_DEPLOYMENT_TARGET = 27.0;
+				XROS_DEPLOYMENT_TARGET = 27.0;
 			};
 			name = Release;
 		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		0EDB25CD2FE449FF0091E0BF /* Build configuration list for PBXNativeTarget "VideoStatusExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				0EDB25CE2FE449FF0091E0BF /* Debug */,
+				0EDB25CF2FE449FF0091E0BF /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		0EFF48022F378D38008832D6 /* Build configuration list for PBXNativeTarget "JapaneseLearningTests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -511,20 +722,20 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		0E768A5D2F91046500918FFD /* XCRemoteSwiftPackageReference "Kingfisher" */ = {
+		0ECD350D2FDC32340033EF2E /* XCRemoteSwiftPackageReference "Kingfisher" */ = {
 			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/onevcat/Kingfisher.git";
+			repositoryURL = "https://github.com/onevcat/Kingfisher";
 			requirement = {
 				kind = upToNextMajorVersion;
-				minimumVersion = 8.8.1;
+				minimumVersion = 8.10.0;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		0E768A5E2F91046500918FFD /* Kingfisher */ = {
+		0ECD350E2FDC32340033EF2E /* Kingfisher */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 0E768A5D2F91046500918FFD /* XCRemoteSwiftPackageReference "Kingfisher" */;
+			package = 0ECD350D2FDC32340033EF2E /* XCRemoteSwiftPackageReference "Kingfisher" */;
 			productName = Kingfisher;
 		};
 /* End XCSwiftPackageProductDependency section */

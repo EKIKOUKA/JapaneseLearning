@@ -75,6 +75,7 @@ struct ElegantSentenceView: View {
             }
         }
         .toolbar(.hidden, for: .tabBar)
+        .toolbarMinimizeBehavior(.onScrollDown, for: .navigationBar)
         .sheet(isPresented: $showSettingSheet) {
             SettingsSheetView(store: store)
                 .presentationDetents([.medium])

@@ -108,6 +108,8 @@ struct VideoListView: View {
         }
         .navigationTitle("シャドーイング")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbarMinimizeBehavior(.onScrollDown, for: .navigationBar)
+        .toolbarMinimizeBehavior(.onScrollDown, for: .tabBar)
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
                 Button {
