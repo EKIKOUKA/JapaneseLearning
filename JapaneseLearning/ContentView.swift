@@ -38,5 +38,6 @@ struct ContentView: View {
                 }
                 .tag(3)
         }
+        .tabBarMinimizeBehavior(.onScrollDown)
     }
 }

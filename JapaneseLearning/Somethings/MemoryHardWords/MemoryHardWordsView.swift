@@ -96,7 +96,6 @@ struct MemoryHardWordsView: View {
                 }
             }
         }
-        .toolbar(.hidden, for: .tabBar)
         .toolbarMinimizeBehavior(.onScrollDown, for: .navigationBar)
         .sheet(isPresented: $showSettingSheet) {
             SettingsSheetView(store: store)
