@@ -21,31 +21,49 @@ struct YouTubePlayListVideoSelectView: View {
 
     var body: some View {
         NavigationStack {
-            List(videos) { video in
-                playlistRow(video)
-            }
-            .navigationTitle(listTitle)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        let selected = videos.filter {
-                            selectedIDs.contains($0.id)
-                        }
-                        onAdd(selected)
-                        dismiss()
-                        dismiss()
-                    } label: {
-                        Image(systemName: "checkmark")
-                    }
-                    .disabled(selectedIDs.isEmpty)
+            ScrollViewReader { proxy in
+                List(store.videoListVideos) { video in
+                    playlistRow(video)
+                        .id(video.id)
                 }
-            }
-            .opacity(isReady ? 1 : 0)
-        }
-        .task {
-            videos = await store.fetchPlaylistVideos(playlistID: playlistID)
-            withAnimation(.easeIn(duration: 0.15)) {
-                isReady = true
+                .navigationTitle(listTitle)
+                .toolbar {
+                    ToolbarItem(placement: .confirmationAction) {
+                        NavigationLink {
+                            ContentVideoUploadOptionsView { language, createCaptionByAi, playbackRate in
+                                let selectedVideos = store.videoListVideos.filter { selectedVideoIDs.contains($0.id) }
+                                guard !selectedVideos.isEmpty else { return }
+
+                                Task {
+                                    for video in selectedVideos {
+                                        await store.addVideoFromPlaylist(
+                                            video,
+                                            playlistID: playlistID,
+                                            contentLanguage: language,
+                                            createCaptionByAi: createCaptionByAi,
+                                            playbackRate: playbackRate
+                                        )
+                                    }
+
+                                    onAdd(selectedVideos)
+                                    onFinish()
+                                }
+                            }
+                        } label: {
+                            Image(systemName: "checkmark")
+                        }
+                        .disabled(selectedVideoIDs.isEmpty)
+                    }
+                }
+                .opacity(store.videoListVideosIsReady ? 1 : 0)
+                .task {
+                    if !hasLoaded {
+                        await store.fetchPlaylistVideos(playlistID: playlistID)
+                        hasLoaded = true
+
+                        scrollToLastExistingItem(using: proxy)
+                    }
+                }
             }
         }
     }

@@ -11,6 +11,8 @@ struct YouTubeAddVideoSheetView: View {
     @Environment(VideoStore.self) private var store
     @Environment(\.dismiss) private var dismiss
     @State private var inputURL = ""
+    @State private var showVideoUploadOptions = false
+    @State private var pendingSingleVideoURL = ""
     let onComplete: (AddYouTubeResult) -> Void
 
     var body: some View {
@@ -29,14 +31,11 @@ struct YouTubeAddVideoSheetView: View {
                                     playlistID: videoList.id,
                                     listTitle: videoList.title,
                                     existingVideoListIDs: store.getExistingVideoIDs(),
-                                    onAdd: { selected in
-                                        Task {
-                                            await store.addVideosFromPlaylist(
-                                                selected,
-                                                playlistID: videoList.id
-                                            )
-                                            onComplete(.addedVideosFromPlaylist(videoList.id))
-                                        }
+                                    onAdd: { _ in
+                                        onComplete(.addedVideoFromPlaylist(videoList.id))
+                                    },
+                                    onFinish: {
+                                        dismiss()
                                     }
                                 )
                             } label: {
@@ -69,21 +68,33 @@ struct YouTubeAddVideoSheetView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button {
-                        Task {
-                            let result = await store.handleYouTubeURL(inputURL)
-                            onComplete(result)
-                            switch result {
-                                case .addedVideo:
-                                    dismiss()
-                                default:
-                                    break
-                            }
-                            inputURL = ""
-                        }
+                        handlePrimaryAction()
                     } label: {
                         Image(systemName: "checkmark")
                     }
-                    .disabled(inputURL.isEmpty)
+                    .disabled(inputURL.isWhitespaceOrNewLine)
+                }
+            }
+            .navigationDestination(isPresented: $showVideoUploadOptions) {
+                ContentVideoUploadOptionsView { language, createCaptionByAi, playbackRate in
+                    let url = pendingSingleVideoURL
+
+                    Task {
+                        let result = await store.handleYouTubeURL(
+                            url,
+                            contentLanguage: language,
+                            createCaptionByAi: createCaptionByAi,
+                            playbackRate: playbackRate
+                        )
+                        onComplete(result)
+
+                        if case .addedVideo = result {
+                            dismiss()
+                        }
+
+                        inputURL = ""
+                        pendingSingleVideoURL = ""
+                    }
                 }
             }
             .task {
@@ -91,6 +102,32 @@ struct YouTubeAddVideoSheetView: View {
                     await store.fetchVideoPlaylist()
                 }
             }
+        }
+    }
+
+    private func handlePrimaryAction() {
+        let url = inputURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !url.isEmpty else { return }
+
+        switch store.youtubeURLType(from: url) {
+            case .single:
+                pendingSingleVideoURL = url
+                showVideoUploadOptions = true
+            case .playlist:
+                Task {
+                    let result = await store.handleYouTubeURL(
+                        url,
+                        contentLanguage: .ja,
+                        createCaptionByAi: true
+                    )
+                    onComplete(result)
+
+                    if case .addedPlaylist = result {
+                        inputURL = ""
+                    }
+                }
+            case .unknown:
+                break
         }
     }
 }
@@ -111,7 +148,7 @@ struct PlaylistListRow: View {
             VStack(alignment: .leading) {
                 Text(videoList.author)
                     .font(.caption)
-                Text(videoList.title)
+                Text(videoList.title.cleanedVideoTitle)
                     .lineLimit(2)
             }
         }
