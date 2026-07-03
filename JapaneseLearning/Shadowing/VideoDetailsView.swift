@@ -110,11 +110,13 @@ struct VideoDetailsView: View {
                 .ignoresSafeArea()
                 .presentationDetents(sizeClass_regular ? [.large] : [.medium, .large])
                 .presentationDragIndicator(sizeClass_regular ? .hidden : .visible)
+                .navigationTransition(.crossFade)
         }
         .sheet(isPresented: $showSettingSheet) {
             ShadowingSettingsSheetView(playerVM: playerVM)
                 .presentationDetents(sizeClass_regular ? [.large] : [.medium, .large])
                 .presentationDragIndicator(.visible)
+                .navigationTransition(.crossFade)
         }
         .onAppear {
             playerVM.isDetailVisible = true

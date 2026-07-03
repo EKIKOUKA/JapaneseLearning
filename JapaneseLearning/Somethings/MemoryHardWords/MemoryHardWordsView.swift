@@ -100,6 +100,7 @@ struct MemoryHardWordsView: View {
         .sheet(isPresented: $showSettingSheet) {
             SettingsSheetView(store: store)
                 .presentationDetents([.medium])
+                .navigationTransition(.crossFade)
         }
         .task {
             if store.MemoryHardWordsList.isEmpty {

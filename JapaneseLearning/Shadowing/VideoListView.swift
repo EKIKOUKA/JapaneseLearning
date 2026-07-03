@@ -142,6 +142,7 @@ struct VideoListView: View {
         .sheet(isPresented: $showSettingSheet) {
             ShadowingSettingsSheetView()
                 .presentationDetents([.medium, .large])
+                .navigationTransition(.crossFade)
         }
     }
 
