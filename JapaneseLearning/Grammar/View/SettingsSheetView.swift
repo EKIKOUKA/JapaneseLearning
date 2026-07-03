@@ -141,9 +141,7 @@ struct SettingsSheetGrammarView: View {
                     Button {
                         Task {
                             await clearAppCache()
-                            DispatchQueue.main.async {
-                                storageBytes = getAppStorageSize()
-                            }
+                            storageBytes = getAppStorageSize()
                         }
                     } label: {
                         Text("キャッシュを削除")

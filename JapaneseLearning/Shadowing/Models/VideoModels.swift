@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import UIKit
 
 enum PlaylistCategory: String, CaseIterable, Identifiable {
     case shadowing
@@ -43,16 +44,58 @@ struct PlaylistItem: Decodable {
 struct PlaylistSnippet: Decodable {
     let title: String
     let resourceId: ResourceId
-    let thumbnails: Thumbnails
+    let thumbnails: Thumbnails? // 💡 非公開動画に対応するためオプショナルに変更
 }
 struct ResourceId: Decodable {
     let videoId: String?
 }
 struct Thumbnails: Decodable {
+    let maxres: Thumbnail?
+    let standard: Thumbnail?
+    let high: Thumbnail?
     let medium: Thumbnail?
+    let defaultThumbnail: Thumbnail?
+
+    enum CodingKeys: String, CodingKey {
+        case maxres
+        case standard
+        case high
+        case medium
+        case defaultThumbnail = "default"
+    }
+
+    func bestURL(videoID: String) -> URL {
+        let candidates = [
+            maxres?.url,
+            standard?.url,
+            high?.url,
+            medium?.url,
+            defaultThumbnail?.url
+        ]
+
+        if let firstValidString = candidates.compactMap({ $0 }).first,
+           let url = URL(string: firstValidString) {
+            return url
+        }
+
+        return URL(string: "https://i.ytimg.com/vi/\(videoID)/maxresdefault.jpg")!
+    }
 }
 struct Thumbnail: Decodable {
     let url: String
+}
+
+// フラットに整理された YouTube ビデオ詳細レスポンスモデル
+struct YouTubeVideoResponse: Decodable {
+    let items: [YouTubeVideoItem]
+}
+
+struct YouTubeVideoItem: Decodable {
+    let snippet: YouTubeVideoSnippet
+}
+
+struct YouTubeVideoSnippet: Decodable {
+    let thumbnails: Thumbnails
 }
 
 struct PlaylistListResponse: Decodable {
@@ -66,13 +109,23 @@ struct PlayListMetaItem: Decodable {
 struct PlayListMetaSnippet: Decodable {
     let title: String
     let channelTitle: String
-    let thumbnails: Thumbnails
+    let thumbnails: Thumbnails?
 }
 struct PlayListContentDetails: Decodable {
     let itemCount: Int
 }
 
+enum VideoContentLanguage: String, Codable, CaseIterable {
+    case ja
+    case en
 
+    var displayName: String {
+        switch self {
+            case .ja: return "日本語"
+            case .en: return "英語"
+        }
+    }
+}
 // リストアイテム構造
 struct VideoItem: Identifiable, Hashable, Codable {
     let id: String
@@ -82,6 +135,7 @@ struct VideoItem: Identifiable, Hashable, Codable {
     let thumbnailURL: URL?
     var playlistID: String?
     var videoAspectRatio: CGFloat
+    var contentLanguage: VideoContentLanguage = .ja
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -91,6 +145,7 @@ struct VideoItem: Identifiable, Hashable, Codable {
         case thumbnailURL = "thumbnail"
         case playlistID = "playlist_id"
         case videoAspectRatio = "video_aspectr_atio"
+        case contentLanguage = "content_language"
     }
 }
 
@@ -102,7 +157,7 @@ enum YouTubeURLType {
 enum AddYouTubeResult {
     case addedVideo(VideoItem)
     case addedPlaylist
-    case addedVideosFromPlaylist(String)
+    case addedVideoFromPlaylist(String)
     case invalid
 }
 struct PlayListVideoItem: Identifiable, Hashable {
@@ -111,9 +166,70 @@ struct PlayListVideoItem: Identifiable, Hashable {
     let thumbnailURL: URL?
 }
 
+//　再生リスト
 struct PlaylistListItem: Identifiable, Hashable, Codable {
     let id: String
     let title: String
     let author: String
     let thumbnailURL: URL?
+}
+
+struct VideoItemAddRequest: Codable {
+    let id: String
+    let title: String
+    let currentTime: Double?
+    let rate: Float?
+    let thumbnailURL: URL?
+    let playlistID: String?
+    let videoAspectRatio: CGFloat?
+    let contentLanguage: VideoContentLanguage
+    let createCaptionByAi: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case title
+        case currentTime = "current_time"
+        case rate
+        case thumbnailURL = "thumbnail"
+        case playlistID = "playlist_id"
+        case videoAspectRatio = "video_aspectr_atio"
+        case contentLanguage = "content_language"
+        case createCaptionByAi = "create_caption_by_ai"
+    }
+
+    init(video: VideoItem, createCaptionByAi: Bool) {
+        self.id = video.id
+        self.title = video.title
+        self.currentTime = video.currentTime
+        self.rate = video.rate
+        self.thumbnailURL = video.thumbnailURL
+        self.playlistID = video.playlistID
+        self.videoAspectRatio = video.videoAspectRatio
+        self.contentLanguage = video.contentLanguage
+        self.createCaptionByAi = createCaptionByAi
+    }
+}
+
+struct PracticeSessionPayload: Codable {
+    let id: String
+    let contentLanguage: VideoContentLanguage
+    let practiceDate: String
+    let startedAt: String
+    let endedAt: String
+    let durationSeconds: Int
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case contentLanguage = "content_language"
+        case practiceDate = "practice_date"
+        case startedAt = "started_at"
+        case endedAt = "ended_at"
+        case durationSeconds = "duration_seconds"
+    }
+}
+
+
+struct VideoSubtitleSkipWords: Decodable {
+    let skipWithPreviousLines: [String]
+    var skipOnlyCurrentLine: [String]
 }

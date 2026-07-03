@@ -57,7 +57,7 @@ struct SomethingsView: View {
                 .foregroundStyle(.primary)
                 .background(Color(.secondarySystemBackground))
                 .clipShape(RoundedRectangle(cornerRadius: 20))
-                .shadow(radius: 4)
+                .shadow(radius: 2)
         }
         .buttonStyle(.plain)
     }

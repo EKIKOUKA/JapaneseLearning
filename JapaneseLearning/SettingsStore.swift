@@ -24,6 +24,10 @@ struct AppSettings: Codable {
     var videoSubtitleLineWithAnimation: VideoSubtitleLineWithAnimation = .natural
     var videoSubtitleFontSizeScale: Double = 1.0
     var videoSubtitleFontStyle: VideoSubtitleRubyFontStyle = .system
+    var videoSubtitleDimInactiveLines: Bool = true
+    var videoAutoJumpToNextLine: Bool = false
+    var videoItemNavigationTransition: Bool = true
+    var videoAllowsPictureInPicturePlayback: Bool = false
 
     // 💡 存儲 Data 而不是 UIColor，這樣才能 Codable
     private var subtitleFontColorData: Data?
@@ -43,9 +47,6 @@ struct AppSettings: Codable {
             )
         }
     }
-
-    var videoSubtitleDimInactiveLines: Bool = true
-    var videoAutoJumpToNextLine: Bool = false
 
     // Somethings
     var showKanjiWordsDiffToShinaLangListCount: Bool = true

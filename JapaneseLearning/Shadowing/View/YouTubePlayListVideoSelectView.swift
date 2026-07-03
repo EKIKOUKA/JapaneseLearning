@@ -13,12 +13,11 @@ struct YouTubePlayListVideoSelectView: View {
     let listTitle: String
     let existingVideoListIDs: Set<String>
     let onAdd: ([PlayListVideoItem]) -> Void
+    let onFinish: () -> Void
 
-    @Environment(\.dismiss) private var dismiss
     @Environment(VideoStore.self) private var store
-    @State private var videos: [PlayListVideoItem] = []
-    @State private var selectedIDs = Set<String>()
-    @State private var isReady: Bool = false
+    @State private var selectedVideoIDs = Set<String>()
+    @State private var hasLoaded = false
 
     var body: some View {
         NavigationStack {
@@ -54,21 +53,21 @@ struct YouTubePlayListVideoSelectView: View {
     @ViewBuilder
     private func playlistRow(_ video: PlayListVideoItem) -> some View {
         let isDisabled = existingVideoListIDs.contains(video.id)
-        let isSelected = selectedIDs.contains(video.id)
+        let isSelected = selectedVideoIDs.contains(video.id)
 
         HStack {
             if isDisabled {
                 Image(systemName: "checkmark.seal.fill")
-                    .foregroundStyle(.separator)
-                    .font(.system(size: 20))
+                    .foregroundStyle(.quaternary)
+                    .font(.system(size: 22))
             } else if isSelected {
                 Image(systemName: "checkmark.circle.fill")
                     .foregroundStyle(Color.accentColor)
-                    .font(.system(size: 20))
+                    .font(.system(size: 22))
             } else {
                 Image(systemName: "circle")
-                    .foregroundStyle(.separator)
-                    .font(.system(size: 20))
+                    .foregroundStyle(.quaternary)
+                    .font(.system(size: 22))
             }
 
             AsyncImage(url: video.thumbnailURL) { img in
@@ -79,9 +78,10 @@ struct YouTubePlayListVideoSelectView: View {
             .frame(width: 100, height: 57)
             .cornerRadius(8)
 
-            Text(video.title)
+            Text(video.title.cleanedVideoTitle)
                 .lineLimit(3)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         .contentShape(Rectangle())
         .onTapGesture {
             guard !isDisabled else { return }
@@ -89,11 +89,17 @@ struct YouTubePlayListVideoSelectView: View {
         }
     }
 
+    private func scrollToLastExistingItem(using proxy: ScrollViewProxy) {
+        if let isDisabledItem = store.videoListVideos.first(where: { existingVideoListIDs.contains($0.id) }) {
+            proxy.scrollTo(isDisabledItem.id, anchor: .center)
+        }
+    }
+
     private func toggle(_ id: String) {
-        if selectedIDs.contains(id) {
-            selectedIDs.remove(id)
+        if selectedVideoIDs.contains(id) {
+            selectedVideoIDs.remove(id)
         } else {
-            selectedIDs.insert(id)
+            selectedVideoIDs.insert(id)
         }
     }
 }

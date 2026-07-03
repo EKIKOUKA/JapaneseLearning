@@ -5,11 +5,66 @@
 //  Created by 宇都宮　誠 on 4/28/R8.
 //
 
+import SwiftUI
 import Foundation
+import UIKit
 
 extension String {
     var isWhitespaceOrNewLine: Bool {
         return self.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    var cleanedVideoTitle: String {
+        return String(
+            self.filter { character in
+                !character.unicodeScalars.contains { scalar in
+                    scalar.properties.isEmojiPresentation
+                }
+            }
+        )
+        .replacingOccurrences(of: "【.*?】", with: "", options: .regularExpression)
+        .replacingOccurrences(of: "\\(.*?\\)", with: "", options: .regularExpression)
+        .replacingOccurrences(of: "（.*?）", with: "", options: .regularExpression)
+        .replacingOccurrences(
+            of: "(?i)YUYUの日本語Podcast:?|Japanese Listening Practice|yuyu japanese podcast|Native Japanese Listening(?: Podcast)?",
+            with: "",
+            options: .regularExpression
+        )
+        .replacingOccurrences(of: "\\s*\\|\\|\\s*", with: "", options: .regularExpression)
+        .replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
+        .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+}
+
+extension View {
+    @ViewBuilder
+    func ModifierApplyIf<Content: View>(_ condition: Bool, transform: (Self) -> Content) -> some View {
+        if condition {
+            transform(self)
+        } else {
+            self
+        }
+    }
+}
+
+extension Array {
+    mutating func apply<CollectionID: Hashable & Sendable>(
+        difference: ReorderDifference<Element.ID, CollectionID>
+    ) where Element: Identifiable, Element.ID: Sendable {
+        guard let sourceIndex = firstIndex(where: { $0.id == difference.sources[0] }) else { return }
+        let movedItem = remove(at: sourceIndex)
+
+        var destination: Int
+
+        switch difference.destination.position {
+            case let .before(value):
+                guard let index = firstIndex(where: { $0.id == value }) else { return }
+                destination = index
+            case .end:
+                destination = endIndex
+        }
+
+        insert(movedItem, at: destination)
     }
 }
 
@@ -75,17 +130,19 @@ enum PracticeDateFormat {
         formatter.dateFormat = "M月d日"
         return formatter.string(from: date)
     }
+}
 
-    static func hourLabel(_ hour: Int) -> String {
-        "\(hour)時"
-    }
+extension UIColor {
+    var rgbaCacheKey: String {
+        var red: CGFloat = 0
+        var green: CGFloat = 0
+        var blue: CGFloat = 0
+        var alpha: CGFloat = 0
 
-    static func weekdayLabel(from date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.calendar = Calendar(identifier: .gregorian)
-        formatter.locale = Locale(identifier: "ja_JP")
-        formatter.timeZone = TimeZone(identifier: "Asia/Tokyo")
-        formatter.dateFormat = "E"
-        return formatter.string(from: date)
+        guard getRed(&red, green: &green, blue: &blue, alpha: &alpha) else {
+            return description
+        }
+
+        return String(format: "%.3f-%.3f-%.3f-%.3f", red, green, blue, alpha)
     }
 }

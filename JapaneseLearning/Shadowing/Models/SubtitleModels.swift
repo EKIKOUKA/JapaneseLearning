@@ -26,6 +26,7 @@ struct CaptionLine: Identifiable, Equatable, Codable {
     let end: Double
     let text: String
     let ruby: [RubyWord]?
+    var isSkip: Bool = false
 
     // 預解析 ruby
     let rubyRanges: [RubyWordRange]

@@ -45,7 +45,7 @@ struct GrammarNaviView: View {
                             .foregroundStyle(.white)
                             .background(dynamicColors[index % dynamicColors.count])
                             .clipShape(RoundedRectangle(cornerRadius: 20))
-                            .shadow(radius: 4)
+                            .shadow(radius: 2)
                         }
                     }
                 }

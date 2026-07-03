@@ -171,9 +171,9 @@ struct MediaProductsListView: View {
 
         switch sortOrder {
             case .createdAt:
-                return categoryFiltered.sorted(using: KeyPathComparator(\.createdAt, order: .forward))
+                return categoryFiltered.sorted { ($0.createdAt ?? "") < ($1.createdAt ?? "") }
             case .title:
-                return categoryFiltered.sorted(using: KeyPathComparator(\.title))
+                return categoryFiltered.sorted { $0.title < $1.title }
         }
     }
 }

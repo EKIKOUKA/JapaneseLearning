@@ -30,7 +30,8 @@ struct MediaProductsDetailsView: View {
             .opacity(isReady ? 1 : 0)
             .animation(.easeIn(duration: 0.2), value: isReady)
             .onAppear {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                Task {
+                    try? await Task.sleep(for: .seconds(0.15))
                     isReady = true
                 }
             }

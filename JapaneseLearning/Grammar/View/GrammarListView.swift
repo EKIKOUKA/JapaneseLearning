@@ -11,14 +11,14 @@ struct GrammarListView: View {
     let level: String
     let title: String
 
-    @State private var searchText = ""
-    @State private var showImportantOnly = false
-
     @Environment(SettingsStore.self) private var settingsStore
     @ObservedObject var store: GrammarStore
 
+    @State private var searchText: String = ""
+    @State private var showImportantOnly: Bool = false
+
     var body: some View {
-        VStack {
+        ScrollViewReader { proxy in
             List {
                 Section {
                     ForEach(filteredItems) { item in
@@ -55,6 +55,7 @@ struct GrammarListView: View {
                                     .cornerRadius(6)
                             }
                         }
+                        .id(item.id)
                         .swipeActions(edge: .trailing) {
                             if settingsStore.showGrammarListItemSwipeActions {
                                 Button {
@@ -75,6 +76,14 @@ struct GrammarListView: View {
                                         await MainActor.run {
                                             UIImpactFeedbackGenerator(style: .light).impactOccurred()
                                         }
+
+                                        if (!item.isMarked) {
+                                            QuickActionManager.shared.updateRecentGrammarAction(
+                                                grammarID: String(item.id),
+                                                title: item.title,
+                                                level: item.level
+                                            )
+                                        }
                                     }
                                 } label: {
                                     Label("", systemImage: "bookmark.fill")
@@ -91,6 +100,25 @@ struct GrammarListView: View {
                     }
                 }
             }
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                if store.isReady, currentProgress != 0.0 {
+                    HStack {
+                        Spacer()
+
+                        Button {
+                        } label: {
+                            Text(currentProgress, format: .percent.precision(.fractionLength(1)))
+                                .font(.system(size: 14, weight: .semibold, design: .rounded))
+                                .foregroundColor(.accentColor)
+                                .contentTransition(.numericText())
+                        }
+                        .buttonStyle(.glass)
+                        .animation(.smooth(duration: 0.5), value: currentProgress)
+                    }
+                    .padding(.horizontal, 30)
+                }
+            }
+            .toolbarMinimizeBehavior(.onScrollDown, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
@@ -131,13 +159,26 @@ struct GrammarListView: View {
             }
             .searchable(text: $searchText, prompt: "文法を検索")
             .opacity(store.isReady ? 1 : 0)
+            .navigationTitle(title)
+            .task(id: level) {
+                if store.currentLevel != level {
+                    store.currentLevel = level
+                    await store.fetchList(level: level)
+                }
+            }
+            .task(id: store.isReady) {
+                if store.isReady {
+                    scrollToMarkedItem(using: proxy)
+                }
+            }
         }
-        .toolbar(.hidden, for: .tabBar)
-        .navigationTitle(title)
-        .task(id: level) {
-            if store.currentLevel != level {
-                store.currentLevel = level
-                await store.fetchList(level: level)
+    }
+
+    private func scrollToMarkedItem(using proxy: ScrollViewProxy) {
+        if let isMarkedItem: GrammarItem = filteredItems.last(where: { $0.isMarked }) {
+            Task {
+                try? await Task.sleep(for: .seconds(0.1))
+                proxy.scrollTo(isMarkedItem.id, anchor: .center)
             }
         }
     }
@@ -154,5 +195,16 @@ struct GrammarListView: View {
                 searchText.isEmpty || item.title.localizedCaseInsensitiveContains(searchText)
             }
             .sorted { $0.title < $1.title }
+    }
+
+    var currentProgress: Double {
+        guard !filteredItems.isEmpty else { return 0.0 }
+
+        if let targetIndex = filteredItems.lastIndex(where: { $0.isMarked }) {
+            let itemPosition = targetIndex + 1
+            return Double(itemPosition) / Double(filteredItems.count)
+        }
+
+        return 0.0
     }
 }

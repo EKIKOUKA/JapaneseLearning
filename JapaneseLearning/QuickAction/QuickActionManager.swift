@@ -15,6 +15,16 @@ enum QuickActionType: String {
 class QuickActionManager {
     static let shared = QuickActionManager()
 
+    func currentResumeVideoID() -> String? {
+        guard let item = UIApplication.shared.shortcutItems?.first(where: {
+            $0.type == QuickActionType.resumeVideo.rawValue
+        }) else {
+            return nil
+        }
+
+        return item.userInfo?["videoID"] as? String
+    }
+
     func updateResumeVideoAction(videoID: String, title: String, time: String) {
         updateShortcutItem(
             type: .resumeVideo,

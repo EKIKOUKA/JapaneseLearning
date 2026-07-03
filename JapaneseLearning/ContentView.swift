@@ -27,19 +27,19 @@ struct ContentView: View {
 
             AchieveSystemView()
                 .tabItem {
-                    Label("学習記録", systemImage: "chart.bar.xaxis")
+                    Label("　学習記録　", systemImage: "chart.bar.xaxis")
                 }
                 .tag(1)
 
             SomethingsView()
                 .tabItem {
-                    Label("その他", systemImage: "books.vertical")
+                    Label("　　その他　　", systemImage: "books.vertical")
                 }
                 .tag(2)
 
             GrammarContentView()
                 .tabItem {
-                    Label("文法", systemImage: "book.pages")
+                    Label("　　文法　　", systemImage: "book.pages")
                 }
                 .tag(3)
         }

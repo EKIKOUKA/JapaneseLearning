@@ -20,7 +20,15 @@ class GrammarStore: ObservableObject {
         self.isReady = false
 
         do {
-            self.grammars = try await WorkersAPI.get("fetch_grammars?level=\(level)")
+            self.grammars = try await WorkersAPI.get(
+                "fetch_grammars",
+                queryItems: [
+                    URLQueryItem(
+                        name: "level",
+                        value: level
+                    )
+                ]
+            )
             withAnimation(.easeIn(duration: 0.2)) {
                 self.isReady = true
             }

@@ -9,7 +9,7 @@ import SwiftUI
 
 struct ShadowingSettingsSheetView: View {
     @Environment(SettingsStore.self) private var settingsStore
-    var playerVM: PlayerViewModel?
+    var playerVM: PlayerViewManager?
 
     var body: some View {
         @Bindable var settingsStoreBindable = settingsStore
@@ -61,6 +61,20 @@ struct ShadowingSettingsSheetView: View {
                 Section(footer: Text("単語の上に発音（ルビ）を表示します")) {
                     Toggle(isOn: $settingsStoreBindable.showShadowingSubtitlesRuby) {
                         Text("発音を表示")
+                    }
+                }
+
+                if playerVM == nil {
+                    Section(footer: Text("有効にすると動画がフワッと広がるように開き、無効にすると右から左へ流れる通常の切り替えになります。")) {
+                        Toggle(isOn: $settingsStoreBindable.videoItemNavigationTransition) {
+                            Text("ズーム遷移エフェクト")
+                        }
+                    }
+                }
+
+                Section(footer: Text("ビデオのピクチャ・イン・ピクチャ（PiP）を許可します。")) {
+                    Toggle(isOn: $settingsStoreBindable.videoAllowsPictureInPicturePlayback) {
+                        Text("ピクチャ・イン・ピクチャ")
                     }
                 }
             }

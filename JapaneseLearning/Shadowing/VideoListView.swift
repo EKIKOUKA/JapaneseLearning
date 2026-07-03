@@ -10,15 +10,14 @@ import Kingfisher
 
 struct VideoListView: View {
     @Environment(VideoStore.self) private var store
+    @Environment(SettingsStore.self) private var settingsStore
+    @Environment(PlayerViewManager.self) private var playerVM
+    @Environment(\.transitionNamespace) private var transitionNamespace
     @Environment(\.horizontalSizeClass) private var sizeClass
-    @State private var showAddSheet = false
-    @State private var showSettingSheet = false
-    @State private var showPlayListSheet = false
+    @State private var showAddSheet: Bool = false
+    @State private var showSettingSheet: Bool = false
+    @State private var showPlayListSheet: Bool = false
     @State private var selectedVideo: VideoItem?
-    @State private var showDeleteAlert = false
-    @State private var pendingDeleteVideo: VideoItem?
-    @State private var retryImageLoad = UUID()
-
     @State private var selectedCategory: PlaylistCategory = .shadowing
 
     private var filteredVideos: [VideoItem] {
@@ -34,73 +33,52 @@ struct VideoListView: View {
         }
     }
 
+    private var filteredVideoIDs: [String] {
+        filteredVideos.map(\.id)
+    }
+
+    private var sizeClassIsRegular: Bool {
+        sizeClass == .regular
+    }
+
+    private func gridColumns(isLandscape: Bool) -> [GridItem] {
+        let count: Int
+
+        if sizeClassIsRegular {
+            count = isLandscape ? 3 : 2
+        } else {
+            count = isLandscape ? 2 : 1
+        }
+
+        return Array(repeating: GridItem(.flexible(), spacing: 16), count: count)
+    }
+
     var body: some View {
-        let sizeClass_regular = sizeClass == .regular
-
         Group {
-            if !store.videosIsReady {
-                ProgressLoadingView()
-            } else {
-                GeometryReader { geo in
-                    let isLandscape = geo.size.width > geo.size.height
-
-                    let columns: [GridItem] = {
-                        if sizeClass_regular { // iPad
-                            return Array(repeating: GridItem(.flexible(), spacing: 16), count: isLandscape ? 3 : 2)
-                        } else { // iPhone
-                            return Array(repeating: GridItem(.flexible(), spacing: 16), count: isLandscape ? 2 : 1)
-                        }
-                    }()
+            GeometryReader { geo in
+                if store.videos.isEmpty {
+                    ContentUnavailableView(
+                        "動画がありません",
+                        systemImage: "video",
+                        description: Text("右上の＋ボタンからリンクまたは再生リストに動画を追加してください")
+                    )
+                } else {
+                    let columns = gridColumns(isLandscape: geo.size.width > geo.size.height)
 
                     ScrollView {
-                        if store.videos.isEmpty {
-                            VStack(spacing: 16) {
-                                Image(systemName: "folder")
-                                    .font(.system(size: 100))
-                                    .foregroundStyle(.secondary)
-                                Text("内容が見つかりません")
-                                    .foregroundStyle(.secondary)
-                            }
-                            .frame(maxWidth: .infinity)
-                            .padding(.top, 180)
-                        } else {
-                            VStack(spacing: 12) {
-                                Picker("Category", selection: $selectedCategory) {
-                                    ForEach(PlaylistCategory.allCases) { category in
-                                        Text(category.title)
-                                            .tag(category)
-                                    }
-                                }
-                                .pickerStyle(.palette)
-                                .controlSize(sizeClass_regular ? .large : .regular)
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, sizeClass_regular ? 10 : 2)
-
-                                ZStack {
-                                    LazyVGrid(columns: columns) {
-                                        ForEach(filteredVideos) { video in
-                                            Button {
-                                                selectedVideo = video
-                                            } label: {
-                                                videoListItemView(video)
-                                            }
-                                            .buttonStyle(.plain)
-                                        }
-                                    }
-                                    .id(selectedCategory.id)
-                                    .transition(.opacity)
-                                }
-                                .animation(.easeInOut(duration: 0.3), value: selectedCategory)
-                                .padding(.horizontal, 16)
-                                .padding(.bottom, 20)
-                            }
-                            .opacity(store.videosIsReady ? 1 : 0)
+                        VStack {
+                            categoryPicker
+                            videoItemGrid(columns: columns)
                         }
+                        .animation(.easeInOut(duration: 0.35), value: selectedCategory)
+                        .padding(.horizontal, 20)
+                        .padding(.bottom, 20)
                     }
                     .swipeActionsContainer()
                     .reorderContainer(for: VideoItem.self) { difference in
                         var reordered = filteredVideos
                         reordered.apply(difference: difference)
+
                         store.reorderVideos(reordered, for: selectedCategory)
                     }
                 }
@@ -109,7 +87,6 @@ struct VideoListView: View {
         .navigationTitle("シャドーイング")
         .navigationBarTitleDisplayMode(.inline)
         .toolbarMinimizeBehavior(.onScrollDown, for: .navigationBar)
-        .toolbarMinimizeBehavior(.onScrollDown, for: .tabBar)
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
                 Button {
@@ -127,20 +104,12 @@ struct VideoListView: View {
         }
         .sheet(isPresented: $showAddSheet) {
             YouTubeAddVideoSheetView { result in
-                switch result {
-                    case .addedVideo:
-                        selectedCategory = .shadowing
-                    case .addedVideosFromPlaylist(let playlistID):
-                        selectedCategory = PlaylistCategory.allCases.first {
-                            $0.playlistID == playlistID
-                        } ?? .shadowing
-                    default:
-                        break
-                }
+                selectedCategory = store.handleCategory(result)
             }
+            .navigationTransition(.crossFade)
         }
         .sheet(isPresented: $showSettingSheet) {
-            ShadowingSettingsSheetView()
+            ShadowingSettingsSheetView(playerVM: nil)
                 .presentationDetents([.medium, .large])
                 .navigationTransition(.crossFade)
         }
@@ -159,10 +128,23 @@ struct VideoListView: View {
         .padding(.vertical, sizeClassIsRegular ? 10 : 2)
     }
 
-    private func videoGrid(columns: [GridItem]) -> some View {
-        LazyVGrid(columns: columns) {
+    private func videoItemGrid(columns: [GridItem]) -> some View {
+        LazyVGrid(columns: columns, spacing: 24) {
             ForEach(filteredVideos) { video in
-                NavigationLink(destination: VideoDetailsView(videoID: video.id)) {
+                NavigationLink {
+                    VideoDetailsView(videoID: video.id)
+                        .ModifierApplyIf(
+                            settingsStore.videoItemNavigationTransition &&
+                            transitionNamespace != nil
+                        ) { view in
+                            view.navigationTransition(
+                                .zoom(
+                                    sourceID: video.id,
+                                    in: transitionNamespace!
+                                )
+                            )
+                        }
+                } label: {
                     videoListItemView(video)
                 }
                 .buttonStyle(.plain)
@@ -173,6 +155,9 @@ struct VideoListView: View {
                         }
 
                         Task {
+                            await MainActor.run {
+                                playerVM.handleDeletedVideo(id: video.id)
+                            }
                             await store.deleteVideo(video.id)
                         }
                     } label: {
@@ -188,18 +173,14 @@ struct VideoListView: View {
     }
 
     private func videoListItemView(_ video: VideoItem) -> some View {
-        var thumbnailRatio: CGFloat {
-            sizeClass == .regular ? (16.0 / 9.0) : (320.0 / 160.0)
-        }
-
-        return VStack(alignment: .leading, spacing: 12) {
+        return VStack(alignment: .leading, spacing: 8) {
             Color.clear
-                .aspectRatio(thumbnailRatio, contentMode: .fit)
+                .aspectRatio(16.0 / 9.0, contentMode: .fit)
                 .overlay {
                     KFImage(video.thumbnailURL)
                         .placeholder {
                             ZStack {
-                                Color(.tertiarySystemFill)
+                                Color(.secondarySystemFill)
                                 if video.thumbnailURL == nil {
                                     Image(systemName: "photo")
                                 } else {
@@ -213,53 +194,24 @@ struct VideoListView: View {
                         .cancelOnDisappear(true)
                         .scaledToFill()
                 }
-                .clipShape(RoundedRectangle(cornerRadius: 20))
+                .ModifierApplyIf(
+                    settingsStore.videoItemNavigationTransition &&
+                    transitionNamespace != nil
+                ) { view in
+                    view.matchedTransitionSource(
+                        id: video.id,
+                        in: transitionNamespace!
+                    )
+                }
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .shadow(radius: 1)
                 .contentShape(Rectangle())
 
-            Text(video.title)
-                .font(.body)
+            Text(video.title.cleanedVideoTitle)
+                .font(.system(size: 18, weight: .medium))
+                .foregroundStyle(.primary)
                 .lineLimit(2)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.leading, 8)
-                .padding(.bottom, 2)
+                .frame(maxWidth: .infinity, alignment: .topLeading)
         }
-        .padding(10)
-        .frame(maxWidth: .infinity)
-        .background(Color(.secondarySystemBackground))
-        .cornerRadius(25)
-    }
-
-    private func handleAddResult(_ result: AddYouTubeResult) {
-        switch result {
-            case .addedVideo:
-                selectedCategory = .shadowing
-            case .addedVideoFromPlaylist(let playlistID):
-                selectedCategory = PlaylistCategory.allCases.first {
-                    $0.playlistID == playlistID
-                } ?? .shadowing
-            default:
-                break
-        }
-    }
-}
-
-extension Array {
-    mutating func apply<CollectionID: Hashable & Sendable>(
-        difference: ReorderDifference<Element.ID, CollectionID>
-    ) where Element: Identifiable, Element.ID: Sendable {
-        guard let sourceIndex = firstIndex(where: { $0.id == difference.sources[0] }) else { return }
-        let movedItem = remove(at: sourceIndex)
-
-        var destination: Int
-
-        switch difference.destination.position {
-            case let .before(value):
-                guard let index = firstIndex(where: { $0.id == value }) else { return }
-                destination = index
-            case .end:
-                destination = endIndex
-        }
-
-        insert(movedItem, at: destination)
     }
 }

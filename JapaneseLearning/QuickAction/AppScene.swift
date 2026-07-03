@@ -34,10 +34,29 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
         UNUserNotificationCenter.current().delegate = self
+
+        Task {
+            await requestPushPermission()
+        }
+
         return true
     }
 
+    @MainActor
+    private func requestPushPermission() async {
+        do {
+            let granted = try await UNUserNotificationCenter.current().requestAuthorization(
+                options: [.alert, .sound, .badge]
+            )
+            print("Permission:", granted)
+            UIApplication.shared.registerForRemoteNotifications()
+        } catch {
+            print("Push authorization failed: \(error)")
+        }
+    }
+
     // 🔔 使用者點擊通知
+    @MainActor
     func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         didReceive response: UNNotificationResponse,
@@ -46,10 +65,8 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         let userInfo = response.notification.request.content.userInfo
 
         if let videoId = userInfo["video_id"] as? String {
-            DispatchQueue.main.async {
-                appNaviStoreShared.selectedTab = 0
-                appNaviStoreShared.quickActionTarget = .resumeVideo(id: videoId)
-            }
+            appNaviStoreShared.selectedTab = 0
+            appNaviStoreShared.quickActionTarget = .resumeVideo(id: videoId)
         }
 
         completionHandler()
@@ -87,7 +104,8 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
 class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
         if let shortcutItem = connectionOptions.shortcutItem {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            Task {
+                try? await Task.sleep(for: .seconds(0.15))
                 handleShortcut(shortcutItem)
             }
         }

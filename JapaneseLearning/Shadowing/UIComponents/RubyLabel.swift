@@ -8,6 +8,8 @@
 import SwiftUI
 
 struct RubyLabel: UIViewRepresentable {
+    private static let attributedTextCache = NSCache<NSString, NSAttributedString>()
+
     let text: String
     let rubyRanges: [RubyWordRange]
     let cachedAttributedString: NSAttributedString
@@ -31,22 +33,42 @@ struct RubyLabel: UIViewRepresentable {
         uiView.onTapWord = onTapWord
 
         let rubyEnabled = !rubyRanges.isEmpty
-        let key = "\(text)|\(rubyEnabled)|\(fontSizeScale)|\(fontStyle)|\(fontColor)"
+        let key = Self.cacheKey(
+            text: text,
+            rubyEnabled: rubyEnabled,
+            fontSizeScale: fontSizeScale,
+            fontStyle: fontStyle,
+            fontColor: fontColor
+        )
 
         if uiView.contentKey != key {
             uiView.contentKey = key
 
-            let baseAttributedString: NSAttributedString
-            if rubyEnabled {
-                baseAttributedString = cachedAttributedString
-            } else {
-                baseAttributedString = NSAttributedString(string: text)
+            if let cached = Self.attributedTextCache.object(forKey: key as NSString) {
+                uiView.attributedText = cached
+                return
             }
 
-            uiView.attributedText = buildAttributedString(
-                base: baseAttributedString
-            )
+            let baseAttributedString: NSAttributedString = rubyEnabled
+                ? cachedAttributedString
+                : NSAttributedString(string: text)
+
+            let attributedText = buildAttributedString(base: baseAttributedString)
+            Self.attributedTextCache.setObject(attributedText, forKey: key as NSString)
+            uiView.attributedText = attributedText
         }
+    }
+
+    private static func cacheKey(
+        text: String,
+        rubyEnabled: Bool,
+        fontSizeScale: Double,
+        fontStyle: VideoSubtitleRubyFontStyle,
+        fontColor: UIColor
+    ) -> String {
+        let colorKey = fontColor.rgbaCacheKey
+
+        return "\(text)|\(rubyEnabled)|\(fontSizeScale)|\(fontStyle.rawValue)|\(colorKey)"
     }
 
     private func buildAttributedString(base: NSAttributedString) -> NSAttributedString {
@@ -92,7 +114,7 @@ class RubyUIView: UIView {
     // 💡 增加這個屬性來精準控制換行寬度
     private var preferredMaxLayoutWidth: CGFloat = 0 {
         didSet {
-            if oldValue != preferredMaxLayoutWidth {
+            if abs(oldValue - preferredMaxLayoutWidth) > 0.5 {
                 invalidateIntrinsicContentSize()
                 setNeedsDisplay()
             }
@@ -127,7 +149,7 @@ class RubyUIView: UIView {
     // 💡 關鍵：當 UIView 被放入父容器時，獲取實際寬度
     override func layoutSubviews() {
         super.layoutSubviews()
-        if bounds.width > 0 && bounds.width != preferredMaxLayoutWidth {
+        if bounds.width > 0 && abs(bounds.width - preferredMaxLayoutWidth) > 0.5 {
             preferredMaxLayoutWidth = bounds.width
             cachedFrame = nil
         }
@@ -240,8 +262,13 @@ class RubyUIView: UIView {
         let path = CGMutablePath()
         path.addRect(bounds)
 
-        // 2. 修正函數名：使用 CTFramesetterCreateFrame
-        let frame = CTFramesetterCreateFrame(cachedFramesetter, CFRangeMake(0, 0), path, nil)
+        let frame: CTFrame
+        if let cachedFrame {
+            frame = cachedFrame
+        } else {
+            frame = CTFramesetterCreateFrame(cachedFramesetter, CFRangeMake(0, 0), path, nil)
+            self.cachedFrame = frame
+        }
 
         // 3. 坐標轉換 (反轉 Y 軸)
         let flippedLocation = CGPoint(x: location.x, y: bounds.size.height - location.y)

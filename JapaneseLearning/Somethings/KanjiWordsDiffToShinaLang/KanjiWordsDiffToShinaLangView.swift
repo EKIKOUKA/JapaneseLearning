@@ -130,9 +130,9 @@ struct KanjiWordsDiffToShinaLangView: View {
 
         switch sortOrder {
             case .createdAt:
-                return filtered.sorted(using: KeyPathComparator(\.createdAt, order: .forward))
+                return filtered.sorted { ($0.createdAt ?? "") < ($1.createdAt ?? "") }
             case .word:
-                return filtered.sorted(using: KeyPathComparator(\.word))
+                return filtered.sorted { $0.word < $1.word }
         }
     }
 }

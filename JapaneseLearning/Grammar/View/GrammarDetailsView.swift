@@ -61,7 +61,7 @@ struct GrammarDetailsView: View {
             }
         }
         .toolbarMinimizeBehavior(.onScrollDown, for: .navigationBar)
-        .onAppear {
+        .task {
             isReady = false
 
             QuickActionManager.shared.updateRecentGrammarAction(
@@ -70,10 +70,8 @@ struct GrammarDetailsView: View {
                 level: item.level
             )
 
-            DispatchQueue.main.async {
-                withAnimation(.easeIn(duration: 0.1)) {
-                    isReady = true
-                }
+            withAnimation(.easeIn(duration: 0.15)) {
+                isReady = true
             }
         }
     }
