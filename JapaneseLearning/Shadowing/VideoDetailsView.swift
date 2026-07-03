@@ -117,21 +117,14 @@ struct VideoDetailsView: View {
                 .presentationDragIndicator(.visible)
         }
         .onAppear {
-            playerVM.inject(
-                videoStore: videoStore,
-                settingsStore: settingsStore
-            )
-
+            playerVM.isDetailVisible = true
+            playerVM.syncCaptionToCurrentPlayback()
             playerVM.startPracticeTimingIfNeeded()
         }
         .onDisappear {
-            Task { @MainActor in
-                await playerVM.saveCurrentProgress()
-                await playerVM.stopPracticeTimingAndSync()
-                playerVM.resetPlayer()
-            }
-        }
-        .onChange(of: scenePhase, initial: false) {
+            playerVM.isDetailVisible = false
+            let currentTime = playerVM.currentPlaybackTime()
+
             Task {
                 if scenePhase == .background {
                     await playerVM.saveCurrentProgress()
