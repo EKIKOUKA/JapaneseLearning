@@ -10,8 +10,8 @@ import SwiftUI
 struct SampleRubyWordsDetailsView: View {
     let item: SampleRubyWordsItem
     let isNew: Bool // edit or add
-    @ObservedObject var store: SampleRubyWordsStore
     @Environment(\.dismiss) var dismiss
+    @State var store: SampleRubyWordsStore
 
     @State private var word: String
     @State private var ruby: String

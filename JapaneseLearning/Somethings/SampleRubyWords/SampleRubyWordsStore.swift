@@ -7,6 +7,7 @@
 
 import SwiftUI
 import Foundation
+import Observation
 import Combine
 
 struct SampleRubyWordsItem: Codable, Identifiable {
@@ -16,11 +17,12 @@ struct SampleRubyWordsItem: Codable, Identifiable {
     var meaning: String
 }
 
-class SampleRubyWordsStore: ObservableObject {
-    @Published var SampleRubyWordsList: [SampleRubyWordsItem] = []
-    @Published var expandedIDs: Set<Int> = []
-    @Published var isLoading = false
-    @Published var isReady: Bool = false
+@Observable
+class SampleRubyWordsStore {
+    var SampleRubyWordsList: [SampleRubyWordsItem] = []
+    var expandedIDs: Set<Int> = []
+    var isLoading = false
+    var isReady: Bool = false
 
     func toggleExpand(_ id: Int) {
         if expandedIDs.contains(id) {
@@ -61,6 +63,7 @@ class SampleRubyWordsStore: ObservableObject {
             SampleRubyWordsList.removeAll { $0.id == addItem.id }
         }
     }
+
     @MainActor
     func SampleRubyWordsUpdate(_ updatedItem: SampleRubyWordsItem) async {
         guard let index = SampleRubyWordsList.firstIndex(where: { $0.id == updatedItem.id }) else { return }

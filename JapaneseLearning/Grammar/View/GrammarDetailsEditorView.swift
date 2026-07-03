@@ -10,7 +10,7 @@ import SwiftUI
 struct GrammarDetailsEditorView: View {
     let item: GrammarItem
     let isNew: Bool // edit or add
-    @ObservedObject var store: GrammarStore
+    @State var store: GrammarStore
     @Environment(\.dismiss) var dismiss
 
     @State private var meaning: String

@@ -10,7 +10,7 @@ import SwiftUI
 struct MediaProductsDetailsEditorView: View {
     let item: MediaProductsItem
     let isNew: Bool // edit or add
-    @ObservedObject var store: MediaProductsStore
+    @State var store: MediaProductsStore
     @Environment(\.dismiss) var dismiss
 
     @State private var title: String

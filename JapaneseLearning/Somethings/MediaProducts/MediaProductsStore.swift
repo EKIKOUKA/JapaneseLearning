@@ -7,14 +7,16 @@
 
 import SwiftUI
 import Foundation
+import Observation
 import Combine
 
-class MediaProductsStore: ObservableObject {
-    @Published var MediaProductsList: [MediaProductsItem] = []
-    @Published var isLoading = false
-    @Published var isReady: Bool = false
+@Observable
+@MainActor
+class MediaProductsStore {
+    var MediaProductsList: [MediaProductsItem] = []
+    var isLoading = false
+    var isReady: Bool = false
 
-    @MainActor
     func fetchAll() async {
         do {
             MediaProductsList = try await WorkersAPI.get("fetch_video_products")
@@ -28,7 +30,6 @@ class MediaProductsStore: ObservableObject {
         }
     }
 
-    @MainActor
     func MediaProductsAdd(_ addItem: MediaProductsItem) async {
         MediaProductsList.append(addItem)
 
@@ -39,8 +40,7 @@ class MediaProductsStore: ObservableObject {
             MediaProductsList.removeAll { $0.id == addItem.id }
         }
     }
-    
-    @MainActor
+
     func MediaProductsUpdate(_ updatedItem: MediaProductsItem) async {
         guard let index = MediaProductsList.firstIndex(where: { $0.id == updatedItem.id }) else { return }
 

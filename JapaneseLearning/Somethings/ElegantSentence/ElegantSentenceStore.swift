@@ -7,6 +7,7 @@
 
 import SwiftUI
 import Foundation
+import Observation
 import Combine
 
 struct ElegantSentenceItem: Codable, Identifiable {
@@ -14,12 +15,13 @@ struct ElegantSentenceItem: Codable, Identifiable {
     var sentence: String
 }
 
-class ElegantSentenceStore: ObservableObject {
-    @Published var ElegantSentenceList: [ElegantSentenceItem] = []
-    @Published var isLoading = false
-    @Published var isReady: Bool = false
+@Observable
+@MainActor
+class ElegantSentenceStore {
+    var ElegantSentenceList: [ElegantSentenceItem] = []
+    var isLoading = false
+    var isReady: Bool = false
 
-    @MainActor
     func fetchAll() async {
         do {
             ElegantSentenceList = try await WorkersAPI.get("fetch_elegant_sentence")
@@ -33,7 +35,6 @@ class ElegantSentenceStore: ObservableObject {
         }
     }
 
-    @MainActor
     func ElegantSentenceAdd(_ addItem: ElegantSentenceItem) async {
         ElegantSentenceList.append(addItem)
 
@@ -44,7 +45,7 @@ class ElegantSentenceStore: ObservableObject {
             ElegantSentenceList.removeAll { $0.id == addItem.id }
         }
     }
-    @MainActor
+
     func ElegantSentenceUpdate(_ updatedItem: ElegantSentenceItem) async {
         guard let index = ElegantSentenceList.firstIndex(where: { $0.id == updatedItem.id }) else { return }
 

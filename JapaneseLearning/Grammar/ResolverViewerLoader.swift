@@ -16,7 +16,7 @@ enum GrammarNavDestination: Hashable {
 struct GrammarDetailLoader: View {
     let id: Int
     let level: String
-    @ObservedObject var store: GrammarStore
+    @State var store: GrammarStore
 
     var body: some View {
         Group {

@@ -9,7 +9,7 @@ import SwiftUI
 
 struct GrammarDetailsView: View {
     let item: GrammarItem
-    @ObservedObject var store: GrammarStore
+    @State var store: GrammarStore
     @Environment(SettingsStore.self) private var settingsStore
     @State private var isReady = false
 

@@ -9,7 +9,7 @@ import SwiftUI
 
 struct MediaProductsListView: View {
     @Environment(SettingsStore.self) private var settingsStore
-    @StateObject var store = MediaProductsStore()
+    @State var store = MediaProductsStore()
 
     @State private var searchText = ""
     @State private var selectedCategory: MediaCategory = .drama
@@ -181,7 +181,7 @@ struct MediaProductsListView: View {
 
 private struct SettingsSheetView: View {
     @Environment(SettingsStore.self) private var settingsStore
-    @ObservedObject var store: MediaProductsStore
+    @State var store: MediaProductsStore
 
     var body: some View {
         @Bindable var settingsStoreBindable = settingsStore

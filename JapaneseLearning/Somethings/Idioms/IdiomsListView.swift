@@ -9,7 +9,7 @@ import SwiftUI
 
 struct IdiomsListView: View {
     @Environment(SettingsStore.self) private var settingsStore
-    @StateObject private var store = IdiomsStore()
+    @State private var store = IdiomsStore()
     @State private var showRuby: Bool = false
     @State private var searchText: String = ""
     @State private var showSettingSheet = false
@@ -156,7 +156,7 @@ struct IdiomsItemsView: View {
 
 private struct SettingsSheetView: View {
     @Environment(SettingsStore.self) private var settingsStore
-    @ObservedObject var store: IdiomsStore
+    @State var store: IdiomsStore
 
     var body: some View {
         @Bindable var settingsStoreBindable = settingsStore

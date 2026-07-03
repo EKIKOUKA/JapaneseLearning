@@ -9,7 +9,7 @@ import SwiftUI
 
 struct KanjiWordsDiffToShinaLangView: View {
     @Environment(SettingsStore.self) private var settingsStore
-    @StateObject private var store = KanjiWordsStore()
+    @State private var store = KanjiWordsStore()
     @State private var showRuby: Bool = false
     @State private var searchText: String = ""
     @State private var showSettingSheet = false
@@ -177,7 +177,7 @@ struct WordListView: View {
 
 private struct SettingsSheetView: View {
     @Environment(SettingsStore.self) private var settingsStore
-    @ObservedObject var store: KanjiWordsStore
+    @State var store: KanjiWordsStore
 
     var body: some View {
         @Bindable var settingsStoreBindable = settingsStore

@@ -9,7 +9,7 @@ import SwiftUI
 
 struct MemoryHardWordsView: View {
     @Environment(SettingsStore.self) private var settingsStore
-    @StateObject private var store = MemoryHardWordsStore()
+    @State private var store = MemoryHardWordsStore()
     @State private var showRuby: Bool = false
     @State private var searchText: String = ""
     @State private var showSettingSheet = false
@@ -157,7 +157,7 @@ struct MemoryHardWordsListView: View {
 
 private struct SettingsSheetView: View {
     @Environment(SettingsStore.self) private var settingsStore
-    @ObservedObject var store: MemoryHardWordsStore
+    @State var store: MemoryHardWordsStore
 
     var body: some View {
         @Bindable var settingsStoreBindable = settingsStore

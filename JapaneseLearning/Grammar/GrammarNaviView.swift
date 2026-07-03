@@ -11,7 +11,7 @@ struct GrammarNaviView: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.horizontalSizeClass) private var sizeClass
-    @ObservedObject var store: GrammarStore
+    @State var store: GrammarStore
     @State private var showSettingSheet = false
 
     var dynamicColors: [LinearGradient] {

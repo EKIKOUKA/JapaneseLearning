@@ -7,6 +7,7 @@
 
 import SwiftUI
 import Foundation
+import Observation
 import Combine
 
 struct MemoryHardWordsItem: Codable, Identifiable {
@@ -16,11 +17,12 @@ struct MemoryHardWordsItem: Codable, Identifiable {
     var meaning: String
 }
 
-class MemoryHardWordsStore: ObservableObject {
-    @Published var MemoryHardWordsList: [MemoryHardWordsItem] = []
-    @Published var expandedIDs: Set<Int> = []
-    @Published var isLoading = false
-    @Published var isReady: Bool = false
+@Observable
+class MemoryHardWordsStore {
+    var MemoryHardWordsList: [MemoryHardWordsItem] = []
+    var expandedIDs: Set<Int> = []
+    var isLoading = false
+    var isReady: Bool = false
 
     func toggleExpand(_ id: Int) {
         if expandedIDs.contains(id) {

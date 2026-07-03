@@ -10,8 +10,8 @@ import SwiftUI
 struct ElegantSentenceDetailsView: View {
     let item: ElegantSentenceItem
     let isNew: Bool // edit or add
-    @ObservedObject var store: ElegantSentenceStore
     @Environment(\.dismiss) var dismiss
+    @State var store: ElegantSentenceStore
 
     @State private var sentence: String
 

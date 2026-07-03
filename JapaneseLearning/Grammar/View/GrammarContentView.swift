@@ -9,7 +9,7 @@ import SwiftUI
 
 struct GrammarContentView: View {
     @Environment(AppNavigationStore.self) private var navigationStore
-    @StateObject var grammarStore = GrammarStore()
+    @State var grammarStore = GrammarStore()
     @State private var grammarPath = NavigationPath()
 
     var body: some View {

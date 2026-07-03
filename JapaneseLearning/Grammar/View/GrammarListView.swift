@@ -12,7 +12,7 @@ struct GrammarListView: View {
     let title: String
 
     @Environment(SettingsStore.self) private var settingsStore
-    @ObservedObject var store: GrammarStore
+    @State var store: GrammarStore
 
     @State private var searchText: String = ""
     @State private var showImportantOnly: Bool = false

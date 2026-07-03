@@ -9,7 +9,7 @@ import SwiftUI
 
 struct MediaProductsDetailsView: View {
     let item: MediaProductsItem
-    @ObservedObject var store: MediaProductsStore
+    @State var store: MediaProductsStore
     @State private var isWebLoading = true
     @State private var isReady = false
 

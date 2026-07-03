@@ -9,7 +9,7 @@ import SwiftUI
 
 struct SettingsSheetGrammarView: View {
     @Environment(SettingsStore.self) private var settingsStore
-    @ObservedObject var store: GrammarStore
+    @State var store: GrammarStore
 
     let isoCountries: [(code: String, name: String)] = {
         let overrides: [String: String] = [

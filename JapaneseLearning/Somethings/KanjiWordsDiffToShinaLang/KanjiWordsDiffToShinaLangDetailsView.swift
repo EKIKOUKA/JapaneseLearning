@@ -10,8 +10,8 @@ import SwiftUI
 struct KanjiWordsDiffToShinaLangDetailsView: View {
     let item: KanjiWordsItem
     let isNew: Bool // edit or add
-    @ObservedObject var store: KanjiWordsStore
     @Environment(\.dismiss) var dismiss
+    @State var store: KanjiWordsStore
 
     @State private var word: String
     @State private var ruby: String

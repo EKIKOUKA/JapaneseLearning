@@ -8,14 +8,16 @@
 import SwiftUI
 import Foundation
 import Combine
+import Observation
 
-class GrammarStore: ObservableObject {
-    @Published var grammars: [GrammarItem] = []
-    @Published var currentLevel: String = ""
-    @Published var isLoading = false
-    @Published var isReady = false
+@Observable
+@MainActor
+class GrammarStore {
+    var grammars: [GrammarItem] = []
+    var currentLevel: String = ""
+    var isLoading = false
+    var isReady = false
 
-    @MainActor
     func fetchList(level: String) async {
         self.isReady = false
 
@@ -38,7 +40,6 @@ class GrammarStore: ObservableObject {
         }
     }
 
-    @MainActor
     func toggleImportant(_ id: Int) async {
         guard let index = grammars.firstIndex(where: { $0.id == id }) else { return }
         let originValue = grammars[index].isImportant
@@ -61,7 +62,6 @@ class GrammarStore: ObservableObject {
         }
     }
 
-    @MainActor
     func toggleMarked(_ id: Int) async {
         guard let index = grammars.firstIndex(where: { $0.id == id }) else { return }
         let originValue = grammars[index].isMarked
@@ -83,7 +83,6 @@ class GrammarStore: ObservableObject {
         }
     }
 
-    @MainActor
     func grammarAdd(_ addItem: GrammarItem) async {
         grammars.append(addItem)
 
@@ -95,7 +94,6 @@ class GrammarStore: ObservableObject {
         }
     }
 
-    @MainActor
     func grammarUpdate(_ updatedItem: GrammarItem) async {
         guard let index = grammars.firstIndex(where: { $0.id == updatedItem.id }) else { return }
 

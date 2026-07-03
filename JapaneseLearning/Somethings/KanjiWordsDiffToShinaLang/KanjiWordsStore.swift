@@ -7,6 +7,7 @@
 
 import SwiftUI
 import Foundation
+import Observation
 import Combine
 
 struct KanjiWordsItem: Codable, Identifiable {
@@ -41,11 +42,12 @@ enum KanjiWordsSortOrder: String, CaseIterable, Identifiable {
     }
 }
 
-class KanjiWordsStore: ObservableObject {
-    @Published var KanjiWordsList: [KanjiWordsItem] = []
-    @Published var expandedIDs: Set<Int> = []
-    @Published var isLoading = false
-    @Published var isReady: Bool = false
+@Observable
+class KanjiWordsStore {
+    var KanjiWordsList: [KanjiWordsItem] = []
+    var expandedIDs: Set<Int> = []
+    var isLoading = false
+    var isReady: Bool = false
 
     func toggleExpand(_ id: Int) {
         if expandedIDs.contains(id) {

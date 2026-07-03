@@ -7,6 +7,7 @@
 
 import SwiftUI
 import Foundation
+import Observation
 import Combine
 
 struct IdiomsItem: Codable, Identifiable {
@@ -16,11 +17,12 @@ struct IdiomsItem: Codable, Identifiable {
     var meaning: String
 }
 
-class IdiomsStore: ObservableObject {
-    @Published var IdiomsList: [IdiomsItem] = []
-    @Published var expandedIDs: Set<Int> = []
-    @Published var isLoading = false
-    @Published var isReady: Bool = false
+@Observable
+class IdiomsStore {
+    var IdiomsList: [IdiomsItem] = []
+    var expandedIDs: Set<Int> = []
+    var isLoading = false
+    var isReady: Bool = false
 
     func toggleExpand(_ id: Int) {
         if expandedIDs.contains(id) {
@@ -61,6 +63,7 @@ class IdiomsStore: ObservableObject {
             IdiomsList.removeAll { $0.id == addItem.id }
         }
     }
+
     @MainActor
     func IdiomsUpdate(_ updatedItem: IdiomsItem) async {
         guard let index = IdiomsList.firstIndex(where: { $0.id == updatedItem.id }) else { return }

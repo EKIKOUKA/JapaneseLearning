@@ -10,7 +10,7 @@ import SwiftUI
 struct IdiomsDetailsView: View {
     let item: IdiomsItem
     let isNew: Bool // edit or add
-    @ObservedObject var store: IdiomsStore
+    @State var store: IdiomsStore
     @Environment(\.dismiss) var dismiss
 
     @State private var word: String

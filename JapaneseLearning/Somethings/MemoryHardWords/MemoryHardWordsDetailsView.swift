@@ -10,8 +10,8 @@ import SwiftUI
 struct MemoryHardWordsDetailsView: View {
     let item: MemoryHardWordsItem
     let isNew: Bool // edit or add
-    @ObservedObject var store: MemoryHardWordsStore
     @Environment(\.dismiss) var dismiss
+    @State var store: MemoryHardWordsStore
 
     @State private var word: String
     @State private var ruby: String

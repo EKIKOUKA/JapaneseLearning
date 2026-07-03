@@ -9,7 +9,7 @@ import SwiftUI
 
 struct ElegantSentenceView: View {
     @Environment(SettingsStore.self) private var settingsStore
-    @StateObject var store = ElegantSentenceStore()
+    @State var store = ElegantSentenceStore()
     @State private var searchText = ""
     @State private var showSettingSheet = false
 
@@ -97,7 +97,7 @@ struct ElegantSentenceView: View {
 
 private struct SettingsSheetView: View {
     @Environment(SettingsStore.self) private var settingsStore
-    @ObservedObject var store: ElegantSentenceStore
+    @State var store: ElegantSentenceStore
 
     var body: some View {
         @Bindable var settingsStoreBindable = settingsStore

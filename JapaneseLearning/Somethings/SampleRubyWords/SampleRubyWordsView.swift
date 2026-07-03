@@ -9,7 +9,7 @@ import SwiftUI
 
 struct SampleRubyWordsView: View {
     @Environment(SettingsStore.self) private var settingsStore
-    @StateObject private var store = SampleRubyWordsStore()
+    @State private var store = SampleRubyWordsStore()
     @State private var showRuby: Bool = false
     @State private var searchText: String = ""
     @State private var showSettingSheet = false
@@ -157,7 +157,7 @@ struct SampleRubyWordsItemView: View {
 
 private struct SettingsSheetView: View {
     @Environment(SettingsStore.self) private var settingsStore
-    @ObservedObject var store: SampleRubyWordsStore
+    @State var store: SampleRubyWordsStore
 
     var body: some View {
         @Bindable var settingsStoreBindable = settingsStore
