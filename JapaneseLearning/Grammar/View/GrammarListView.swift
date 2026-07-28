@@ -118,7 +118,7 @@ struct GrammarListView: View {
                     .padding(.horizontal, 30)
                 }
             }
-            .toolbarMinimizeBehavior(.onScrollDown, for: .navigationBar)
+            .toolbarMinimizationBehavior(.onScrollDown, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {

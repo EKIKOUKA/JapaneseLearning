@@ -109,7 +109,7 @@ struct KanjiWordsDiffToShinaLangView: View {
                 }
             }
         }
-        .toolbarMinimizeBehavior(.onScrollDown, for: .navigationBar)
+        .toolbarMinimizationBehavior(.onScrollDown, for: .navigationBar)
         .sheet(isPresented: $showSettingSheet) {
             SettingsSheetView(store: store)
                 .presentationDetents([.medium])
