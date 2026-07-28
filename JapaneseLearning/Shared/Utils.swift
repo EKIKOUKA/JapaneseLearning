@@ -14,6 +14,14 @@ extension String {
         return self.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
+    var textWidth: CGFloat {
+        (self as NSString).size(
+            withAttributes: [
+                .font: UIFont.systemFont(ofSize: 15)
+            ]
+        ).width
+    }
+
     var cleanedVideoTitle: String {
         return String(
             self.filter { character in

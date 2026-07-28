@@ -197,7 +197,7 @@ struct VideoItemAddRequest: Codable {
         case createCaptionByAi = "create_caption_by_ai"
     }
 
-    init(video: VideoItem, createCaptionByAi: Bool) {
+    init(video: VideoItem, createCaptionByAi: Bool, liveActivityToken: String?) {
         self.id = video.id
         self.title = video.title
         self.currentTime = video.currentTime
@@ -207,6 +207,7 @@ struct VideoItemAddRequest: Codable {
         self.videoAspectRatio = video.videoAspectRatio
         self.contentLanguage = video.contentLanguage
         self.createCaptionByAi = createCaptionByAi
+        self.liveActivityToken = liveActivityToken
     }
 }
 

@@ -59,5 +59,16 @@ struct ContentView: View {
                 }
             }
         }
+        .onOpenURL { url in
+            guard url.scheme == "japaneselearning",
+                  url.host == "video",
+                  let videoID = url.pathComponents.dropFirst().first,
+                  !videoID.isEmpty else {
+                return
+            }
+
+            navigationStore.selectedTab = 0
+            navigationStore.quickActionTarget = .resumeVideo(id: videoID)
+        }
     }
 }

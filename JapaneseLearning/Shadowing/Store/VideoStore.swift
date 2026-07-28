@@ -39,9 +39,52 @@ class VideoStore {
         }
     }
 
-    private func saveVideoCache() {
+    func saveVideoCache() {
         if let encoded = try? JSONEncoder().encode(videos) {
             UserDefaults.standard.set(encoded, forKey: videoCacheKey)
+        }
+    }
+
+    @MainActor
+    private func upsertVideoLocally(_ video: VideoItem, animated: Bool = true) {
+        let updateAction = {
+            if let index = self.videos.firstIndex(where: { $0.id == video.id }) {
+                self.videos[index] = video
+            } else {
+                self.videos.insert(video, at: 0)
+            }
+        }
+
+        if animated {
+            withAnimation(.spring(duration: 0.5)) {
+                updateAction()
+            }
+        } else {
+            updateAction()
+        }
+
+        saveVideoCache()
+    }
+
+    private func syncAddedVideoToServer(
+        _ video: VideoItem,
+        createCaptionByAi: Bool,
+        liveActivityToken: String?
+    ) async -> Bool {
+        do {
+            try await WorkersAPI.post(
+                "add_video",
+                body: VideoItemAddRequest(
+                    video: video,
+                    createCaptionByAi: createCaptionByAi,
+                    liveActivityToken: liveActivityToken
+                )
+            )
+
+            return true
+        } catch {
+            print("❌ Save add Error: \(error)")
+            return false
         }
     }
 
@@ -62,6 +105,10 @@ class VideoStore {
             }
 
             saveVideoCache()
+
+            Task(priority: .utility) {
+                await Self.cacheMissingThumbnails(for: freshVideos)
+            }
         } catch {
             if !videos.isEmpty {
                 print("❌ Fetch Error (using cache)：\(error)")
@@ -73,32 +120,53 @@ class VideoStore {
     }
 
     @MainActor
-    func addVideo(_ video: VideoItem, createCaptionByAi: Bool = true) async {
-        do {
-            withAnimation(.spring(duration: 0.35)) {
-                videos.insert(video, at: 0)
+    func addVideo(_ video: VideoItem, thumbnailURL: URL, createCaptionByAi: Bool = true) {
+        upsertVideoLocally(video)
+
+        Task(priority: .utility) {
+            do {
+                let data = try await WorkersAPI.getData(from: thumbnailURL)
+                try AppGroupThumbnailStorage.save(data, for: video.id)
+
+                await MainActor.run {
+                    self.bumpThumbnailRefreshID(for: video.id)
+                }
+
+            } catch {
+                print("❌ Thumbnail download failed: \(error)")
             }
-            try await WorkersAPI.post(
-                "add_video",
-                body: VideoItemAddRequest(video: video, createCaptionByAi: createCaptionByAi)
+
+            let liveActivityToken = await VideoStatusLiveActivityManager.shared.start(video: video)
+            let didCreateServerRecord = await self.syncAddedVideoToServer(
+                video,
+                createCaptionByAi: createCaptionByAi,
+                liveActivityToken: liveActivityToken
             )
 
-            saveVideoCache()
-        } catch {
-            print("❌ Save add Error: \(error)")
+            if didCreateServerRecord {
+                VideoStatusLiveActivityManager.shared.observeTokenChanges(
+                    videoID: video.id,
+                    initialToken: liveActivityToken
+                )
+            }
+
         }
+    }
+
+    @MainActor
+    private func bumpThumbnailRefreshID(for videoID: String) {
+        guard let index = videos.firstIndex(where: { $0.id == videoID }) else {
+            return
+        }
+
+        videos[index].thumbnailRefreshID = UUID().uuidString
     }
 
     @MainActor
     func updateVideo(_ video: VideoItem) async {
         do {
             try await WorkersAPI.post("update_video", body: video)
-            print("✅ Progress Sync Success")
-            if let index = videos.firstIndex(where: { $0.id == video.id }) {
-                videos[index] = video
-            }
-
-            saveVideoCache()
+            upsertVideoLocally(video, animated: false)
         } catch {
             print("❌ Update Error: \(error)")
         }
@@ -108,8 +176,8 @@ class VideoStore {
     func updateVideoAspectRatio(_ video: VideoItem) {
         Task {
             do {
-                try await WorkersAPI.post("update_video_aspectr_atio", body: video)
-                print("✅ videoAspectRatio Update Success")
+                try await WorkersAPI.post("update_video_aspect_ratio", body: video)
+                print("✅ aspectRatio Update Success")
                 if let index = videos.firstIndex(where: { $0.id == video.id }) {
                     videos[index] = video
                 }
@@ -134,6 +202,8 @@ class VideoStore {
             if QuickActionManager.shared.currentResumeVideoID() == id {
                 QuickActionManager.shared.clearResumeVideo()
             }
+
+            AppGroupThumbnailStorage.remove(for: id)
         } catch {
             print("❌ 刪除エラー:", error)
         }
@@ -224,21 +294,29 @@ class VideoStore {
         playlistID: String,
         contentLanguage: VideoContentLanguage,
         createCaptionByAi: Bool = true,
-        playbackRate: Float = 1.0
+        playbackRate: Float
     ) async {
-        // 保存前に最高解像度のサムネイルURLをYouTubeServiceから取得
-        let highQualityThumbURL = await YouTubeService.fetchBestThumbnailURL(for: item.id)
-
-        let newVideo = VideoItem(
+        let immediateVideo = VideoItem(
             id: item.id,
             title: item.title.cleanedVideoTitle,
             rate: playbackRate,
-            thumbnailURL: highQualityThumbURL,
             playlistID: playlistID,
-            videoAspectRatio: -1,
+            aspectRatio: -1,
             contentLanguage: contentLanguage
         )
-        await addVideo(newVideo, createCaptionByAi: createCaptionByAi)
+        upsertVideoLocally(immediateVideo)
+
+        let highQualityThumbURL = await YouTubeService.fetchBestThumbnailURL(for: item.id)
+
+        let syncedVideo = VideoItem(
+            id: item.id,
+            title: item.title.cleanedVideoTitle,
+            rate: playbackRate,
+            playlistID: playlistID,
+            aspectRatio: -1,
+            contentLanguage: contentLanguage
+        )
+        addVideo(syncedVideo, thumbnailURL: highQualityThumbURL, createCaptionByAi: createCaptionByAi)
     }
 
     /// 2. リンクから直接追加
@@ -259,23 +337,33 @@ class VideoStore {
                 if videos.contains(where: { $0.id == videoID }) {
                     return .invalid
                 }
-                let title = await YouTubeService.fetchTitle(videoID)
 
-                // 最高解像度のサムネイルURLをYouTubeServiceから取得
-                let highQualityThumbURL = await YouTubeService.fetchBestThumbnailURL(for: videoID)
-
-                let newVideo = VideoItem(
+                let immediateVideo = VideoItem(
                     id: videoID,
-                    title: title.cleanedVideoTitle,
+                    title: videoID,
                     rate: playbackRate,
-                    thumbnailURL: highQualityThumbURL,
                     playlistID: nil,
-                    videoAspectRatio: -1,
+                    aspectRatio: -1,
                     contentLanguage: contentLanguage
                 )
-                await addVideo(newVideo, createCaptionByAi: createCaptionByAi)
+                upsertVideoLocally(immediateVideo)
 
-                return .addedVideo(newVideo)
+                Task {
+                    let title = await YouTubeService.fetchTitle(videoID)
+                    let highQualityThumbURL = await YouTubeService.fetchBestThumbnailURL(for: videoID)
+
+                    let syncedVideo = VideoItem(
+                        id: videoID,
+                        title: title.cleanedVideoTitle,
+                        rate: playbackRate,
+                        playlistID: nil,
+                        aspectRatio: -1,
+                        contentLanguage: contentLanguage
+                    )
+                    addVideo(syncedVideo, thumbnailURL: highQualityThumbURL, createCaptionByAi: createCaptionByAi)
+                }
+
+                return .addedVideo(immediateVideo)
             case .playlist:
                 guard let listID = extractPlaylistID(from: url) else {
                     return .invalid
@@ -283,9 +371,13 @@ class VideoStore {
                 if videoList.contains(where: { $0.id == listID }) {
                     return .invalid
                 }
-                let meta = await fetchPlaylistMeta(playlistID: listID)
-                await addVideoPlaylist(meta)
-                await fetchVideoPlaylist()
+
+                let immediatePlaylist = await fetchPlaylistMeta(playlistID: listID)
+                await addVideoPlaylist(immediatePlaylist)
+
+                Task {
+                    await fetchVideoPlaylist()
+                }
 
                 return .addedPlaylist
             case .unknown:
@@ -338,9 +430,7 @@ class VideoStore {
                     videoListVideos.append(contentsOf: pageVideos)
 
                     if !videoListVideosIsReady {
-                        withAnimation(.easeIn(duration: 0.15)) {
-                            videoListVideosIsReady = true
-                        }
+                        videoListVideosIsReady = true
                     }
                 }
 
@@ -425,6 +515,34 @@ class VideoStore {
                 } ?? .shadowing
             default:
                 return .shadowing
+        }
+    }
+
+    // MARK: - AppGroupThumbnailStorage Thumbnail
+    private static func thumbnailSourceURL(for video: VideoItem) async -> URL {
+        await YouTubeService.fetchBestThumbnailURL(for: video.id)
+    }
+    private static func cacheThumbnail(for video: VideoItem) async {
+        guard AppGroupThumbnailStorage.existingFileURL(for: video.id) == nil else {
+            return
+        }
+
+        let sourceURL = await thumbnailSourceURL(for: video)
+
+        do {
+            let data = try await WorkersAPI.getData(from: sourceURL)
+            try AppGroupThumbnailStorage.save(data, for: video.id)
+        } catch {
+            print("❌ Thumbnail download failed (\(video.id)): \(error)")
+        }
+    }
+    private static func cacheMissingThumbnails(for videos: [VideoItem]) async {
+        await withTaskGroup(of: Void.self) { group in
+            for video in videos {
+                group.addTask {
+                    await Self.cacheThumbnail(for: video)
+                }
+            }
         }
     }
 

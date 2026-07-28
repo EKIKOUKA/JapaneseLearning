@@ -18,7 +18,7 @@ enum WorkersAPI {
         }
 
         let (data, response) = try await URLSession.shared.data(from: url)
-        try response.validateHTTPStatus()
+        try response.validateHTTPStatus(data)
 
         return try JSONDecoder().decode(T.self, from: data)
     }
@@ -31,9 +31,9 @@ enum WorkersAPI {
             .setMethod("POST")
             .setJSONBody(body)
 
-        let (_, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await URLSession.shared.data(for: request)
 
-        try response.validateHTTPStatus()
+        try response.validateHTTPStatus(data)
     }
 
     // MARK: - POST (Raw Data)
@@ -44,9 +44,22 @@ enum WorkersAPI {
             .setMethod("POST")
             .setRawJSONBody(body)
 
-        let (_, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await URLSession.shared.data(for: request)
 
-        try response.validateHTTPStatus()
+        try response.validateHTTPStatus(data)
+    }
+
+    // MARK: - GET (Raw Data)
+    static func getData(from url: URL) async throws -> Data {
+        let (data, response) = try await URLSession.shared.data(from: url)
+
+        try response.validateHTTPStatus(data)
+
+        guard !data.isEmpty else {
+            throw URLError(.zeroByteResource)
+        }
+
+        return data
     }
 }
 
@@ -76,7 +89,7 @@ extension URLRequest {
 }
 
 extension URLResponse {
-    func validateHTTPStatus() throws {
+    func validateHTTPStatus(_ data: Data) throws {
         guard let httpResponse = self as? HTTPURLResponse else {
             print("❌ HTTP Request is Not")
             throw URLError(.badServerResponse)
@@ -84,6 +97,11 @@ extension URLResponse {
 
         guard (200...299).contains(httpResponse.statusCode) else {
             print("❌ Cloudflare Workers HTTP Error Code: \(httpResponse.statusCode)")
+
+            if let body = String(data: data, encoding: .utf8), !body.isEmpty {
+                print("❌ Response Body: \(body)")
+            }
+
             throw URLError(.badServerResponse)
         }
     }
