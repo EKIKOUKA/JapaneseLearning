@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import AVFoundation
 
 @main
 struct JapaneseLearningApp: App {
@@ -15,6 +16,7 @@ struct JapaneseLearningApp: App {
     @State private var settingsStore = SettingsStore()
 
     init() {
+        AVPlayer.isObservationEnabled = true
         URLCache.shared.diskCapacity = 0
         URLCache.shared.memoryCapacity = 0
     }

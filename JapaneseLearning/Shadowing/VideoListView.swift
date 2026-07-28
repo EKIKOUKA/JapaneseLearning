@@ -8,6 +8,8 @@
 import SwiftUI
 
 struct VideoListView: View {
+    let onSelectVideo: (String) -> Void
+
     @Environment(VideoStore.self) private var store
     @Environment(SettingsStore.self) private var settingsStore
     @Environment(PlayerViewManager.self) private var playerVM
@@ -18,6 +20,10 @@ struct VideoListView: View {
     @State private var showPlayListSheet: Bool = false
     @State private var selectedVideo: VideoItem?
     @State private var selectedCategory: PlaylistCategory = .shadowing
+
+    init(onSelectVideo: @escaping (String) -> Void = { _ in }) {
+        self.onSelectVideo = onSelectVideo
+    }
 
     private var filteredVideos: [VideoItem] {
         let targetID = selectedCategory.playlistID
@@ -130,19 +136,8 @@ struct VideoListView: View {
     private func videoItemGrid(columns: [GridItem]) -> some View {
         LazyVGrid(columns: columns, spacing: 24) {
             ForEach(filteredVideos) { video in
-                NavigationLink {
-                    VideoDetailsView(videoID: video.id)
-                        .ModifierApplyIf(
-                            settingsStore.videoItemNavigationTransition &&
-                            transitionNamespace != nil
-                        ) { view in
-                            view.navigationTransition(
-                                .zoom(
-                                    sourceID: video.id,
-                                    in: transitionNamespace!
-                                )
-                            )
-                        }
+                Button {
+                    onSelectVideo(video.id)
                 } label: {
                     videoListItemView(video)
                 }

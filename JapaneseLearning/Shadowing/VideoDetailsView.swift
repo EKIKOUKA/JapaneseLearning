@@ -15,6 +15,8 @@ struct VideoDetailsView: View {
     @Environment(\.horizontalSizeClass) var sizeClass
 
     let videoID: String
+    var onDismissDragChanged: (CGFloat) -> Void = { _ in }
+    var onDismissDragEnded: (CGFloat, CGFloat) -> Void = { _, _ in }
     var video: VideoItem? {
         videoStore.videos.first { $0.id == videoID }
     }
@@ -56,8 +58,23 @@ struct VideoDetailsView: View {
                                 lastDragOffset: $lastDragOffset,
                                 maxDrawerOffset: currentVideoHeight,
                                 containerWidth: fullWidth,
-                                videoAspectRatio: displayVideoAspectRatio,
-                                isLandscape: isLandscape
+                                aspectRatio: displayAspectRatio,
+                                isLandscape: isLandscape,
+                                isPlayerReady: playerVM.currentVideoItem?.id == videoID &&
+                                    !playerVM.isVideoLoading
+                            )
+                            .simultaneousGesture(
+                                DragGesture(minimumDistance: 8, coordinateSpace: .global)
+                                    .onChanged { value in
+                                        guard value.translation.height > 0 else { return }
+                                        onDismissDragChanged(value.translation.height)
+                                    }
+                                    .onEnded { value in
+                                        onDismissDragEnded(
+                                            value.translation.height,
+                                            value.predictedEndTranslation.height
+                                        )
+                                    }
                             )
 
                             if playerVM.isProgressing {
@@ -79,37 +96,36 @@ struct VideoDetailsView: View {
                             )
                         }
                     }
-                    .background(
-                        videoCoverView(playerVM: playerVM, sizeClass_regular: sizeClass_regular)
-                    )
                 }
             }
+            .onAppear {
+                guard settingsStore.videoDetailsCollapse, !isLandscape else { return }
+                drawerOffset = currentVideoHeight
+                lastDragOffset = currentVideoHeight
+            }
+            .onChange(of: currentVideoHeight) { _, newHeight in
+                if drawerOffset > 0 {
+                    drawerOffset = newHeight
+                    lastDragOffset = newHeight
+                }
+            }
+            .onChange(of: settingsStore.videoDetailsCollapse) { _, new in
+                drawerOffset = new && !isLandscape ? currentVideoHeight : 0
+                lastDragOffset = drawerOffset
+            }
         }
-        .navigationTitle(sizeClass_regular ? "" : (video?.title.cleanedVideoTitle ?? "読み込み中..."))
-        .navigationBarTitleDisplayMode(.inline)
+        .safeAreaInset(edge: .top, spacing: 0) {
+            CustomToolbarHeader(
+                title: video?.title.cleanedVideoTitle ?? "読み込み中...",
+                showSettingSheet: $showSettingSheet
+            )
+        }
         .toolbarColorScheme(.dark, for: .navigationBar)
-        .toolbar {
-            if sizeClass_regular && !playerVM.isVideoLoading {
-                ToolbarItem(placement: .principal) {
-                    Text(video?.title.cleanedVideoTitle ?? "読み込み中...")
-                        .font(.headline)
-                        .foregroundColor(.white)
-                        .lineLimit(1)
-                }
-            }
-
-            ToolbarItemGroup(placement: .topBarTrailing) {
-                Button {
-                    showSettingSheet = true
-                } label: {
-                    Image(systemName: "ellipsis")
-                }
-            }
-        }
+        .toolbarVisibility(.hidden, for: .navigationBar)
         .toolbarVisibility(.hidden, for: .tabBar)
         .task(id: video?.id) {
             guard let video else { return }
-            playerVM.prepareVideo(video)
+            playerVM.startVideo(video)
         }
         .sheet(item: $playerVM.activeLookUpWordIdentifiable,
                onDismiss: {
@@ -128,41 +144,10 @@ struct VideoDetailsView: View {
                 .presentationDragIndicator(.visible)
                 .navigationTransition(.crossFade)
         }
-        .onAppear {
-            playerVM.isDetailVisible = true
-            playerVM.syncCaptionToCurrentPlayback()
-            playerVM.startPracticeTimingIfNeeded()
-        }
         .onDisappear {
-            playerVM.isDetailVisible = false
-            let currentTime = playerVM.currentPlaybackTime()
-
             Task {
-                await playerVM.saveCurrentProgress(currentTimeOverride: currentTime)
-                await playerVM.stopPracticeTimingAndSync()
+                await playerVM.endVideo()
             }
-        }
-    }
-}
-
-struct videoCoverView: View {
-    let playerVM: PlayerViewManager
-    let sizeClass_regular: Bool
-
-    var body: some View {
-        if let image = playerVM.nowPlayingArtwork {
-            Canvas { context, size in
-                context.draw(
-                    Image(uiImage: image)
-                        .resizable(),
-                    in: CGRect(origin: .zero, size: size)
-                )
-            }
-            .ignoresSafeArea()
-            .blur(radius: sizeClass_regular ? 100 : 64, opaque: true)
-            .overlay(Color.black.opacity(0.2))
-        } else {
-            Color.black.opacity(0.1)
         }
     }
 }
@@ -178,6 +163,7 @@ struct VideoContentArea: View {
     let containerWidth: CGFloat
     let aspectRatio: CGFloat
     let isLandscape: Bool
+    let isPlayerReady: Bool
 
     var body: some View {
         let videoWidth = max(0, isLandscape ? containerWidth * 0.5 : containerWidth)
@@ -252,10 +238,9 @@ struct SubtitlesContentView: View {
 
     let playerVM: PlayerViewManager
     @Environment(SettingsStore.self) private var settingsStore
-    @State private var scrollTargetID: String?
-    @State private var containerHeight: CGFloat = 0
-    @State private var lastHeight: CGFloat = 0
-    @State private var heightStableTimer: Timer?
+    @State private var scrollPosition = ScrollPosition(idType: String.self)
+    @State private var isUserScrolling = false
+    @State private var isScrollIdle = false
 
     var body: some View {
         let showShadowingSubtitlesRuby = settingsStore.showShadowingSubtitlesRuby
@@ -267,91 +252,102 @@ struct SubtitlesContentView: View {
         let visibleCaptions = playerVM.visiableCaptions
         let visibleRows = visibleCaptions.map { VisibleCaptionRow(index: $0.0, line: $0.1) }
 
-        GeometryReader { geo in
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 0) {
-                    Color.clear.frame(height: 2)
-                    ForEach(visibleRows) { row in
-                        SubtitlesRowView(
-                            playerVM: playerVM,
-                            line: row.line,
-                            isActive: playerVM.currentLineID == row.line.id,
-                            rubyRanges: showShadowingSubtitlesRuby ? row.line.rubyRanges : [],
-                            fontSizeScale: fontSizeScale,
-                            fontStyle: fontStyle,
-                            fontColor: fontColor,
-                            blurInactiveLines: blurInactiveLines,
-                            onTapLine: {
-                                Task {
-                                    await playerVM.playLine(row.line, row.index)
-                                }
-                            }
-                        )
-                        .equatable()
-                    }
-                    Color.clear.frame(height: 250)
-                }
-                .scrollTargetLayout()
-                .scrollIndicatorStyle(.white)
-            }
-            .transaction { transaction in
-                transaction.animation = nil
-            }
-            .scrollContentBackground(.hidden)
-            .background(Color.clear)
-            .scrollPosition(id: $scrollTargetID, anchor: .subtitleAnchor)
-            .task {
-                if let currentLineID = playerVM.currentLineID {
-                    scrollTargetID = currentLineID
-                }
-            }
-            .onChange(of: playerVM.currentLineID) { _, new in
-                guard let newID = new else { return }
-
-                if lineAnimation == .easeInOut {
-                    withAnimation(.easeInOut(duration: 0.5)) {
-                        scrollTargetID = newID
-                    }
-                } else {
-                    withAnimation(.timingCurve(0.4, 0.0, 0.2, 1.0, duration: 0.5)) {
-                        scrollTargetID = newID
-                    }
-                }
-            }
-            .onReceive(NotificationCenter.default.publisher(for: .scrollToCurrentLine)) { _ in
-                guard let currentLineId = playerVM.currentLineID else { return }
-
-                if abs(containerHeight - lastHeight) < 1 {
-                    if lineAnimation == .easeInOut {
-                        withAnimation(.easeInOut(duration: 0.5)) {
-                            scrollTargetID = currentLineId
-                        }
-                    } else {
-                        withAnimation(.spring(response: 0.5, dampingFraction: 0.6)) {
-                            scrollTargetID = currentLineId
-                        }
-                    }
-                } else {
-                    heightStableTimer?.invalidate()
-                    heightStableTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: false) { _ in
-                        Task { @MainActor in
-                            if lineAnimation == .easeInOut {
-                                withAnimation(.easeInOut(duration: 0.5)) {
-                                    scrollTargetID = currentLineId
-                                }
-                            } else {
-                                withAnimation(.spring(response: 0.5, dampingFraction: 0.6)) {
-                                    scrollTargetID = currentLineId
-                                }
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 0) {
+                Color.clear.frame(height: 2)
+                ForEach(visibleRows) { row in
+                    SubtitlesRowView(
+                        playerVM: playerVM,
+                        line: row.line,
+                        isActive: playerVM.currentLineID == row.line.id,
+                        rubyRanges: showShadowingSubtitlesRuby ? row.line.rubyRanges : [],
+                        fontSizeScale: fontSizeScale,
+                        fontStyle: fontStyle,
+                        fontColor: fontColor,
+                        blurInactiveLines: blurInactiveLines,
+                        onTapLine: {
+                            Task {
+                                await playerVM.playLine(row.line, row.index)
                             }
                         }
-                    }
+                    )
+                    .equatable()
                 }
+                Color.clear.frame(height: 250)
             }
-            .onChange(of: geo.size.height) { _, newHeight in
-                lastHeight = containerHeight
-                containerHeight = newHeight
+            .scrollTargetLayout()
+            .scrollIndicatorStyle(.white)
+        }
+        .scrollContentBackground(.hidden)
+        .background(Color.clear)
+        .scrollPosition($scrollPosition, anchor: .subtitleAnchor)
+        .onScrollPhaseChange { _, newPhase in
+            switch newPhase {
+                case .tracking, .interacting, .decelerating:
+                    isUserScrolling = true
+                    isScrollIdle = false
+
+                case .idle:
+                    guard isUserScrolling else { return }
+                    isScrollIdle = true
+
+                case .animating:
+                    break
             }
+        }
+        .task(id: isScrollIdle) {
+            guard isScrollIdle, isUserScrolling else { return }
+
+            try? await Task.sleep(for: .seconds(1))
+            guard !Task.isCancelled, isScrollIdle else { return }
+
+            defer { isUserScrolling = false }
+            guard playerVM.isPlaying,
+                  let currentLineID = playerVM.currentLineID else {
+                return
+            }
+
+            scroll(to: currentLineID, animation: lineAnimation)
+        }
+        .task {
+            if let currentLineID = playerVM.currentLineID {
+                scrollPosition.scrollTo(id: currentLineID, anchor: .subtitleAnchor)
+            }
+        }
+        .task(id: playerVM.scrollToCurrentLineRequest) {
+            guard playerVM.scrollToCurrentLineRequest > 0 else { return }
+
+            try? await Task.sleep(for: .seconds(0.1))
+            guard !Task.isCancelled,
+                  let currentLineID = playerVM.currentLineID else {
+                return
+            }
+
+            isUserScrolling = false
+            isScrollIdle = false
+            scroll(to: currentLineID, animation: lineAnimation)
+        }
+        .onChange(of: playerVM.currentLineID) { _, new in
+            guard playerVM.isPlaying,
+                  !isUserScrolling,
+                  let newID = new else {
+                return
+            }
+
+            scroll(to: newID, animation: lineAnimation)
+        }
+    }
+
+    private func scroll(
+        to lineID: String,
+        animation lineAnimation: VideoSubtitleLineWithAnimation
+    ) {
+        let animation: Animation = lineAnimation == .easeInOut
+            ? .easeInOut(duration: 0.5)
+            : .timingCurve(0.4, 0.0, 0.2, 1.0, duration: 0.5)
+
+        withAnimation(animation) {
+            scrollPosition.scrollTo(id: lineID, anchor: .subtitleAnchor)
         }
     }
 }
@@ -430,9 +426,6 @@ struct SubtitlesRowView: View, Equatable {
             withAnimation(.easeInOut(duration: 0.5)) {
                 tapHighlight = false
             }
-            .padding(.horizontal, 0)
-        } else {
-            VStack(spacing: 0) { content() }
         }
     }
 }

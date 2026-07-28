@@ -43,12 +43,36 @@ struct ContentView: View {
                 }
                 .tag(3)
         }
+        .tabBarMinimizeBehavior(.onScrollDown)
+        .tabViewBottomAccessory(
+            isEnabled: playerVM.hasActivePlayback &&
+                (!playerVM.isDetailVisible || navigationStore.presentedVideo != nil)
+        ) {
+            VideoMiniPlayerView()
+        }
+        .fullScreenCover(
+            item: $nav.presentedVideo,
+            onDismiss: {
+                navigationStore.presentedVideo = nil
+                navigationStore.videoTransitionSourceID = nil
+            }
+        ) { destination in
+            VideoDetailsFullScreenSheet(
+                videoID: destination.id,
+                dismissesToMiniPlayer: destination.dismissesToMiniPlayer
+            ) {
+                navigationStore.presentedVideo = nil
+            }
+            .presentationBackground(.clear)
+            .navigationTransition(
+                .zoom(
+                    sourceID: destination.sourceID,
+                    in: transitionNamespace
+                )
+            )
+        }
         .environment(playerVM)
         .environment(\.transitionNamespace, transitionNamespace)
-        .tabBarMinimizeBehavior(.onScrollDown)
-        .tabViewBottomAccessory(isEnabled: playerVM.hasActivePlayback && !playerVM.isDetailVisible) {
-            ShadowingMiniPlayerView()
-        }
         .onAppear {
             playerVM.inject(videoStore: videoStore, settingsStore: settingsStore)
         }

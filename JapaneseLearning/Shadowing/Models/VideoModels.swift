@@ -135,6 +135,7 @@ struct VideoItem: Identifiable, Hashable, Codable {
     var playlistID: String?
     var aspectRatio: CGFloat
     var contentLanguage: VideoContentLanguage = .ja
+    var thumbnailRefreshID: String = UUID().uuidString
 
     enum CodingKeys: String, CodingKey {
         case id
