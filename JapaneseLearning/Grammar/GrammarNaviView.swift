@@ -25,7 +25,7 @@ struct GrammarNaviView: View {
     var body: some View {
         let sizeClass_regular = sizeClass == .regular
 
-        Group { // NavigationStack
+        Group {
             ZStack {
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 16), count: 2), spacing: 16) {
                     ForEach(GrammarAllLevels.grammarList.indices, id: \.self) { index in
@@ -70,7 +70,7 @@ struct GrammarNaviView: View {
             }
         }
         .sheet(isPresented: $showSettingSheet) {
-            SettingsSheetGrammarView(store: store)
+            GrammarSettingsView(store: store)
                 .presentationDetents(sizeClass_regular ? [.large] : [.height(490), .large])
                 .presentationDragIndicator(.visible)
                 .navigationTransition(.crossFade)

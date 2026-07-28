@@ -1,5 +1,5 @@
 //
-//  SettingsSheetView.swift
+//  GrammarSettingsView.swift
 //  JapaneseLearning
 //
 //  Created by 宇都宮　誠 on R 7/12/17.
@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-struct SettingsSheetGrammarView: View {
+struct GrammarSettingsView: View {
     @Environment(SettingsStore.self) private var settingsStore
     @State var store: GrammarStore
 

@@ -1,5 +1,5 @@
 //
-//  ShadowingSettingsSheetView.swift
+//  ShadowingSettingsView.swift
 //  JapaneseLearning
 //
 //  Created by 宇都宮　誠 on R 7/12/27.
@@ -33,7 +33,7 @@ struct ShadowingSettingsSheetView: View {
                 }
 
                 Section(footer: Text("字幕の色を変更します")) {
-                    ColorPicker("字幕の色", selection: settingsStore.videoSubtitleFontColor, supportsOpacity: true)
+                    ColorPicker("字幕の色", selection: settingsStore.videoSubtitleFontColorBinding, supportsOpacity: true)
                 }
 
                 Section(footer: Text("再生中の行を強調し、他の字幕を控えめに表示します")) {
@@ -64,11 +64,9 @@ struct ShadowingSettingsSheetView: View {
                     }
                 }
 
-                if playerVM == nil {
-                    Section(footer: Text("有効にすると動画がフワッと広がるように開き、無効にすると右から左へ流れる通常の切り替えになります。")) {
-                        Toggle(isOn: $settingsStoreBindable.videoItemNavigationTransition) {
-                            Text("ズーム遷移エフェクト")
-                        }
+                Section(footer: Text("再生画面に動画を隠し、「ビデオを表示」ボタンから再び表示します。")) {
+                    Toggle(isOn: $settingsStoreBindable.videoDetailsCollapse) {
+                        Text("再生画面に動画を隠す")
                     }
                 }
 

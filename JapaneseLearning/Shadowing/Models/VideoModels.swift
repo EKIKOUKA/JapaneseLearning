@@ -131,10 +131,9 @@ struct VideoItem: Identifiable, Hashable, Codable {
     let id: String
     let title: String
     var currentTime: Double? = nil
-    var rate: Float? = nil
-    let thumbnailURL: URL?
+    var rate: Float = 1.0
     var playlistID: String?
-    var videoAspectRatio: CGFloat
+    var aspectRatio: CGFloat
     var contentLanguage: VideoContentLanguage = .ja
 
     enum CodingKeys: String, CodingKey {
@@ -142,9 +141,8 @@ struct VideoItem: Identifiable, Hashable, Codable {
         case title
         case currentTime = "current_time"
         case rate
-        case thumbnailURL = "thumbnail"
         case playlistID = "playlist_id"
-        case videoAspectRatio = "video_aspectr_atio"
+        case aspectRatio = "aspect_ratio"
         case contentLanguage = "content_language"
     }
 }
@@ -178,23 +176,23 @@ struct VideoItemAddRequest: Codable {
     let id: String
     let title: String
     let currentTime: Double?
-    let rate: Float?
-    let thumbnailURL: URL?
+    let rate: Float
     let playlistID: String?
-    let videoAspectRatio: CGFloat?
+    let aspectRatio: CGFloat
     let contentLanguage: VideoContentLanguage
     let createCaptionByAi: Bool
+    let liveActivityToken: String?
 
     enum CodingKeys: String, CodingKey {
         case id
         case title
         case currentTime = "current_time"
         case rate
-        case thumbnailURL = "thumbnail"
         case playlistID = "playlist_id"
-        case videoAspectRatio = "video_aspectr_atio"
+        case aspectRatio = "aspect_ratio"
         case contentLanguage = "content_language"
         case createCaptionByAi = "create_caption_by_ai"
+        case liveActivityToken = "live_activity_token"
     }
 
     init(video: VideoItem, createCaptionByAi: Bool, liveActivityToken: String?) {
@@ -202,9 +200,8 @@ struct VideoItemAddRequest: Codable {
         self.title = video.title
         self.currentTime = video.currentTime
         self.rate = video.rate
-        self.thumbnailURL = video.thumbnailURL
         self.playlistID = video.playlistID
-        self.videoAspectRatio = video.videoAspectRatio
+        self.aspectRatio = video.aspectRatio
         self.contentLanguage = video.contentLanguage
         self.createCaptionByAi = createCaptionByAi
         self.liveActivityToken = liveActivityToken
@@ -232,5 +229,6 @@ struct PracticeSessionPayload: Codable {
 
 struct VideoSubtitleSkipWords: Decodable {
     let skipWithPreviousLines: [String]
+    let skipWithNextLines: [String]
     var skipOnlyCurrentLine: [String]
 }

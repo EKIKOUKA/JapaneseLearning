@@ -64,6 +64,7 @@ struct MediaProductsDetailsEditorView: View {
                     .lineLimit(1...)
             }
         }
+        .scrollDismissesKeyboard(.interactively)
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
                 Button {
@@ -79,6 +80,13 @@ struct MediaProductsDetailsEditorView: View {
 
     private func saveChanges() {
         Task {
+            await MainActor.run {
+                withAnimation {
+                    dismiss()
+                }
+                UINotificationFeedbackGenerator().notificationOccurred(.success)
+            }
+
             let item = MediaProductsItem(
                 id: isNew ? nil : item.id,
                 title: title,
@@ -92,13 +100,6 @@ struct MediaProductsDetailsEditorView: View {
                 await store.MediaProductsAdd(item)
             } else {
                 await store.MediaProductsUpdate(item)
-            }
-
-            await MainActor.run {
-                withAnimation {
-                    dismiss()
-                }
-                UINotificationFeedbackGenerator().notificationOccurred(.success)
             }
         }
     }

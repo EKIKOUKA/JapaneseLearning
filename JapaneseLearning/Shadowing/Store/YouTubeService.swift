@@ -56,24 +56,49 @@ struct YouTubeService {
                 return title
             }
         } catch {}
+
         return "YouTube Video"
     }
 
+    private static func r2CoverURL(for videoID: String) -> URL {
+        URL(string: Config.CloudflareR2URL)!
+            .appendingPathComponent(videoID)
+            .appendingPathComponent("cover.jpg")
+    }
     /// 最高画質のサムネイルURLをAPIから優先取得
     static func fetchBestThumbnailURL(for videoID: String) async -> URL {
-        let urlString = "https://www.googleapis.com/youtube/v3/videos?part=snippet&id=\(videoID)&key=\(apiKey)"
+        let fallbackURL = r2CoverURL(for: videoID)
+
+        let urlString = "https://www.googleapis.com/youtube/v3/videos" +
+            "?part=snippet" +
+            "&id=\(videoID)" +
+            "&key=\(apiKey)"
+
         guard let url = URL(string: urlString) else {
-            return URL(string: "https://i.ytimg.com/vi/\(videoID)/maxresdefault.jpg")!
+            return fallbackURL
         }
 
         do {
-            let (data, _) = try await URLSession.shared.data(from: url)
-            let response = try JSONDecoder().decode(YouTubeVideoResponse.self, from: data)
-            if let thumbnails = response.items.first?.snippet.thumbnails {
-                return thumbnails.bestURL(videoID: videoID)
+            let (data, response) = try await URLSession.shared.data(from: url)
+
+            guard let httpResponse = response as? HTTPURLResponse,
+                  (200..<300).contains(httpResponse.statusCode) else {
+                return fallbackURL
             }
-        } catch {}
-        return URL(string: "https://i.ytimg.com/vi/\(videoID)/maxresdefault.jpg")!
+
+            let decoded = try JSONDecoder().decode(
+                YouTubeVideoResponse.self,
+                from: data
+            )
+
+            guard let thumbnails = decoded.items.first?.snippet.thumbnails else {
+                return fallbackURL
+            }
+
+            return thumbnails.bestURL(videoID: videoID)
+        } catch {
+            return fallbackURL
+        }
     }
 
     /// 再生リスト内の動画ページを取得
@@ -81,7 +106,7 @@ struct YouTubeService {
         var comp = URLComponents(string: "https://www.googleapis.com/youtube/v3/playlistItems")!
         comp.queryItems = [
             .init(name: "part", value: "snippet"),
-            .init(name: "maxResults", value: "50"),
+            .init(name: "maxResults", value: "100"),
             .init(name: "playlistId", value: playlistID),
             .init(name: "fields", value: "nextPageToken,items(snippet(title,resourceId/videoId,thumbnails(maxres/url,standard/url,high/url,medium/url)))"),
             .init(name: "key", value: apiKey)
@@ -92,6 +117,7 @@ struct YouTubeService {
         }
 
         let (data, _) = try await URLSession.shared.data(from: comp.url!)
+
         return try JSONDecoder().decode(PlaylistResponse.self, from: data)
     }
 
@@ -101,11 +127,12 @@ struct YouTubeService {
         comp.queryItems = [
             .init(name: "part", value: "snippet,contentDetails"),
             .init(name: "id", value: playlistID),
-            .init(name: "fields", value: "items(snippet(title,channelTitle,thumbnails(maxres/url,standard/url,high/url,medium/url)))"),
+            .init(name: "fields", value: "items(id,snippet(title,channelTitle,thumbnails(maxres/url,standard/url,high/url,medium/url)),contentDetails(itemCount))"),
             .init(name: "key", value: apiKey)
         ]
 
         let (data, _) = try await URLSession.shared.data(from: comp.url!)
+
         return try JSONDecoder().decode(PlaylistListResponse.self, from: data)
     }
 }

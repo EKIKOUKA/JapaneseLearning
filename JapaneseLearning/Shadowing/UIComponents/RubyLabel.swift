@@ -66,7 +66,7 @@ struct RubyLabel: UIViewRepresentable {
         fontStyle: VideoSubtitleRubyFontStyle,
         fontColor: UIColor
     ) -> String {
-        let colorKey = fontColor.rgbaCacheKey
+        let colorKey = fontColor.description
 
         return "\(text)|\(rubyEnabled)|\(fontSizeScale)|\(fontStyle.rawValue)|\(colorKey)"
     }

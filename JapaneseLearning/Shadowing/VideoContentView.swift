@@ -6,12 +6,14 @@
 //
 
 import SwiftUI
-import ActivityKit
+import UIKit
 
 struct VideoContentView: View {
     @Environment(AppNavigationStore.self) private var navigationStore
     @Environment(SettingsStore.self) private var settingsStore
+    @Environment(PlayerViewManager.self) private var playerVM
     @Environment(\.transitionNamespace) private var transitionNamespace
+
     @State private var videoPath = NavigationPath()
 
     var body: some View {

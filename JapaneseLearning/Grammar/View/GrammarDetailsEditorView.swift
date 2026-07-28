@@ -29,7 +29,7 @@ struct GrammarDetailsEditorView: View {
         _examples = State(initialValue: item.examples)
         _title = State(initialValue: item.title)
     }
-    
+
     var body: some View {
         VStack {
             List {
@@ -53,6 +53,7 @@ struct GrammarDetailsEditorView: View {
                         .lineLimit(5...)
                 }
             }
+            .scrollDismissesKeyboard(.interactively)
         }
         .navigationTitle(isNew ? "新規追加" : item.title)
         .toolbar {
@@ -69,30 +70,30 @@ struct GrammarDetailsEditorView: View {
     }
 
     private func saveChanges() {
-        let grammar_item = GrammarItem(
-            id: item.id,
-            title: title,
-            level: item.level,
-            meaning: meaning.isEmpty ? "" : meaning,
-            connection: connection.isEmpty ? "" : connection,
-            notes: notes.isEmpty ? "" : notes,
-            examples: examples.isEmpty ? "" : examples,
-            isImportant: item.isImportant,
-            isMarked: item.isMarked
-        )
-
         Task {
-            if isNew {
-                await store.grammarAdd(grammar_item)
-            } else {
-                await store.grammarUpdate(grammar_item)
-            }
-
             await MainActor.run {
                 withAnimation {
                     dismiss()
                 }
                 UINotificationFeedbackGenerator().notificationOccurred(.success)
+            }
+
+            let grammar_item = GrammarItem(
+                id: item.id,
+                title: title,
+                level: item.level,
+                meaning: meaning.isEmpty ? "" : meaning,
+                connection: connection.isEmpty ? "" : connection,
+                notes: notes.isEmpty ? "" : notes,
+                examples: examples.isEmpty ? "" : examples,
+                isImportant: item.isImportant,
+                isMarked: item.isMarked
+            )
+
+            if isNew {
+                await store.grammarAdd(grammar_item)
+            } else {
+                await store.grammarUpdate(grammar_item)
             }
         }
     }

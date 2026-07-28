@@ -7,7 +7,6 @@
 
 import SwiftUI
 import AVKit
-import WebKit
 
 struct VideoDetailsView: View {
     @Environment(SettingsStore.self) private var settingsStore
@@ -23,9 +22,9 @@ struct VideoDetailsView: View {
     @State private var drawerOffset: CGFloat = 0
     @State private var lastDragOffset: CGFloat = 0
 
-    private var displayVideoAspectRatio: CGFloat {
-        guard let ratio = video?.videoAspectRatio, ratio > 0 else {
-            return 1.7777777777777777
+    private var displayAspectRatio: CGFloat {
+        guard let ratio = video?.aspectRatio, ratio > 0 else {
+            return 16.0 / 9.0
         }
 
         return ratio
@@ -33,24 +32,26 @@ struct VideoDetailsView: View {
 
     var body: some View {
         @Bindable var playerVM = playerVM
-        @State var sizeClass_regular = sizeClass == .regular
+        let sizeClassRegular = sizeClass == .regular
 
         GeometryReader { geo in
             let fullWidth = geo.size.width
             let isLandscape = geo.size.width > geo.size.height
-
-            let videoWidth = isLandscape ? fullWidth * 0.5 : (fullWidth - 36)
-            let currentVideoHeight = videoWidth / displayVideoAspectRatio
+            let videoWidth = isLandscape ? fullWidth * 0.5 : fullWidth
+            let currentVideoHeight = videoWidth / displayAspectRatio
+            let layout = isLandscape
+                ? AnyLayout(HStackLayout(spacing: 0))
+                : AnyLayout(VStackLayout(spacing: 0))
 
             Group {
                 if video == nil {
-                    // ProgressLoadingView()
                     Color.clear.frame(height: 10)
                 } else {
                     ZStack(alignment: .top) {
-                        AdaptiveStack(isSideBySide: isLandscape) {
-                            videoContentArea(
+                        layout {
+                            VideoContentArea(
                                 playerVM: playerVM,
+                                videoID: videoID,
                                 drawerOffset: $drawerOffset,
                                 lastDragOffset: $lastDragOffset,
                                 maxDrawerOffset: currentVideoHeight,
@@ -63,8 +64,10 @@ struct VideoDetailsView: View {
                                 Spacer()
                                 ProgressLoadingView()
                                 Spacer()
-                            } else {
+                            } else if playerVM.currentLineID != nil {
                                 SubtitlesContentView(playerVM: playerVM)
+                            } else {
+                                Color.clear
                             }
                         }
 
@@ -115,13 +118,13 @@ struct VideoDetailsView: View {
         }) { item in
             DictionaryView(word: item.word)
                 .ignoresSafeArea()
-                .presentationDetents(sizeClass_regular ? [.large] : [.medium, .large])
-                .presentationDragIndicator(sizeClass_regular ? .hidden : .visible)
+                .presentationDetents(sizeClassRegular ? [.large] : [.medium, .large])
+                .presentationDragIndicator(sizeClassRegular ? .hidden : .visible)
                 .navigationTransition(.crossFade)
         }
         .sheet(isPresented: $showSettingSheet) {
             ShadowingSettingsSheetView(playerVM: playerVM)
-                .presentationDetents(sizeClass_regular ? [.large] : [.medium, .large])
+                .presentationDetents(sizeClassRegular ? [.large] : [.medium, .large])
                 .presentationDragIndicator(.visible)
                 .navigationTransition(.crossFade)
         }
@@ -164,19 +167,21 @@ struct videoCoverView: View {
     }
 }
 
-struct videoContentArea: View {
+struct VideoContentArea: View {
     @Environment(\.horizontalSizeClass) var sizeClass
+    @Environment(SettingsStore.self) private var settingsStore
     let playerVM: PlayerViewManager
+    let videoID: String
     @Binding var drawerOffset: CGFloat
     @Binding var lastDragOffset: CGFloat
     let maxDrawerOffset: CGFloat
     let containerWidth: CGFloat
-    let videoAspectRatio: CGFloat
+    let aspectRatio: CGFloat
     let isLandscape: Bool
 
     var body: some View {
-        let videoWidth = max(0, isLandscape ? containerWidth * 0.5 : containerWidth) // (containerWidth - 36)
-        let baseHeight = max(0, videoWidth / videoAspectRatio)
+        let videoWidth = max(0, isLandscape ? containerWidth * 0.5 : containerWidth)
+        let baseHeight = max(0, videoWidth / aspectRatio)
 
         VStack(spacing: 0) {
             if isLandscape {
@@ -184,23 +189,25 @@ struct videoContentArea: View {
             }
 
             ZStack {
-                if playerVM.isVideoLoading, let image = playerVM.nowPlayingArtwork {
+                if let image = playerVM.playerNowPlaying.nowPlayingArtwork {
                     Image(uiImage: image)
                         .resizable()
                         .scaledToFill()
-                        .opacity(playerVM.isVideoLoading ? 1 : 0)
+                        .opacity(drawerOffset >= maxDrawerOffset ? 0 : 1)
+                } else {
+                    Color.black.opacity(0.1)
                 }
 
                 AVPlayerControllerView(player: playerVM.player)
-                    .opacity(playerVM.isVideoLoading ? 0 : 1)
+                    .id(videoID)
+                    .opacity(!isPlayerReady || drawerOffset >= maxDrawerOffset ? 0 : 1)
             }
-            .animation(.easeInOut(duration: 1.0), value: playerVM.isVideoLoading)
+            .animation(.easeInOut(duration: 1.0), value: isPlayerReady)
             .frame(width: videoWidth, height: baseHeight)
             .frame(
                 height: isLandscape ? baseHeight : max(0, baseHeight - drawerOffset),
                 alignment: .bottom
             )
-            .aspectRatio(videoAspectRatio, contentMode: .fill)
             .clipped()
 
             if isLandscape {
@@ -231,37 +238,6 @@ struct videoContentArea: View {
 
                     lastDragOffset = drawerOffset
                 }
-        )
-    }
-}
-
-struct playResumeVideoView: View {
-    @Binding var drawerOffset: CGFloat
-    @Binding var lastDragOffset: CGFloat
-    let maxDrawerOffset: CGFloat
-
-    var body: some View {
-        Button {
-            withAnimation(.snappy(duration: 0.3, extraBounce: 0.2)) {
-                drawerOffset = 0
-                lastDragOffset = 0
-
-                NotificationCenter.default.post(name: .scrollToCurrentLine, object: nil)
-            }
-        } label: {
-            Label("ビデオを表示", systemImage: "chevron.down")
-                .font(.system(size: 16))
-                .padding(.horizontal, 4)
-                .padding(.vertical, 2)
-                .foregroundColor(.primary.opacity(0.89))
-        }
-        .padding(.top, 5)
-        .buttonStyle(.glass)
-        .transition(
-            .asymmetric(
-                insertion: .opacity.combined(with: .scale(scale: 0.8)),
-                removal: .opacity.combined(with: .scale(scale: 0.8))
-            )
         )
     }
 }
@@ -387,7 +363,7 @@ struct SubtitlesRowView: View, Equatable {
         lhs.rubyRanges == rhs.rubyRanges &&
         lhs.fontSizeScale == rhs.fontSizeScale &&
         lhs.fontStyle == rhs.fontStyle &&
-        lhs.fontColor.rgbaCacheKey == rhs.fontColor.rgbaCacheKey &&
+        lhs.fontColor == rhs.fontColor &&
         lhs.blurInactiveLines == rhs.blurInactiveLines
     }
 
@@ -454,162 +430,11 @@ struct SubtitlesRowView: View, Equatable {
             withAnimation(.easeInOut(duration: 0.5)) {
                 tapHighlight = false
             }
-        }
-    }
-}
-
-struct VideoControlView: View {
-    let playerVM: PlayerViewManager
-
-    var body: some View {
-        @Bindable var playerVM = playerVM
-
-        HStack {
-            Button {
-                NotificationCenter.default.post(name: .scrollToCurrentLine, object: nil)
-            } label: {
-                Image(systemName: "scope")
-                    .foregroundColor(.accentColor)
-            }
-            .buttonStyle(.plain)
-
-            PlaybackRateSliderView(
-                rateValue: $playerVM.tempRate,
-                minValue: 0.70,
-                maxValue: 1.50,
-                step: 0.05
-            ) { rate in
-                playerVM.setRate(rate)
-            }
-
-            Button(action: {
-                playerVM.toggleSingleLineLoop()
-            }) {
-                Image(systemName: "repeat")
-                    .foregroundColor(playerVM.isLoopingSingleLine ? .accentColor : .gray)
-                    .contentShape(Rectangle())
-                    .padding(.horizontal, 0)
-            }
-            .buttonStyle(.plain)
-        }
-    }
-}
-
-struct VideoSubtitleFontSizeSliderView: View {
-    @Environment(SettingsStore.self) private var settingsStore
-    @State private var tempFontSize: Double = 1.0
-
-    var body: some View {
-        @Bindable var settingsStoreBindable = settingsStore
-
-        HStack {
-            Image(systemName: "textformat.size.smaller")
-                .foregroundColor(.secondary)
-                .onTapGesture {
-                    if settingsStoreBindable.videoSubtitleFontSizeScale > 0.70 {
-                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                        let newValue = max(
-                            settingsStoreBindable.videoSubtitleFontSizeScale - 0.05,
-                            0.70
-                        )
-                        settingsStoreBindable.videoSubtitleFontSizeScale = newValue
-                        tempFontSize = newValue
-                    }
-                }
-
-            ZStack {
-                GeometryReader { geo in
-                    let minTempSizeScale: Double = 0.80
-                    let maxTempSizeScale: Double = 1.20
-                    let range = maxTempSizeScale - minTempSizeScale
-                    let tempSizeScale = max(minTempSizeScale, min(maxTempSizeScale, tempFontSize))
-
-                    let progress = (Double(tempSizeScale) - minTempSizeScale) / range
-                    let thumbOffset = CGFloat(progress) * (geo.size.width - 30) + 15
-
-                    let selectionFeedback = UISelectionFeedbackGenerator()
-
-                    Slider(
-                        value: $tempFontSize,
-                        in: minTempSizeScale...maxTempSizeScale,
-                        step: 0.05,
-                        onEditingChanged: { editing in
-                            if !editing {
-                                settingsStoreBindable.videoSubtitleFontSizeScale = tempFontSize
-                            }
-                            if editing { selectionFeedback.prepare() }
-                        }
-                    )
-                    .onChange(of: tempFontSize) { _, newValue in
-                        if newValue == 1.0 {
-                            selectionFeedback.selectionChanged()
-                        }
-                    }
-
-                    Text(String(format: "%.2f", tempFontSize))
-                        .font(.caption.monospacedDigit())
-                        .foregroundStyle(.white.opacity(0.9))
-                        .position(x: thumbOffset, y: 15)
-                        .allowsHitTesting(false)
-                }
-                .frame(height: 32)
-            }
-
-            Image(systemName: "textformat.size.larger")
-                .foregroundColor(.secondary)
-                .onTapGesture {
-                    if settingsStoreBindable.videoSubtitleFontSizeScale < 1.40 {
-                        let newValue = min(
-                            settingsStoreBindable.videoSubtitleFontSizeScale + 0.05,
-                            1.40
-                        )
-                        settingsStoreBindable.videoSubtitleFontSizeScale = newValue
-                        tempFontSize = newValue
-                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                    }
-                }
-        }
-        .onAppear {
-            tempFontSize = settingsStoreBindable.videoSubtitleFontSizeScale
-        }
-        .onChange(of: settingsStoreBindable.videoSubtitleFontSizeScale) { _, newValue in
-            if tempFontSize != newValue {
-                tempFontSize = newValue
-            }
-        }
-    }
-}
-
-// 💡 輔助組件：自動根據環境切換 HStack 或 VStack
-struct AdaptiveStack<Content: View>: View {
-    var isSideBySide: Bool
-    let content: () -> Content
-
-    init(isSideBySide: Bool, @ViewBuilder content: @escaping () -> Content) {
-        self.isSideBySide = isSideBySide
-        self.content = content
-    }
-
-    var body: some View {
-        if isSideBySide {
-            HStack(spacing: 0) {
-                content()
-            }
             .padding(.horizontal, 0)
         } else {
             VStack(spacing: 0) { content() }
         }
     }
-}
-
-struct DictionaryView: UIViewControllerRepresentable {
-    let word: String
-
-    func makeUIViewController(context: Context) -> UIReferenceLibraryViewController {
-        return UIReferenceLibraryViewController(term: word)
-    }
-
-    func updateUIViewController(_ uiViewController: UIReferenceLibraryViewController, context: Context) {}
 }
 
 struct AVPlayerControllerView: UIViewControllerRepresentable {
@@ -623,19 +448,20 @@ struct AVPlayerControllerView: UIViewControllerRepresentable {
         vc.showsPlaybackControls = true
         vc.allowsPictureInPicturePlayback = settingsStore.videoAllowsPictureInPicturePlayback ? true : false
         vc.canStartPictureInPictureAutomaticallyFromInline = false
-        vc.videoGravity = .resizeAspectFill
+        vc.updatesNowPlayingInfoCenter = false
+        vc.videoGravity = .resizeAspect
 
         return vc
     }
 
-    func updateUIViewController(_ uiViewController: AVPlayerViewController, context: Context) {
-        if uiViewController.player !== player {
-            uiViewController.player = player
+    func updateUIViewController(_ vc: AVPlayerViewController, context: Context) {
+        if vc.player !== player {
+            vc.player = player
         }
+
+        vc.allowsPictureInPicturePlayback = settingsStore.videoAllowsPictureInPicturePlayback
+        vc.canStartPictureInPictureAutomaticallyFromInline = false
+        vc.updatesNowPlayingInfoCenter = false
+        vc.videoGravity = .resizeAspect
     }
-}
-
-
-extension UnitPoint {
-    static let subtitleAnchor = UnitPoint(x: 0.5, y: 0.2)
 }

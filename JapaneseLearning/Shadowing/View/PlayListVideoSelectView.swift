@@ -1,5 +1,5 @@
 //
-//  YouTubePlayListVideoSelectView.swift
+//  PlayListVideoSelectView.swift
 //  JapaneseLearning
 //
 //  Created by 宇都宮　誠 on 2026/01/30.
@@ -8,7 +8,7 @@
 import SwiftUI
 import Foundation
 
-struct YouTubePlayListVideoSelectView: View {
+struct PlayListVideoSelectView: View {
     let playlistID: String
     let listTitle: String
     let existingVideoListIDs: Set<String>
@@ -17,7 +17,6 @@ struct YouTubePlayListVideoSelectView: View {
 
     @Environment(VideoStore.self) private var store
     @State private var selectedVideoIDs = Set<String>()
-    @State private var hasLoaded = false
 
     var body: some View {
         NavigationStack {
@@ -30,7 +29,7 @@ struct YouTubePlayListVideoSelectView: View {
                 .toolbar {
                     ToolbarItem(placement: .confirmationAction) {
                         NavigationLink {
-                            ContentVideoUploadOptionsView { language, createCaptionByAi, playbackRate in
+                            VideoUploadOptionsView { language, createCaptionByAi, playbackRate in
                                 let selectedVideos = store.videoListVideos.filter { selectedVideoIDs.contains($0.id) }
                                 guard !selectedVideos.isEmpty else { return }
 
@@ -56,13 +55,12 @@ struct YouTubePlayListVideoSelectView: View {
                     }
                 }
                 .opacity(store.videoListVideosIsReady ? 1 : 0)
+                .animation(.easeIn(duration: 0.2), value: store.videoListVideosIsReady)
                 .task {
-                    if !hasLoaded {
-                        await store.fetchPlaylistVideos(playlistID: playlistID)
-                        hasLoaded = true
-
-                        scrollToLastExistingItem(using: proxy)
-                    }
+                    await store.fetchPlaylistVideos(playlistID: playlistID)
+                }
+                .task(id: store.videoListVideos.count) {
+                    await scrollToFirstExistingItem(using: proxy)
                 }
             }
         }
@@ -107,10 +105,17 @@ struct YouTubePlayListVideoSelectView: View {
         }
     }
 
-    private func scrollToLastExistingItem(using proxy: ScrollViewProxy) {
-        if let isDisabledItem = store.videoListVideos.first(where: { existingVideoListIDs.contains($0.id) }) {
-            proxy.scrollTo(isDisabledItem.id, anchor: .center)
+    private func scrollToFirstExistingItem(using proxy: ScrollViewProxy) async {
+        guard let firstItem = store.videoListVideos.first(where: {
+            existingVideoListIDs.contains($0.id)
+        }) else {
+            return
         }
+
+        try? await Task.sleep(for: .seconds(0.1))
+        guard !Task.isCancelled else { return }
+
+        proxy.scrollTo(firstItem.id, anchor: .center)
     }
 
     private func toggle(_ id: String) {

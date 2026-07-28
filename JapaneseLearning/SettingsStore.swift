@@ -26,27 +26,9 @@ struct AppSettings: Codable {
     var videoSubtitleFontStyle: VideoSubtitleRubyFontStyle = .system
     var videoSubtitleDimInactiveLines: Bool = true
     var videoAutoJumpToNextLine: Bool = false
-    var videoItemNavigationTransition: Bool = true
     var videoAllowsPictureInPicturePlayback: Bool = false
-
-    // 💡 存儲 Data 而不是 UIColor，這樣才能 Codable
-    private var subtitleFontColorData: Data?
-    // 💡 提供一個計算屬性給外部使用（UIKit 用）
-    var videoSubtitleFontUIColor: UIColor {
-        get {
-            if let data = subtitleFontColorData,
-               let color = try? NSKeyedUnarchiver.unarchivedObject(ofClass: UIColor.self, from: data) {
-                return color
-            }
-            return .white
-        }
-        set {
-            subtitleFontColorData = try? NSKeyedArchiver.archivedData(
-                withRootObject: newValue,
-                requiringSecureCoding: false
-            )
-        }
-    }
+    var videoDetailsCollapse: Bool = false
+    var videoSubtitleFontColor: Color.Resolved?
 
     // Somethings
     var showKanjiWordsDiffToShinaLangListCount: Bool = true
@@ -65,24 +47,26 @@ final class SettingsStore {
 
     private var _settings: AppSettings = AppSettings()
 
-    var settings: AppSettings {
-        get {
-            _settings
+    var videoSubtitleFontUIColor: UIColor {
+        guard let subtitleFontColor = _settings.videoSubtitleFontColor else {
+            return .white
         }
-        set {
-            _settings = newValue
-            save()
-        }
+
+        return UIColor(Color(subtitleFontColor))
     }
 
-    var videoSubtitleFontColor: Binding<Color> {
+    var videoSubtitleFontColorBinding: Binding<Color> {
         Binding(
-            get: { Color(uiColor: self.settings.videoSubtitleFontUIColor) },
+            get: {
+                self._settings.videoSubtitleFontColor.map(Color.init) ?? .white
+            },
             set: { newColor in
-                // 將 SwiftUI Color 轉回 UIColor 並存入 settings
-                var newSettings = self.settings
-                newSettings.videoSubtitleFontUIColor = UIColor(newColor)
-                self.settings = newSettings // 確保 UI 刷新
+                var newSettings = self._settings
+                newSettings.videoSubtitleFontColor = newColor.resolve(
+                    in: EnvironmentValues()
+                )
+                self._settings = newSettings
+                self.save()
             }
         )
     }

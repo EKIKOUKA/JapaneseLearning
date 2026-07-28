@@ -46,6 +46,13 @@ struct ElegantSentenceDetailsView: View {
 
     private func saveChanges() {
         Task {
+            await MainActor.run {
+                withAnimation {
+                    dismiss()
+                }
+                UINotificationFeedbackGenerator().notificationOccurred(.success)
+            }
+
             let item = ElegantSentenceItem(
                 id: isNew ? nil : item.id,
                 sentence: sentence
@@ -57,12 +64,6 @@ struct ElegantSentenceDetailsView: View {
                 await store.ElegantSentenceUpdate(item)
             }
 
-            await MainActor.run {
-                withAnimation {
-                    dismiss()
-                }
-                UINotificationFeedbackGenerator().notificationOccurred(.success)
-            }
         }
     }
 }

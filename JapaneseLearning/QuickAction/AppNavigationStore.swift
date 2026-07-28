@@ -19,4 +19,5 @@ class AppNavigationStore {
     func clearTarget() {
         quickActionTarget = nil
     }
+
 }

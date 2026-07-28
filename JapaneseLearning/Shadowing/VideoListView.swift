@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import Kingfisher
 
 struct VideoListView: View {
     @Environment(VideoStore.self) private var store
@@ -71,7 +70,7 @@ struct VideoListView: View {
                             videoItemGrid(columns: columns)
                         }
                         .animation(.easeInOut(duration: 0.35), value: selectedCategory)
-                        .padding(.horizontal, 20)
+                        .padding(.horizontal, 16)
                         .padding(.bottom, 20)
                     }
                     .swipeActionsContainer()
@@ -103,7 +102,7 @@ struct VideoListView: View {
             }
         }
         .sheet(isPresented: $showAddSheet) {
-            YouTubeAddVideoSheetView { result in
+            AddVideoSheetView { result in
                 selectedCategory = store.handleCategory(result)
             }
             .navigationTransition(.crossFade)
@@ -177,32 +176,24 @@ struct VideoListView: View {
             Color.clear
                 .aspectRatio(16.0 / 9.0, contentMode: .fit)
                 .overlay {
-                    KFImage(video.thumbnailURL)
-                        .placeholder {
-                            ZStack {
-                                Color(.secondarySystemFill)
-                                if video.thumbnailURL == nil {
-                                    Image(systemName: "photo")
-                                } else {
-                                    ProgressView()
-                                }
-                            }
+                    if let thumbnailURL = AppGroupThumbnailStorage.existingFileURL(for: video.id),
+                       let data = try? Data(contentsOf: thumbnailURL),
+                       let uiImage = UIImage(data: data) {
+                        Image(uiImage: uiImage)
+                            .resizable()
+                            .scaledToFill()
+                            .id(video.thumbnailRefreshID)
+                    } else {
+                        ZStack {
+                            Color(.secondarySystemFill)
+                            Image(systemName: "progress.indicator")
                         }
-                        .resizable()
-                        .retry(maxCount: 1, interval: .seconds(1))
-                        .fade(duration: 0.2)
-                        .cancelOnDisappear(true)
-                        .scaledToFill()
+                    }
                 }
-                .ModifierApplyIf(
-                    settingsStore.videoItemNavigationTransition &&
-                    transitionNamespace != nil
-                ) { view in
-                    view.matchedTransitionSource(
-                        id: video.id,
-                        in: transitionNamespace!
-                    )
-                }
+                .matchedTransitionSource(
+                    id: "list-\(video.id)",
+                    in: transitionNamespace!
+                )
                 .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                 .shadow(radius: 1)
                 .contentShape(Rectangle())

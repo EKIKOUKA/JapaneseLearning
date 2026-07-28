@@ -23,7 +23,7 @@ extension String {
     }
 
     var cleanedVideoTitle: String {
-        return String(
+        var cleanTitle = String(
             self.filter { character in
                 !character.unicodeScalars.contains { scalar in
                     scalar.properties.isEmojiPresentation
@@ -34,23 +34,48 @@ extension String {
         .replacingOccurrences(of: "\\(.*?\\)", with: "", options: .regularExpression)
         .replacingOccurrences(of: "（.*?）", with: "", options: .regularExpression)
         .replacingOccurrences(
-            of: "(?i)YUYUの日本語Podcast:?|Japanese Listening Practice|yuyu japanese podcast|Native Japanese Listening(?: Podcast)?",
+            of: "Japanese Listening Practice|日本語ポッドキャスト|Native Japanese Listening(?: Podcast)?",
             with: "",
             options: .regularExpression
         )
-        .replacingOccurrences(of: "\\s*\\|\\|\\s*", with: "", options: .regularExpression)
-        .replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
-        .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        let separators = ["/", "|", "｜", "-", "—", "~", "～"]
+        for separator in separators {
+            guard let range = cleanTitle.range(of: separator) else { continue }
+
+            let left = String(cleanTitle[..<range.lowerBound]).trimmingCharacters(in: .whitespacesAndNewlines)
+            let right = String(cleanTitle[range.upperBound...]).trimmingCharacters(in: .whitespacesAndNewlines)
+            let leftHasJapanese = left.contains { $0.isJapanese }
+            let rightHasJapanese = right.contains { $0.isJapanese }
+            if leftHasJapanese && !rightHasJapanese {
+                cleanTitle = left
+                break
+            }
+
+            if !leftHasJapanese && rightHasJapanese {
+                cleanTitle = right
+                break
+            }
+        }
+
+        return cleanTitle
+            .replacingOccurrences(of: "\\s*[|｜]+\\s*", with: "", options: .regularExpression)
+            .replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }
 
-extension View {
-    @ViewBuilder
-    func ModifierApplyIf<Content: View>(_ condition: Bool, transform: (Self) -> Content) -> some View {
-        if condition {
-            transform(self)
-        } else {
-            self
+extension Character {
+    var isJapanese: Bool {
+        unicodeScalars.contains {
+            switch $0.value {
+                case 0x3040...0x309F,   // Hiragana
+                     0x30A0...0x30FF,   // Katakana
+                     0x4E00...0x9FFF:   // CJK
+                    return true
+                default:
+                    return false
+            }
         }
     }
 }
@@ -137,20 +162,5 @@ enum PracticeDateFormat {
         formatter.timeZone = TimeZone(identifier: "Asia/Tokyo")
         formatter.dateFormat = "M月d日"
         return formatter.string(from: date)
-    }
-}
-
-extension UIColor {
-    var rgbaCacheKey: String {
-        var red: CGFloat = 0
-        var green: CGFloat = 0
-        var blue: CGFloat = 0
-        var alpha: CGFloat = 0
-
-        guard getRed(&red, green: &green, blue: &blue, alpha: &alpha) else {
-            return description
-        }
-
-        return String(format: "%.3f-%.3f-%.3f-%.3f", red, green, blue, alpha)
     }
 }

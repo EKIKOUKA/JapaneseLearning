@@ -167,7 +167,7 @@ struct GrammarListView: View {
                 }
             }
             .task(id: store.isReady) {
-                if store.isReady {
+                if store.isReady && level != "All" {
                     scrollToMarkedItem(using: proxy)
                 }
             }
@@ -178,6 +178,8 @@ struct GrammarListView: View {
         if let isMarkedItem: GrammarItem = filteredItems.last(where: { $0.isMarked }) {
             Task {
                 try? await Task.sleep(for: .seconds(0.1))
+                guard !Task.isCancelled else { return }
+
                 proxy.scrollTo(isMarkedItem.id, anchor: .center)
             }
         }
