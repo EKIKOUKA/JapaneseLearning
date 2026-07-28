@@ -276,5 +276,4 @@ struct HealthStyleChartView: View {
                 return calendar.date(byAdding: .year, value: steps, to: date) ?? date
         }
     }
-
 }
