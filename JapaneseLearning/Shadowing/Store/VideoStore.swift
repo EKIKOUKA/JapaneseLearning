@@ -99,6 +99,10 @@ class VideoStore {
                 self.videos = freshVideos
             }
 
+            AppGroupThumbnailStorage.removeOrphanedThumbnails(
+                keeping: Set(freshVideos.map(\.id))
+            )
+
             if let currentResumeVideoID = QuickActionManager.shared.currentResumeVideoID(),
                !freshVideos.contains(where: { $0.id == currentResumeVideoID }) {
                 QuickActionManager.shared.clearResumeVideo()
@@ -121,19 +125,21 @@ class VideoStore {
 
     @MainActor
     func addVideo(_ video: VideoItem, thumbnailURL: URL, createCaptionByAi: Bool = true) {
-        upsertVideoLocally(video)
-
         Task(priority: .utility) {
+            var thumbnailSaved = false
+
             do {
                 let data = try await WorkersAPI.getData(from: thumbnailURL)
                 try AppGroupThumbnailStorage.save(data, for: video.id)
-
-                await MainActor.run {
-                    self.bumpThumbnailRefreshID(for: video.id)
-                }
-
+                thumbnailSaved = true
             } catch {
                 print("❌ Thumbnail download failed: \(error)")
+            }
+
+            if thumbnailSaved {
+                await MainActor.run {
+                    self.upsertVideoLocally(video)
+                }
             }
 
             let liveActivityToken = await VideoStatusLiveActivityManager.shared.start(video: video)
@@ -151,15 +157,6 @@ class VideoStore {
             }
 
         }
-    }
-
-    @MainActor
-    private func bumpThumbnailRefreshID(for videoID: String) {
-        guard let index = videos.firstIndex(where: { $0.id == videoID }) else {
-            return
-        }
-
-        videos[index].thumbnailRefreshID = UUID().uuidString
     }
 
     @MainActor

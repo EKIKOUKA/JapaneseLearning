@@ -44,4 +44,21 @@ enum AppGroupThumbnailStorage {
         guard let url = fileURL(for: videoID) else { return }
         try? FileManager.default.removeItem(at: url)
     }
+
+    static func removeOrphanedThumbnails(keeping videoIDs: Set<String>) {
+        guard let directoryURL,
+              let files = try? FileManager.default.contentsOfDirectory(
+                at: directoryURL,
+                includingPropertiesForKeys: nil,
+                options: [.skipsHiddenFiles]
+              ) else {
+            return
+        }
+
+        for fileURL in files where fileURL.pathExtension.lowercased() == "jpg" {
+            let videoID = fileURL.deletingPathExtension().lastPathComponent
+            guard !videoIDs.contains(videoID) else { continue }
+            remove(for: videoID)
+        }
+    }
 }
