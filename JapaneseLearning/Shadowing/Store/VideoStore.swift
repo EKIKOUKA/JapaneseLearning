@@ -13,6 +13,7 @@ import Foundation
 class VideoStore {
     var videos: [VideoItem] = []
     var isLoading: Bool = false
+    var playlistCategories: [PlaylistCategory] = []
 
     var videoSubtitleSkipWords: VideoSubtitleSkipWords?
     var videoList: [PlaylistListItem] = []
@@ -92,6 +93,11 @@ class VideoStore {
     @MainActor
     func fetchVideos() async {
         do {
+            let fetchedCategories: [PlaylistCategory] = try await WorkersAPI.get("fetch_playlist_categories")
+            self.playlistCategories = fetchedCategories.sorted {
+                $0.sortOrder < $1.sortOrder
+            }
+
             self.videoSubtitleSkipWords = try await WorkersAPI.get("config/video_subtitle_skip_words")
 
             let freshVideos: [VideoItem] = try await WorkersAPI.get("fetch_videos")
@@ -293,13 +299,20 @@ class VideoStore {
         playlistID: String,
         contentLanguage: VideoContentLanguage,
         createCaptionByAi: Bool = true,
-        playbackRate: Float
+        playbackRate: Float,
+        videoTitle: String = "",
+        categoryID: String? = nil
     ) async {
+        let title = videoTitle.isWhitespaceOrNewLine
+            ? item.title.cleanedVideoTitle
+            : videoTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        let categoryID = resolvedCategoryID(categoryID: categoryID, playlistID: playlistID)
         let immediateVideo = VideoItem(
             id: item.id,
             title: title,
             rate: playbackRate,
             playlistID: playlistID,
+            categoryID: categoryID,
             aspectRatio: -1,
             contentLanguage: contentLanguage
         )
@@ -312,6 +325,7 @@ class VideoStore {
             title: title,
             rate: playbackRate,
             playlistID: playlistID,
+            categoryID: categoryID,
             aspectRatio: -1,
             contentLanguage: contentLanguage
         )
@@ -324,7 +338,9 @@ class VideoStore {
         _ url: String,
         contentLanguage: VideoContentLanguage,
         createCaptionByAi: Bool = true,
-        playbackRate: Float = 1.0
+        playbackRate: Float = 1.0,
+        videoTitle: String = "",
+        categoryID: String? = nil
     ) async -> AddYouTubeResult {
         let type = youtubeURLType(from: url)
 
@@ -337,11 +353,14 @@ class VideoStore {
                     return .invalid
                 }
 
+                let resolvedCategoryID = resolvedCategoryID(categoryID: categoryID)
+
                 let immediateVideo = VideoItem(
                     id: videoID,
                     title: videoID,
                     rate: playbackRate,
                     playlistID: nil,
+                    categoryID: resolvedCategoryID,
                     aspectRatio: -1,
                     contentLanguage: contentLanguage
                 )
@@ -359,6 +378,7 @@ class VideoStore {
                         title: title,
                         rate: playbackRate,
                         playlistID: nil,
+                        categoryID: resolvedCategoryID,
                         aspectRatio: -1,
                         contentLanguage: contentLanguage
                     )
@@ -497,27 +517,35 @@ class VideoStore {
         return Set(videoList.map { $0.id })
     }
 
-    private func belongsToCategory(_ video: VideoItem, category: PlaylistCategory) -> Bool {
-        let knownPlaylistIDs = PlaylistCategory.allCases.compactMap { $0.playlistID }
-
-        if let playlistID = category.playlistID {
-            return video.playlistID == playlistID
-        }
-
-        return !knownPlaylistIDs.contains(video.playlistID ?? "")
+    func belongsToCategory(_ video: VideoItem, category: PlaylistCategory) -> Bool {
+        resolvedCategoryID(categoryID: video.categoryID, playlistID: video.playlistID) == category.id
     }
 
-    func handleCategory(_ result: AddYouTubeResult) -> PlaylistCategory {
+    func handleCategory(_ result: AddYouTubeResult) -> PlaylistCategory? {
         switch result {
-            case .addedVideo:
-                return .shadowing
-            case .addedVideoFromPlaylist(let playlistID):
-                return PlaylistCategory.allCases.first {
-                    $0.playlistID == playlistID
-                } ?? .shadowing
+            case .addedVideo(let video):
+                return playlistCategories.first { $0.id == resolvedCategoryID(
+                    categoryID: video.categoryID,
+                    playlistID: video.playlistID
+                ) }
+            case .addedVideoFromPlaylist(let categoryID):
+                return playlistCategories.first { $0.id == categoryID }
             default:
-                return .shadowing
+                return playlistCategories.first
         }
+    }
+
+    func resolvedCategoryID(categoryID: String? = nil, playlistID: String? = nil) -> String {
+        if let categoryID, playlistCategories.contains(where: { $0.id == categoryID }) {
+            return categoryID
+        }
+
+        if let playlistID,
+           let category = playlistCategories.first(where: { $0.playlistIDs.contains(playlistID) }) {
+            return category.id
+        }
+
+        return "listening"
     }
 
     // MARK: - AppGroupThumbnailStorage Thumbnail

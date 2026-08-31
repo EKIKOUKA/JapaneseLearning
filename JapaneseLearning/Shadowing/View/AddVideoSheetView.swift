@@ -13,6 +13,7 @@ struct AddVideoSheetView: View {
     @State private var inputURL = ""
     @State private var showVideoUploadOptions = false
     @State private var pendingSingleVideoURL = ""
+    @State private var pendingSingleVideoTitle = ""
     let onComplete: (AddYouTubeResult) -> Void
 
     var body: some View {
@@ -31,8 +32,8 @@ struct AddVideoSheetView: View {
                                     playlistID: videoList.id,
                                     listTitle: videoList.title,
                                     existingVideoListIDs: store.getExistingVideoIDs(),
-                                    onAdd: { _ in
-                                        onComplete(.addedVideoFromPlaylist(videoList.id))
+                                    onAdd: { _, categoryID in
+                                        onComplete(.addedVideoFromPlaylist(categoryID: categoryID))
                                     },
                                     onFinish: {
                                         dismiss()
@@ -77,7 +78,9 @@ struct AddVideoSheetView: View {
                 }
             }
             .navigationDestination(isPresented: $showVideoUploadOptions) {
-                VideoUploadOptionsView { language, createCaptionByAi, playbackRate in
+                VideoUploadOptionsView(
+                    initialVideoTitle: pendingSingleVideoTitle
+                ) { language, createCaptionByAi, playbackRate, videoTitle, categoryID in
                     let url = pendingSingleVideoURL
 
                     Task {
@@ -85,7 +88,9 @@ struct AddVideoSheetView: View {
                             url,
                             contentLanguage: language,
                             createCaptionByAi: createCaptionByAi,
-                            playbackRate: playbackRate
+                            playbackRate: playbackRate,
+                            videoTitle: videoTitle,
+                            categoryID: categoryID
                         )
                         onComplete(result)
 
@@ -95,6 +100,7 @@ struct AddVideoSheetView: View {
 
                         inputURL = ""
                         pendingSingleVideoURL = ""
+                        pendingSingleVideoTitle = ""
                     }
                 }
             }
@@ -112,8 +118,12 @@ struct AddVideoSheetView: View {
 
         switch store.youtubeURLType(from: url) {
             case .single:
-                pendingSingleVideoURL = url
-                showVideoUploadOptions = true
+                Task {
+                    guard let videoID = YouTubeService.extractVideoID(from: url) else { return }
+                    pendingSingleVideoURL = url
+                    pendingSingleVideoTitle = (await YouTubeService.fetchTitle(videoID)).cleanedVideoTitle
+                    showVideoUploadOptions = true
+                }
             case .playlist:
                 Task {
                     let result = await store.handleYouTubeURL(

@@ -12,7 +12,7 @@ struct PlayListVideoSelectView: View {
     let playlistID: String
     let listTitle: String
     let existingVideoListIDs: Set<String>
-    let onAdd: ([PlayListVideoItem]) -> Void
+    let onAdd: ([PlayListVideoItem], String) -> Void
     let onFinish: () -> Void
 
     @Environment(VideoStore.self) private var store
@@ -29,9 +29,17 @@ struct PlayListVideoSelectView: View {
                 .toolbar {
                     ToolbarItem(placement: .confirmationAction) {
                         NavigationLink {
-                            VideoUploadOptionsView { language, createCaptionByAi, playbackRate in
-                                let selectedVideos = store.videoListVideos.filter { selectedVideoIDs.contains($0.id) }
+                            let selectedVideos = store.videoListVideos.filter { selectedVideoIDs.contains($0.id) }
+                            VideoUploadOptionsView(
+                                initialVideoTitle: selectedVideos.count == 1 ? selectedVideos[0].title.cleanedVideoTitle : "",
+                                initialCategoryID: store.resolvedCategoryID(playlistID: playlistID),
+                                showTitleField: selectedVideos.count == 1
+                            ) { language, createCaptionByAi, playbackRate, videoTitle, categoryID in
                                 guard !selectedVideos.isEmpty else { return }
+                                let resolvedCategoryID = store.resolvedCategoryID(
+                                    categoryID: categoryID,
+                                    playlistID: playlistID
+                                )
 
                                 Task {
                                     for video in selectedVideos {
@@ -40,11 +48,13 @@ struct PlayListVideoSelectView: View {
                                             playlistID: playlistID,
                                             contentLanguage: language,
                                             createCaptionByAi: createCaptionByAi,
-                                            playbackRate: playbackRate
+                                            playbackRate: playbackRate,
+                                            videoTitle: videoTitle,
+                                            categoryID: resolvedCategoryID
                                         )
                                     }
 
-                                    onAdd(selectedVideos)
+                                    onAdd(selectedVideos, resolvedCategoryID)
                                     onFinish()
                                 }
                             }

@@ -19,23 +19,24 @@ struct VideoListView: View {
     @State private var showSettingSheet: Bool = false
     @State private var showPlayListSheet: Bool = false
     @State private var selectedVideo: VideoItem?
-    @State private var selectedCategory: PlaylistCategory = .shadowing
+    @State private var selectedCategoryID: String?
 
     init(onSelectVideo: @escaping (String) -> Void = { _ in }) {
         self.onSelectVideo = onSelectVideo
     }
 
     private var filteredVideos: [VideoItem] {
-        let targetID = selectedCategory.playlistID
-        let knownPlaylistIDs = PlaylistCategory.allCases.compactMap { $0.playlistID }
+        guard let selectedCategory else { return [] }
+        return store.videos.filter { store.belongsToCategory($0, category: selectedCategory) }
+    }
 
-        return store.videos.filter { video in
-            if let id = targetID {
-                return video.playlistID == id
-            } else {
-                return !knownPlaylistIDs.contains(video.playlistID ?? "")
-            }
+    private var selectedCategory: PlaylistCategory? {
+        if let selectedCategoryID,
+           let category = store.playlistCategories.first(where: { $0.id == selectedCategoryID }) {
+            return category
         }
+
+        return store.playlistCategories.first
     }
 
     private var filteredVideoIDs: [String] {
@@ -72,11 +73,10 @@ struct VideoListView: View {
 
                     ScrollView {
                         VStack {
-                            categoryPicker
                             videoItemGrid(columns: columns)
                         }
-                        .animation(.easeInOut(duration: 0.35), value: selectedCategory)
-                        .padding(.horizontal, 16)
+                        .animation(.easeInOut(duration: 0.35), value: selectedCategory?.id)
+                        .padding(.horizontal, 14)
                         .padding(.bottom, 20)
                     }
                     .swipeActionsContainer()
@@ -84,13 +84,21 @@ struct VideoListView: View {
                         var reordered = filteredVideos
                         reordered.apply(difference: difference)
 
-                        store.reorderVideos(reordered, for: selectedCategory)
+                        if let selectedCategory {
+                            store.reorderVideos(reordered, for: selectedCategory)
+                        }
                     }
+                    .contentMargins(.top, 56, for: .scrollIndicators)
                 }
             }
         }
         .navigationTitle("シャドーイング")
         .navigationBarTitleDisplayMode(.inline)
+        .safeAreaInset(edge: .top, spacing: 0) {
+            categoryPicker
+                .padding(.vertical, 8)
+                .padding(.bottom, 4)
+        }
         .toolbarMinimizationBehavior(.onScrollDown, for: .navigationBar)
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
@@ -109,7 +117,7 @@ struct VideoListView: View {
         }
         .sheet(isPresented: $showAddSheet) {
             AddVideoSheetView { result in
-                selectedCategory = store.handleCategory(result)
+                selectedCategoryID = store.handleCategory(result)?.id
             }
             .navigationTransition(.crossFade)
         }
@@ -121,16 +129,53 @@ struct VideoListView: View {
     }
 
     private var categoryPicker: some View {
-        Picker("Category", selection: $selectedCategory) {
-            ForEach(PlaylistCategory.allCases) { category in
-                Text(category.title)
-                    .tag(category)
+        ScrollView(.horizontal) {
+            HStack(spacing: 10) {
+                ForEach(store.playlistCategories) { category in
+                    categoryButton(category)
+                }
             }
+            .padding(.horizontal, 14)
         }
-        .pickerStyle(.tabs)
-        .controlSize(sizeClassIsRegular ? .large : .regular)
-        .padding(.horizontal, 16)
-        .padding(.vertical, sizeClassIsRegular ? 10 : 2)
+        .scrollIndicators(.hidden)
+        .scrollClipDisabled()
+    }
+
+    @ViewBuilder
+    private func categoryButton(_ category: PlaylistCategory) -> some View {
+        if category.id == selectedCategory?.id {
+            Button {
+                withAnimation(.snappy) {
+                    selectedCategoryID = category.id
+                }
+            } label: {
+                Text(category.title)
+                    .fontWeight(.semibold)
+                    .lineLimit(1)
+                    .padding(.horizontal, sizeClassIsRegular ? 10 : 4)
+                    .padding(.vertical, sizeClassIsRegular ? 8 : 2)
+            }
+            .buttonStyle(.glass)
+            .foregroundStyle(.black)
+            .background(.white.opacity(0.89), in: Capsule())
+            .shadow(color: .black.opacity(0.12), radius: 6, y: 2)
+        } else {
+            Button {
+                withAnimation(.snappy) {
+                    selectedCategoryID = category.id
+                }
+            } label: {
+                Text(category.title)
+                    .fontWeight(.semibold)
+                    .lineLimit(1)
+                    .padding(.horizontal, sizeClassIsRegular ? 10 : 4)
+                    .padding(.vertical, sizeClassIsRegular ? 8 : 2)
+                    .shadow(color: .black.opacity(0.7), radius: 2, y: 1)
+            }
+            .buttonStyle(.glass)
+            .foregroundStyle(.white)
+            .controlSize(sizeClassIsRegular ? .large : .regular)
+        }
     }
 
     private func videoItemGrid(columns: [GridItem]) -> some View {
@@ -161,7 +206,7 @@ struct VideoListView: View {
             }
             .reorderable()
         }
-        .id(selectedCategory.id)
+        .id(selectedCategory?.id)
         .transition(.opacity)
         .animation(.snappy(duration: 0.35), value: filteredVideoIDs)
     }

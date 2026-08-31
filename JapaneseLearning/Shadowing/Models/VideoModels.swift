@@ -8,27 +8,17 @@
 import Foundation
 import UIKit
 
-enum PlaylistCategory: String, CaseIterable, Identifiable {
-    case shadowing
-    case `default`
-    case drama
+struct PlaylistCategory: Codable, Hashable, Identifiable {
+    let id: String
+    let title: String
+    let sortOrder: Int
+    let playlistIDs: [String]
 
-    var id: Self { self }
-
-    var title: String {
-        switch self {
-            case .shadowing: return "シャドーイング"
-            case .default: return "デフォルト"
-            case .drama: return "ドラマシーン"
-        }
-    }
-
-    var playlistID: String? {
-        switch self {
-            case .shadowing: return nil
-            case .default: return "PLEC5UjKGbYI2TeWkpUE-RocpVhqXwwk-9"
-            case .drama: return "PLEC5UjKGbYI0sAKuiEjWrH82PG_vxrLF0"
-        }
+    enum CodingKeys: String, CodingKey {
+        case id
+        case title
+        case sortOrder = "sort_order"
+        case playlistIDs = "playlist_ids"
     }
 }
 
@@ -133,6 +123,7 @@ struct VideoItem: Identifiable, Hashable, Codable {
     var currentTime: Double? = nil
     var rate: Float = 1.0
     var playlistID: String?
+    var categoryID: String = "listening"
     var aspectRatio: CGFloat
     var contentLanguage: VideoContentLanguage = .ja
     var thumbnailRefreshID: String = UUID().uuidString
@@ -143,6 +134,7 @@ struct VideoItem: Identifiable, Hashable, Codable {
         case currentTime = "current_time"
         case rate
         case playlistID = "playlist_id"
+        case categoryID = "category_id"
         case aspectRatio = "aspect_ratio"
         case contentLanguage = "content_language"
     }
@@ -156,7 +148,7 @@ enum YouTubeURLType {
 enum AddYouTubeResult {
     case addedVideo(VideoItem)
     case addedPlaylist
-    case addedVideoFromPlaylist(String)
+    case addedVideoFromPlaylist(categoryID: String)
     case invalid
 }
 struct PlayListVideoItem: Identifiable, Hashable {
@@ -179,6 +171,7 @@ struct VideoItemAddRequest: Codable {
     let currentTime: Double?
     let rate: Float
     let playlistID: String?
+    let categoryID: String
     let aspectRatio: CGFloat
     let contentLanguage: VideoContentLanguage
     let createCaptionByAi: Bool
@@ -190,6 +183,7 @@ struct VideoItemAddRequest: Codable {
         case currentTime = "current_time"
         case rate
         case playlistID = "playlist_id"
+        case categoryID = "category_id"
         case aspectRatio = "aspect_ratio"
         case contentLanguage = "content_language"
         case createCaptionByAi = "create_caption_by_ai"
@@ -202,6 +196,7 @@ struct VideoItemAddRequest: Codable {
         self.currentTime = video.currentTime
         self.rate = video.rate
         self.playlistID = video.playlistID
+        self.categoryID = video.categoryID
         self.aspectRatio = video.aspectRatio
         self.contentLanguage = video.contentLanguage
         self.createCaptionByAi = createCaptionByAi
