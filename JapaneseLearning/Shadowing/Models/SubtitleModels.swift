@@ -12,7 +12,7 @@ import CoreText
 // Captions
 struct VideoData {
     let url: URL
-    let captions: [CaptionLine]
+    let captionsUrl: URL
 }
 
 struct VideoResponse: Codable {

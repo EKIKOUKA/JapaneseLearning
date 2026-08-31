@@ -21,6 +21,7 @@ struct VideoDetailsView: View {
         videoStore.videos.first { $0.id == videoID }
     }
     @State private var showSettingSheet = false
+    @State private var showDictionarySheet = false
     @State private var drawerOffset: CGFloat = 0
     @State private var lastDragOffset: CGFloat = 0
 
@@ -98,21 +99,6 @@ struct VideoDetailsView: View {
                     }
                 }
             }
-            .onAppear {
-                guard settingsStore.videoDetailsCollapse, !isLandscape else { return }
-                drawerOffset = currentVideoHeight
-                lastDragOffset = currentVideoHeight
-            }
-            .onChange(of: currentVideoHeight) { _, newHeight in
-                if drawerOffset > 0 {
-                    drawerOffset = newHeight
-                    lastDragOffset = newHeight
-                }
-            }
-            .onChange(of: settingsStore.videoDetailsCollapse) { _, new in
-                drawerOffset = new && !isLandscape ? currentVideoHeight : 0
-                lastDragOffset = drawerOffset
-            }
         }
         .safeAreaInset(edge: .top, spacing: 0) {
             CustomToolbarHeader(
@@ -127,16 +113,20 @@ struct VideoDetailsView: View {
             guard let video else { return }
             playerVM.startVideo(video)
         }
-        .sheet(item: $playerVM.activeLookUpWordIdentifiable,
+        .sheet(isPresented: $showDictionarySheet,
                onDismiss: {
             playerVM.activeLookUpWordIdentifiable = nil
             playerVM.playPlayer()
-        }) { item in
-            DictionaryView(word: item.word)
+        }) {
+            DictionaryView(word: playerVM.activeLookUpWordIdentifiable?.word ?? "")
                 .ignoresSafeArea()
                 .presentationDetents(sizeClassRegular ? [.large] : [.medium, .large])
                 .presentationDragIndicator(sizeClassRegular ? .hidden : .visible)
                 .navigationTransition(.crossFade)
+        }
+        .onChange(of: playerVM.activeLookUpWordIdentifiable?.id) { _, newID in
+            guard newID != nil else { return }
+            showDictionarySheet = true
         }
         .sheet(isPresented: $showSettingSheet) {
             ShadowingSettingsSheetView(playerVM: playerVM)
@@ -146,7 +136,7 @@ struct VideoDetailsView: View {
         }
         .onDisappear {
             Task {
-                await playerVM.endVideo()
+                await playerVM.endVideo(videoID: videoID)
             }
         }
     }

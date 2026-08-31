@@ -64,12 +64,6 @@ struct ShadowingSettingsSheetView: View {
                     }
                 }
 
-                Section(footer: Text("再生画面に動画を隠し、「ビデオを表示」ボタンから再び表示します。")) {
-                    Toggle(isOn: $settingsStoreBindable.videoDetailsCollapse) {
-                        Text("再生画面に動画を隠す")
-                    }
-                }
-
                 Section(footer: Text("ビデオのピクチャ・イン・ピクチャ（PiP）を許可します。")) {
                     Toggle(isOn: $settingsStoreBindable.videoAllowsPictureInPicturePlayback) {
                         Text("ピクチャ・イン・ピクチャ")

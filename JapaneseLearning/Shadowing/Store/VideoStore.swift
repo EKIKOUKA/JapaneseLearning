@@ -259,7 +259,7 @@ class VideoStore {
     }
 
     // MARK: - Video Details & Captions Fetching
-    func fetchVideoDataFromServer(_ videoID: String) async throws -> VideoData {
+    func fetchVideoSources(_ videoID: String) async throws -> VideoData {
         let video_decoded: VideoResponse = try await WorkersAPI.get(
             "get_video",
             queryItems: [
@@ -275,13 +275,15 @@ class VideoStore {
             throw URLError(.badURL)
         }
 
-        let (captionData, _) = try await URLSession.shared.data(from: captionsURL)
-        let captions = try JSONDecoder().decode([CaptionLine].self, from: captionData)
-
         return VideoData(
             url: videoURL,
-            captions: captions
+            captionsUrl: captionsURL
         )
+    }
+
+    func fetchCaptions(from url: URL) async throws -> [CaptionLine] {
+        let (captionData, _) = try await URLSession.shared.data(from: url)
+        return try JSONDecoder().decode([CaptionLine].self, from: captionData)
     }
 
     // MARK: - Business Logic: Adding Videos with High Quality Thumbnails
@@ -295,7 +297,7 @@ class VideoStore {
     ) async {
         let immediateVideo = VideoItem(
             id: item.id,
-            title: item.title.cleanedVideoTitle,
+            title: title,
             rate: playbackRate,
             playlistID: playlistID,
             aspectRatio: -1,
@@ -307,7 +309,7 @@ class VideoStore {
 
         let syncedVideo = VideoItem(
             id: item.id,
-            title: item.title.cleanedVideoTitle,
+            title: title,
             rate: playbackRate,
             playlistID: playlistID,
             aspectRatio: -1,
@@ -346,12 +348,15 @@ class VideoStore {
                 upsertVideoLocally(immediateVideo)
 
                 Task {
-                    let title = await YouTubeService.fetchTitle(videoID)
+                    let fetchedTitle = await YouTubeService.fetchTitle(videoID)
+                    let title = videoTitle.isWhitespaceOrNewLine
+                        ? fetchedTitle.cleanedVideoTitle
+                        : videoTitle.trimmingCharacters(in: .whitespacesAndNewlines)
                     let highQualityThumbURL = await YouTubeService.fetchBestThumbnailURL(for: videoID)
 
                     let syncedVideo = VideoItem(
                         id: videoID,
-                        title: title.cleanedVideoTitle,
+                        title: title,
                         rate: playbackRate,
                         playlistID: nil,
                         aspectRatio: -1,

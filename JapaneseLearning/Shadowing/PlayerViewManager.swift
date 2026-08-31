@@ -79,6 +79,10 @@ final class PlayerViewManager {
     }
 
     func startVideo(_ video: VideoItem) {
+        if currentVideoItem?.id != video.id {
+            saveCurrentProgressBeforeSwitch()
+        }
+
         isDetailVisible = true
         prepareVideo(video)
         syncCaptionToCurrentPlayback()
@@ -142,11 +146,27 @@ final class PlayerViewManager {
         playerNowPlaying.nowPlayingVideoID = videoItem.id
 
         do {
-            let videoData = try await videoStore.fetchVideoDataFromServer(videoItem.id)
+            let sources = try await videoStore.fetchVideoSources(videoItem.id)
+            guard currentVideoItem?.id == videoItem.id else { return }
+
             print("✅ fetchVideoDataFromServer success: \(videoItem.id)")
-            self.setupPlayer(with: videoData.url)
-            self.loadCaptions(videoID: videoItem.id, captions: videoData.captions)
+            self.setupPlayer(with: sources.url)
             self.isProgressing = false
+
+            Task { [weak self, videoItem, captionsURL = sources.captionsUrl] in
+                guard let self else { return }
+
+                do {
+                    let captions = try await self.videoStore.fetchCaptions(from: captionsURL)
+                    guard self.currentVideoItem?.id == videoItem.id else {
+                        return
+                    }
+
+                    self.loadCaptions(videoID: videoItem.id, captions: captions)
+                } catch {
+                    print("❌ Captions fetch failed: \(error.localizedDescription)")
+                }
+            }
         } catch {
             isProgressing = true
             print("❌ 失敗: \(error)")
@@ -263,9 +283,12 @@ final class PlayerViewManager {
 
     // Subtitle & Ruby Logic
     func loadCaptions(videoID: String, captions: [CaptionLine]) {
+        guard currentVideoItem?.id == videoID else { return }
+
         self.captions = markIntroLines(captions)
         self.currentCaptionIndex = 0
         self.currentLineID = nil
+        syncCaptionToCurrentPlayback()
     }
 
     func restorePlayProgress() {
@@ -296,11 +319,30 @@ final class PlayerViewManager {
         guard let videoItem = currentVideoItem else { return }
 
         let currentTime = currentTimeOverride ?? player.currentTime().seconds
+        await saveProgress(videoItem: videoItem, currentTime: currentTime, rate: rate)
+    }
+
+    private func saveCurrentProgressBeforeSwitch() {
+        guard let videoItem = currentVideoItem else { return }
+
+        let currentTime = player.currentTime().seconds
+        let currentRate = rate
+
+        Task { [weak self, videoItem, currentTime, currentRate] in
+            await self?.saveProgress(
+                videoItem: videoItem,
+                currentTime: currentTime,
+                rate: currentRate
+            )
+        }
+    }
+
+    private func saveProgress(videoItem: VideoItem, currentTime: Double, rate: Float) async {
         guard currentTime.isFinite else { return }
 
         var updatedVideo = videoItem
         updatedVideo.currentTime = currentTime
-        updatedVideo.rate = self.rate
+        updatedVideo.rate = rate
         await videoStore.updateVideo(updatedVideo)
 
         let time_formatted = currentTimeFormatted(Int(currentTime))
@@ -615,7 +657,9 @@ final class PlayerViewManager {
         isDetailVisible = false
     }
 
-    func endVideo() async {
+    func endVideo(videoID: String) async {
+        guard currentVideoItem?.id == videoID else { return }
+
         isDetailVisible = false
 
         await saveCurrentProgress(currentTimeOverride: player.currentTime().seconds)
