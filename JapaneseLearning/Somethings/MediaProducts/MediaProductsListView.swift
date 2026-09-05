@@ -16,7 +16,6 @@ struct MediaProductsListView: View {
     @State private var showSettingSheet = false
 
     @State private var sortOrder: MediaProductsSortOrder = .createdAt
-    @State private var selectedStatus: WatchStatus = .watched
     var isSearching: Bool {
         !searchText.isEmpty
     }
@@ -73,7 +72,6 @@ struct MediaProductsListView: View {
                         }
                         .opacity(store.isLoading ? 0 : 1)
                         .opacity(store.isReady ? 1 : 0)
-                        .animation(.default, value: selectedStatus)
                         .animation(.default, value: sortOrder)
                         .searchable(text: $searchText, prompt: "入力して検索")
                     }
@@ -86,7 +84,6 @@ struct MediaProductsListView: View {
                                     item: MediaProductsItem(
                                         title: "",
                                         category: selectedCategory,
-                                        status: selectedStatus,
                                         detailsURL: "",
                                         memo: ""
                                     ),
@@ -114,17 +111,6 @@ struct MediaProductsListView: View {
                                 }
                             } label: {
                                 Label("表示順序", systemImage: "arrow.up.arrow.down")
-                            }
-
-                            Menu {
-                                Picker("表示状態", selection: $selectedStatus) {
-                                    ForEach(WatchStatus.allCases) { status in
-                                        Text(status.displayName)
-                                            .tag(status)
-                                    }
-                                }
-                            } label: {
-                                Label("表示状態", systemImage: "line.3.horizontal.decrease.circle")
                             }
                         } label: {
                             Image(systemName: "ellipsis")
@@ -158,9 +144,6 @@ struct MediaProductsListView: View {
 
     var filteredItems: [MediaProductsItem] {
         let filtered = store.MediaProductsList
-            .filter { item in
-                item.status == selectedStatus
-            }
             .filter { item in
                 searchText.isEmpty || item.title.localizedCaseInsensitiveContains(searchText)
             }

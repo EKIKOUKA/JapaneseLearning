@@ -15,7 +15,6 @@ struct MediaProductsDetailsEditorView: View {
 
     @State private var title: String
     @State private var category: MediaCategory
-    @State private var status: WatchStatus
     @State private var detailsURL: String
     @State private var memo: String
 
@@ -25,7 +24,6 @@ struct MediaProductsDetailsEditorView: View {
         self.isNew = isNew
         _title = State(initialValue: item.title)
         _category = State(initialValue: item.category)
-        _status = State(initialValue: item.status)
         _detailsURL = State(initialValue: item.detailsURL ?? "")
         _memo = State(initialValue: item.memo ?? "")
     }
@@ -41,15 +39,6 @@ struct MediaProductsDetailsEditorView: View {
                     ForEach(MediaCategory.allCases) { category in
                         Text(category.displayName)
                             .tag(category)
-                    }
-                }
-            }
-
-            Section(header: Text("観る状態")) {
-                Picker("観る状態", selection: $status) {
-                    ForEach(WatchStatus.allCases) { status in
-                        Text(status.displayName)
-                            .tag(status)
                     }
                 }
             }
@@ -91,7 +80,6 @@ struct MediaProductsDetailsEditorView: View {
                 id: isNew ? nil : item.id,
                 title: title,
                 category: category,
-                status: status,
                 detailsURL: detailsURL,
                 memo: memo
             )

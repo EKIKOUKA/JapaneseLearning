@@ -11,7 +11,6 @@ struct MediaProductsItem: Codable, Identifiable {
     var id: Int?
     var title: String
     var category: MediaCategory
-    var status: WatchStatus
     var detailsURL: String?
     var memo: String?
     var createdAt: String?
@@ -20,7 +19,6 @@ struct MediaProductsItem: Codable, Identifiable {
         case id
         case title
         case category
-        case status
         case detailsURL = "details_url"
         case memo
         case createdAt = "created_at"
@@ -60,18 +58,3 @@ enum MediaProductsSortOrder: String, CaseIterable, Identifiable {
         }
     }
 }
-
-enum WatchStatus: String, Codable, CaseIterable, Identifiable {
-    case want
-    case watched
-
-    var id: String { rawValue }
-
-    var displayName: String {
-        switch self {
-            case .watched: return "観た"
-            case .want: return "観たい"
-        }
-    }
-}
-
