@@ -23,9 +23,11 @@ class VideoStore {
     var videoListVideosIsReady: Bool = false
 
     private let videoCacheKey: String = "cached_videos"
+    private let playlistCategoriesCacheKey: String = "cached_playlist_categories"
 
     init() {
         loadVideoCache() // Load local cache first
+        loadPlaylistCategoriesCache()
 
         Task { @MainActor in
             await fetchVideos()
@@ -43,6 +45,19 @@ class VideoStore {
     func saveVideoCache() {
         if let encoded = try? JSONEncoder().encode(videos) {
             UserDefaults.standard.set(encoded, forKey: videoCacheKey)
+        }
+    }
+
+    private func loadPlaylistCategoriesCache() {
+        if let data = UserDefaults.standard.data(forKey: playlistCategoriesCacheKey),
+           let cachedCategories = try? JSONDecoder().decode([PlaylistCategory].self, from: data) {
+            playlistCategories = cachedCategories.sorted { $0.sortOrder < $1.sortOrder }
+        }
+    }
+
+    private func savePlaylistCategoriesCache() {
+        if let encoded = try? JSONEncoder().encode(playlistCategories) {
+            UserDefaults.standard.set(encoded, forKey: playlistCategoriesCacheKey)
         }
     }
 
@@ -97,6 +112,7 @@ class VideoStore {
             self.playlistCategories = fetchedCategories.sorted {
                 $0.sortOrder < $1.sortOrder
             }
+            savePlaylistCategoriesCache()
 
             self.videoSubtitleSkipWords = try await WorkersAPI.get("config/video_subtitle_skip_words")
 
