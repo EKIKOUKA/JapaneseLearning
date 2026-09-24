@@ -27,6 +27,7 @@ struct AppSettings: Codable {
     var videoSubtitleDimInactiveLines: Bool = true
     var videoAutoJumpToNextLine: Bool = false
     var videoAllowsPictureInPicturePlayback: Bool = false
+    var useNativeVideoPlayer: Bool = true
     var videoSubtitleFontColor: Color.Resolved?
 
     // Somethings

@@ -79,6 +79,7 @@ struct ContentView: View {
         .onChange(of: scenePhase, initial: false) {
             Task {
                 if scenePhase == .background {
+                    playerVM.pauseYouTubeForBackground()
                     await playerVM.saveCurrentProgress()
                 }
             }
