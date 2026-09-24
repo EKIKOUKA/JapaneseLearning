@@ -61,7 +61,7 @@ struct MediaProductsDetailsEditorView: View {
                 } label: {
                     Image(systemName: "checkmark")
                 }
-                .disabled(title.isWhitespaceOrNewLine || detailsURL.isWhitespaceOrNewLine)
+                .disabled(title.isWhitespaceOrNewLine)
             }
         }
         .navigationTitle(isNew ? "新規追加" : item.title)
