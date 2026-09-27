@@ -320,6 +320,8 @@ final class PlayerViewManager {
         currentVideoItem = video
         playerNowPlaying.nowPlayingTitle = video.title.cleanedVideoTitle
         playerNowPlaying.nowPlayingVideoID = video.id
+        rate = video.rate
+        tempRate = video.rate
 
         if !isSameVideo {
             playerNowPlaying.nowPlayingArtwork = nil
@@ -513,11 +515,10 @@ final class PlayerViewManager {
             return
         }
 
-        let avPlayerTime = player.currentTime().seconds
-        let videoProgress = activePlaybackUsesYouTube || !avPlayerTime.isFinite
-            ? (videoItem.currentTime ?? 0)
-            : avPlayerTime
-        let videoRate = rate
+        // The newly-created AVPlayerItem starts at zero. Restore from the
+        // persisted video model instead of reading the fresh item's time.
+        let videoProgress = videoItem.currentTime ?? 0
+        let videoRate = videoItem.rate
         rate = videoRate
 
         let seekTime = CMTime(seconds: videoProgress, preferredTimescale: 600)
