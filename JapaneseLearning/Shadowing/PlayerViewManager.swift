@@ -855,10 +855,6 @@ final class PlayerViewManager {
         pauseActiveBackend()
     }
 
-    func pauseYouTubeForBackground() {
-        pausePlayer()
-    }
-
     private func activateYouTubeAudioSession() {
         do {
             let session = AVAudioSession.sharedInstance()
