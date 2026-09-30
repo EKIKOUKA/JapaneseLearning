@@ -7,7 +7,7 @@
 		<dict>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>japaneselearning</string>
+				<string>japaneselearning-webview</string>
 			</array>
 		</dict>
 	</array>

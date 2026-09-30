@@ -84,7 +84,7 @@ struct ContentView: View {
             }
         }
         .onOpenURL { url in
-            guard url.scheme == "japaneselearning",
+            guard url.scheme == "japaneselearning-webview",
                   url.host == "video",
                   let videoID = url.pathComponents.dropFirst().first,
                   !videoID.isEmpty else {
