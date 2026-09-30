@@ -64,21 +64,6 @@ struct ShadowingSettingsSheetView: View {
                     }
                 }
 
-                if playerVM == nil {
-                    Section(footer: Text("オンにするとネイティブプレーヤーで再生します。オフにするとYouTubeのオンラインプレーヤーで再生します。")) {
-                        Toggle(isOn: $settingsStoreBindable.useNativeVideoPlayer) {
-                            Text("ネイティブプレーヤーを使用")
-                        }
-                    }
-                }
-
-                if settingsStore.useNativeVideoPlayer {
-                    Section(footer: Text("ビデオのピクチャ・イン・ピクチャ（PiP）を許可します。")) {
-                        Toggle(isOn: $settingsStoreBindable.videoAllowsPictureInPicturePlayback) {
-                            Text("ピクチャ・イン・ピクチャ")
-                        }
-                    }
-                }
             }
             .contentMargins(.top, 0)
             .navigationTitle("シャドーイング設定")

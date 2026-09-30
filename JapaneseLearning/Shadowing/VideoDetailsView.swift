@@ -54,34 +54,17 @@ struct VideoDetailsView: View {
                 } else {
                     ZStack(alignment: .top) {
                         layout {
-                            Group {
-                                if settingsStore.useNativeVideoPlayer {
-                                    VideoContentArea(
-                                        playerVM: playerVM,
-                                        videoID: videoID,
-                                        drawerOffset: $drawerOffset,
-                                        lastDragOffset: $lastDragOffset,
-                                        maxDrawerOffset: currentVideoHeight,
-                                        containerWidth: fullWidth,
-                                        aspectRatio: displayAspectRatio,
-                                        isLandscape: isLandscape,
-                                        isPlayerReady: playerVM.currentVideoItem?.id == videoID &&
-                                            !playerVM.isVideoLoading
-                                    )
-                                } else {
-                                    YouTubeVideoContentArea(
-                                        videoID: videoID,
-                                        playerManager: playerVM,
-                                        playerStatus: $youtubePlayerStatus,
-                                        drawerOffset: $drawerOffset,
-                                        lastDragOffset: $lastDragOffset,
-                                        maxDrawerOffset: currentVideoHeight,
-                                        containerWidth: fullWidth,
-                                        aspectRatio: displayAspectRatio,
-                                        isLandscape: isLandscape
-                                    )
-                                }
-                            }
+                            YouTubeVideoContentArea(
+                                videoID: videoID,
+                                playerManager: playerVM,
+                                playerStatus: $youtubePlayerStatus,
+                                drawerOffset: $drawerOffset,
+                                lastDragOffset: $lastDragOffset,
+                                maxDrawerOffset: currentVideoHeight,
+                                containerWidth: fullWidth,
+                                aspectRatio: displayAspectRatio,
+                                isLandscape: isLandscape
+                            )
                             .simultaneousGesture(
                                 DragGesture(minimumDistance: 8, coordinateSpace: .global)
                                     .onChanged { value in
@@ -128,10 +111,6 @@ struct VideoDetailsView: View {
         .toolbarVisibility(.hidden, for: .navigationBar)
         .toolbarVisibility(.hidden, for: .tabBar)
         .task(id: video?.id) {
-            guard let video else { return }
-            playerVM.startVideo(video)
-        }
-        .onChange(of: settingsStore.useNativeVideoPlayer) { _, _ in
             guard let video else { return }
             playerVM.startVideo(video)
         }

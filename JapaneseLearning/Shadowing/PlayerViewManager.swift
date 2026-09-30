@@ -98,7 +98,8 @@ final class PlayerViewManager {
     }
 
     func startVideo(_ video: VideoItem) {
-        let useYouTube = !(settingsStore?.useNativeVideoPlayer ?? true)
+        // App Store build: playback is exclusively handled by YouTube's IFrame player.
+        let useYouTube = true
         let isDifferentVideo = currentVideoItem?.id != video.id
         let isChangingBackend = activePlaybackUsesYouTube != useYouTube
 
@@ -122,12 +123,7 @@ final class PlayerViewManager {
 
         isDetailVisible = true
         activePlaybackUsesYouTube = useYouTube
-        if useYouTube {
-            prepareYouTubeVideo(video)
-        } else {
-            setupAudioSession()
-            prepareVideo(video)
-        }
+        prepareYouTubeVideo(video)
         syncCaptionToCurrentPlayback()
         startPracticeTimingIfNeeded()
     }
@@ -993,7 +989,7 @@ final class PlayerViewManager {
         youtubeCurrentTime = 0
         youtubeDuration = 0
         youtubeController = nil
-        activePlaybackUsesYouTube = !(settingsStore?.useNativeVideoPlayer ?? true)
+        activePlaybackUsesYouTube = true
 
         player.replaceCurrentItem(with: nil)
         isPlaying = false
