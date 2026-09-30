@@ -28,7 +28,7 @@ private struct LiveActivityThumbnail: View {
 
     var body: some View {
         Group {
-            if let url = AppGroupThumbnailStorage.existingFileURL(for: videoID),
+            if let url = LocalThumbnailStorage.existingFileURL(for: videoID),
                let data = try? Data(contentsOf: url),
                let image = UIImage(data: data) {
                 Image(uiImage: presentationImage(from: image))

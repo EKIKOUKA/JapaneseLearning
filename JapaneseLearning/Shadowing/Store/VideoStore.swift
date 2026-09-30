@@ -121,7 +121,7 @@ class VideoStore {
                 self.videos = freshVideos
             }
 
-            AppGroupThumbnailStorage.removeOrphanedThumbnails(
+            LocalThumbnailStorage.removeOrphanedThumbnails(
                 keeping: Set(freshVideos.map(\.id))
             )
 
@@ -152,7 +152,7 @@ class VideoStore {
 
             do {
                 let data = try await WorkersAPI.getData(from: thumbnailURL)
-                try AppGroupThumbnailStorage.save(data, for: video.id)
+                try LocalThumbnailStorage.save(data, for: video.id)
                 thumbnailSaved = true
             } catch {
                 print("❌ Thumbnail download failed: \(error)")
@@ -164,19 +164,11 @@ class VideoStore {
                 }
             }
 
-            let liveActivityToken = await VideoStatusLiveActivityManager.shared.start(video: video)
-            let didCreateServerRecord = await self.syncAddedVideoToServer(
+            _ = await self.syncAddedVideoToServer(
                 video,
                 createCaptionByAi: createCaptionByAi,
-                liveActivityToken: liveActivityToken
+                liveActivityToken: nil
             )
-
-            if didCreateServerRecord {
-                VideoStatusLiveActivityManager.shared.observeTokenChanges(
-                    videoID: video.id,
-                    initialToken: liveActivityToken
-                )
-            }
 
         }
     }
@@ -222,7 +214,7 @@ class VideoStore {
                 QuickActionManager.shared.clearResumeVideo()
             }
 
-            AppGroupThumbnailStorage.remove(for: id)
+            LocalThumbnailStorage.remove(for: id)
         } catch {
             print("❌ 刪除エラー:", error)
         }
@@ -564,12 +556,12 @@ class VideoStore {
         return "listening"
     }
 
-    // MARK: - AppGroupThumbnailStorage Thumbnail
+    // MARK: - Local Thumbnail Storage
     private static func thumbnailSourceURL(for video: VideoItem) async -> URL {
         await YouTubeService.fetchBestThumbnailURL(for: video.id)
     }
     private static func cacheThumbnail(for video: VideoItem) async {
-        guard AppGroupThumbnailStorage.existingFileURL(for: video.id) == nil else {
+        guard LocalThumbnailStorage.existingFileURL(for: video.id) == nil else {
             return
         }
 
@@ -577,7 +569,7 @@ class VideoStore {
 
         do {
             let data = try await WorkersAPI.getData(from: sourceURL)
-            try AppGroupThumbnailStorage.save(data, for: video.id)
+            try LocalThumbnailStorage.save(data, for: video.id)
         } catch {
             print("❌ Thumbnail download failed (\(video.id)): \(error)")
         }

@@ -1,13 +1,12 @@
 import Foundation
 
-/// Main app and Live Activity extension share thumbnails through this container.
-enum AppGroupThumbnailStorage {
-    static let groupIdentifier = "group.com.makoto.JapaneseLearning"
-
+/// Stores thumbnails in the main app's private container.
+enum LocalThumbnailStorage {
     private static var directoryURL: URL? {
-        guard let containerURL = FileManager.default.containerURL(
-            forSecurityApplicationGroupIdentifier: groupIdentifier
-        ) else {
+        guard let containerURL = FileManager.default.urls(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask
+        ).first else {
             return nil
         }
 

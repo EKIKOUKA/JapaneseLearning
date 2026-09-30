@@ -9,18 +9,10 @@
 /* Begin PBXBuildFile section */
 		0EDB25B92FE449FD0091E0BF /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0EDB25B82FE449FD0091E0BF /* WidgetKit.framework */; };
 		0EDB25BB2FE449FD0091E0BF /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0EDB25BA2FE449FD0091E0BF /* SwiftUI.framework */; };
-		0EDB25CC2FE449FF0091E0BF /* VideoStatusExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 0EDB25B72FE449FC0091E0BF /* VideoStatusExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		0EEFE0292FEFD02500BFC25F /* UtilityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EEFE0282FEFD02500BFC25F /* UtilityTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
-		0EDB25CA2FE449FF0091E0BF /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 7FF22E862ED7EC6600603529 /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 0EDB25B62FE449FC0091E0BF;
-			remoteInfo = VideoStatusExtension;
-		};
 		0EFF48002F378D38008832D6 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 7FF22E862ED7EC6600603529 /* Project object */;
@@ -29,20 +21,6 @@
 			remoteInfo = JapaneseLearning;
 		};
 /* End PBXContainerItemProxy section */
-
-/* Begin PBXCopyFilesBuildPhase section */
-		0EDB25D12FE449FF0091E0BF /* Embed Foundation Extensions */ = {
-			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
-			dstPath = "";
-			dstSubfolderSpec = 13;
-			files = (
-				0EDB25CC2FE449FF0091E0BF /* VideoStatusExtension.appex in Embed Foundation Extensions */,
-			);
-			name = "Embed Foundation Extensions";
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		0E63A3F030052DCD0026C378 /* VideoStatusExtension */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = VideoStatusExtension; sourceTree = "<group>"; };
@@ -59,7 +37,7 @@
 		0E63A3F3300537030026C378 /* Exceptions for "JapaneseLearning" folder in "VideoStatusExtension" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
-				Shadowing/Store/AppGroupThumbnailStorage.swift,
+				Shadowing/Store/LocalThumbnailStorage.swift,
 			);
 			target = 0EDB25B62FE449FC0091E0BF /* VideoStatusExtension */;
 		};
@@ -218,12 +196,10 @@
 				7FF22E8A2ED7EC6600603529 /* Sources */,
 				7FF22E8B2ED7EC6600603529 /* Frameworks */,
 				7FF22E8C2ED7EC6600603529 /* Resources */,
-				0EDB25D12FE449FF0091E0BF /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
-				0EDB25CB2FE449FF0091E0BF /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				7FF22E902ED7EC6600603529 /* JapaneseLearning */,
@@ -330,11 +306,6 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
-		0EDB25CB2FE449FF0091E0BF /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = 0EDB25B62FE449FC0091E0BF /* VideoStatusExtension */;
-			targetProxy = 0EDB25CA2FE449FF0091E0BF /* PBXContainerItemProxy */;
-		};
 		0EFF48012F378D38008832D6 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 7FF22E8D2ED7EC6600603529 /* JapaneseLearning */;
@@ -619,8 +590,6 @@
 				INFOPLIST_FILE = JapaneseLearning/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "日本語勉学";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.education";
-				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
-				INFOPLIST_KEY_NSSupportsLiveActivitiesFrequentUpdates = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
@@ -635,7 +604,6 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.makoto.JapaneseLearning;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
-				REGISTER_APP_GROUPS = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
@@ -674,8 +642,6 @@
 				INFOPLIST_FILE = JapaneseLearning/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "日本語勉学";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.education";
-				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
-				INFOPLIST_KEY_NSSupportsLiveActivitiesFrequentUpdates = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
@@ -690,7 +656,6 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.makoto.JapaneseLearning;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
-				REGISTER_APP_GROUPS = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;

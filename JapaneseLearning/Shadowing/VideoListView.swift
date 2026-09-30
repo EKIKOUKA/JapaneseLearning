@@ -225,7 +225,7 @@ struct VideoListView: View {
             Color.clear
                 .aspectRatio(16.0 / 9.0, contentMode: .fit)
                 .overlay {
-                    if let thumbnailURL = AppGroupThumbnailStorage.existingFileURL(for: video.id),
+                    if let thumbnailURL = LocalThumbnailStorage.existingFileURL(for: video.id),
                        let data = try? Data(contentsOf: thumbnailURL),
                        let uiImage = UIImage(data: data) {
                         Image(uiImage: uiImage)

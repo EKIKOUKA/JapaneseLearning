@@ -189,7 +189,7 @@ final class PlayerViewManager {
             playerNowPlaying.nowPlayingArtwork = nil
         }
 
-        if let thumbnailURL = AppGroupThumbnailStorage.existingFileURL(for: video.id),
+        if let thumbnailURL = LocalThumbnailStorage.existingFileURL(for: video.id),
            let image = UIImage(contentsOfFile: thumbnailURL.path) {
             playerNowPlaying.nowPlayingArtwork = image
         }
@@ -325,7 +325,7 @@ final class PlayerViewManager {
         }
 
         if !isSameVideo,
-           let thumbnailURL = AppGroupThumbnailStorage.existingFileURL(for: video.id),
+           let thumbnailURL = LocalThumbnailStorage.existingFileURL(for: video.id),
            let image = UIImage(contentsOfFile: thumbnailURL.path) {
                 self.playerNowPlaying.nowPlayingArtwork = image
                 self.playerNowPlaying.updateNowPlayingMetadata()
