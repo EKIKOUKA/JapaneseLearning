@@ -30,18 +30,6 @@ struct ContentView: View {
                     Label("　学習記録　", systemImage: "chart.bar.xaxis")
                 }
                 .tag(1)
-
-            SomethingsView()
-                .tabItem {
-                    Label("　　その他　　", systemImage: "books.vertical")
-                }
-                .tag(2)
-
-            GrammarContentView()
-                .tabItem {
-                    Label("　　文法　　", systemImage: "book.pages")
-                }
-                .tag(3)
         }
         .tabBarMinimizeBehavior(.onScrollDown)
         .tabViewBottomAccessory(

@@ -578,7 +578,7 @@
 				CODE_SIGN_ENTITLEMENTS = JapaneseLearning/JapaneseLearning.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 20;
+				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 8YG68RBKNK;
 				DRIVERKIT_DEPLOYMENT_TARGET = 27.0;
 				ENABLE_APP_SANDBOX = YES;
@@ -588,7 +588,7 @@
 				GCC_C_LANGUAGE_STANDARD = c23;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = JapaneseLearning/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "日本語勉学";
+				INFOPLIST_KEY_CFBundleDisplayName = "ことね - 言語シャドーイング";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.education";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -600,8 +600,8 @@
 					"@executable_path/Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 27.0;
-				MARKETING_VERSION = 0.2.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.makoto.JapaneseLearning.WebView;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.makoto.languagelearning.webview;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -614,7 +614,7 @@
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 6.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 				TVOS_DEPLOYMENT_TARGET = 27.0;
 				WATCHOS_DEPLOYMENT_TARGET = 27.0;
 				XROS_DEPLOYMENT_TARGET = 27.0;
@@ -630,7 +630,7 @@
 				CODE_SIGN_ENTITLEMENTS = JapaneseLearning/JapaneseLearning.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 20;
+				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 8YG68RBKNK;
 				DRIVERKIT_DEPLOYMENT_TARGET = 27.0;
 				ENABLE_APP_SANDBOX = YES;
@@ -640,7 +640,7 @@
 				GCC_C_LANGUAGE_STANDARD = c23;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = JapaneseLearning/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "日本語勉学";
+				INFOPLIST_KEY_CFBundleDisplayName = "ことね - 言語シャドーイング";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.education";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -652,8 +652,8 @@
 					"@executable_path/Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 27.0;
-				MARKETING_VERSION = 0.2.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.makoto.JapaneseLearning.WebView;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.makoto.languagelearning.webview;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -666,7 +666,7 @@
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 6.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 				TVOS_DEPLOYMENT_TARGET = 27.0;
 				WATCHOS_DEPLOYMENT_TARGET = 27.0;
 				XROS_DEPLOYMENT_TARGET = 27.0;
