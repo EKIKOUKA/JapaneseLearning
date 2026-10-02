@@ -18,6 +18,7 @@
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "0EDB25B62FE449FC0091E0BF"
                BuildableName = "VideoStatusExtension.appex"
+               BlueprintName = "VideoStatusExtension"
                ReferencedContainer = "container:JapaneseLearning.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
@@ -64,6 +65,7 @@
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "0EDB25B62FE449FC0091E0BF"
             BuildableName = "VideoStatusExtension.appex"
+            BlueprintName = "VideoStatusExtension"
             ReferencedContainer = "container:JapaneseLearning.xcodeproj">
          </BuildableReference>
       </RemoteRunnable>

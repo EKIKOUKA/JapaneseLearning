@@ -30,6 +30,12 @@ struct ContentView: View {
                     Label("　学習記録　", systemImage: "chart.bar.xaxis")
                 }
                 .tag(1)
+
+            AppleAccountView()
+                .tabItem {
+                    Label("メニュー", systemImage: "line.3.horizontal")
+                }
+                .tag(2)
         }
         .tabBarMinimizeBehavior(.onScrollDown)
         .tabViewBottomAccessory(

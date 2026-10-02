@@ -7,8 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		0EDB25B92FE449FD0091E0BF /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0EDB25B82FE449FD0091E0BF /* WidgetKit.framework */; };
-		0EDB25BB2FE449FD0091E0BF /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0EDB25BA2FE449FD0091E0BF /* SwiftUI.framework */; };
 		0EEFE0292FEFD02500BFC25F /* UtilityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EEFE0282FEFD02500BFC25F /* UtilityTests.swift */; };
 /* End PBXBuildFile section */
 
@@ -24,7 +22,6 @@
 
 /* Begin PBXFileReference section */
 		0E63A3F030052DCD0026C378 /* VideoStatusExtension */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = VideoStatusExtension; sourceTree = "<group>"; };
-		0EDB25B72FE449FC0091E0BF /* VideoStatusExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = VideoStatusExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		0EDB25B82FE449FD0091E0BF /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		0EDB25BA2FE449FD0091E0BF /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		0EEFE0282FEFD02500BFC25F /* UtilityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UtilityTests.swift; sourceTree = "<group>"; };
@@ -34,13 +31,6 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		0E63A3F3300537030026C378 /* Exceptions for "JapaneseLearning" folder in "VideoStatusExtension" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				Shadowing/Store/LocalThumbnailStorage.swift,
-			);
-			target = 0EDB25B62FE449FC0091E0BF /* VideoStatusExtension */;
-		};
 		0E77E9BA2F12B17000724907 /* Exceptions for "JapaneseLearning" folder in "JapaneseLearning" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
@@ -48,37 +38,13 @@
 			);
 			target = 7FF22E8D2ED7EC6600603529 /* JapaneseLearning */;
 		};
-		0EDB25D02FE449FF0091E0BF /* Exceptions for "VideoStatus" folder in "VideoStatusExtension" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				Info.plist,
-			);
-			target = 0EDB25B62FE449FC0091E0BF /* VideoStatusExtension */;
-		};
-		0EDB25D32FE44C400091E0BF /* Exceptions for "VideoStatus" folder in "JapaneseLearning" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				VideoStatusLiveActivity.swift,
-			);
-			target = 7FF22E8D2ED7EC6600603529 /* JapaneseLearning */;
-		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		0EDB25BC2FE449FD0091E0BF /* VideoStatus */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				0EDB25D32FE44C400091E0BF /* Exceptions for "VideoStatus" folder in "JapaneseLearning" target */,
-				0EDB25D02FE449FF0091E0BF /* Exceptions for "VideoStatus" folder in "VideoStatusExtension" target */,
-			);
-			path = VideoStatus;
-			sourceTree = "<group>";
-		};
 		7FF22E902ED7EC6600603529 /* JapaneseLearning */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
 				0E77E9BA2F12B17000724907 /* Exceptions for "JapaneseLearning" folder in "JapaneseLearning" target */,
-				0E63A3F3300537030026C378 /* Exceptions for "JapaneseLearning" folder in "VideoStatusExtension" target */,
 			);
 			path = JapaneseLearning;
 			sourceTree = "<group>";
@@ -86,15 +52,6 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
-		0EDB25B42FE449FC0091E0BF /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				0EDB25BB2FE449FD0091E0BF /* SwiftUI.framework in Frameworks */,
-				0EDB25B92FE449FD0091E0BF /* WidgetKit.framework in Frameworks */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		0EFF47F92F378D38008832D6 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -137,9 +94,7 @@
 				7F086B992F6ABDE600288521 /* README.md */,
 				7F4336D12F70600400783EE3 /* JapaneseLearning.app */,
 				7F4336D22F70600400783EE3 /* JapaneseLearningTests.xctest */,
-				0EDB25BC2FE449FD0091E0BF /* VideoStatus */,
 				0E4D55312FD8033E00954110 /* Frameworks */,
-				0EDB25B72FE449FC0091E0BF /* VideoStatusExtension.appex */,
 				0EEFE0272FEFD02200BFC25F /* JapaneseLearningTests */,
 			);
 			sourceTree = "<group>";
@@ -147,28 +102,6 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		0EDB25B62FE449FC0091E0BF /* VideoStatusExtension */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = 0EDB25CD2FE449FF0091E0BF /* Build configuration list for PBXNativeTarget "VideoStatusExtension" */;
-			buildPhases = (
-				0EDB25B32FE449FC0091E0BF /* Sources */,
-				0EDB25B42FE449FC0091E0BF /* Frameworks */,
-				0EDB25B52FE449FC0091E0BF /* Resources */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-			);
-			fileSystemSynchronizedGroups = (
-				0EDB25BC2FE449FD0091E0BF /* VideoStatus */,
-			);
-			name = VideoStatusExtension;
-			packageProductDependencies = (
-			);
-			productName = VideoStatusExtension;
-			productReference = 0EDB25B72FE449FC0091E0BF /* VideoStatusExtension.appex */;
-			productType = "com.apple.product-type.app-extension";
-		};
 		0EFF47FB2F378D38008832D6 /* JapaneseLearningTests */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 0EFF48022F378D38008832D6 /* Build configuration list for PBXNativeTarget "JapaneseLearningTests" */;
@@ -221,9 +154,6 @@
 				LastSwiftUpdateCheck = 2700;
 				LastUpgradeCheck = 2610;
 				TargetAttributes = {
-					0EDB25B62FE449FC0091E0BF = {
-						CreatedOnToolsVersion = 27.0;
-					};
 					0EFF47FB2F378D38008832D6 = {
 						CreatedOnToolsVersion = 26.2;
 						TestTargetID = 7FF22E8D2ED7EC6600603529;
@@ -251,19 +181,11 @@
 			targets = (
 				7FF22E8D2ED7EC6600603529 /* JapaneseLearning */,
 				0EFF47FB2F378D38008832D6 /* JapaneseLearningTests */,
-				0EDB25B62FE449FC0091E0BF /* VideoStatusExtension */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
-		0EDB25B52FE449FC0091E0BF /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		0EFF47FA2F378D38008832D6 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -281,13 +203,6 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		0EDB25B32FE449FC0091E0BF /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		0EFF47F82F378D38008832D6 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -314,86 +229,6 @@
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
-		0EDB25CE2FE449FF0091E0BF /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
-				CODE_SIGN_ENTITLEMENTS = VideoStatusExtension.entitlements;
-				CODE_SIGN_IDENTITY = "Apple Development";
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 20;
-				DEVELOPMENT_TEAM = 8YG68RBKNK;
-				DRIVERKIT_DEPLOYMENT_TARGET = 27.0;
-				GCC_C_LANGUAGE_STANDARD = c23;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = VideoStatus/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = VideoStatus;
-				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-					"@executable_path/../../Frameworks",
-				);
-				MACOSX_DEPLOYMENT_TARGET = 27.0;
-				MARKETING_VERSION = 0.2.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.makoto.JapaneseLearning.VideoStatus;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				PROVISIONING_PROFILE_SPECIFIER = "";
-				REGISTER_APP_GROUPS = YES;
-				SKIP_INSTALL = YES;
-				STRING_CATALOG_GENERATE_SYMBOLS = YES;
-				SWIFT_APPROACHABLE_CONCURRENCY = YES;
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
-				SWIFT_VERSION = 6.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-				TVOS_DEPLOYMENT_TARGET = 27.0;
-				WATCHOS_DEPLOYMENT_TARGET = 27.0;
-				XROS_DEPLOYMENT_TARGET = 27.0;
-			};
-			name = Debug;
-		};
-		0EDB25CF2FE449FF0091E0BF /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
-				CODE_SIGN_ENTITLEMENTS = VideoStatusExtension.entitlements;
-				CODE_SIGN_IDENTITY = "Apple Development";
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 20;
-				DEVELOPMENT_TEAM = 8YG68RBKNK;
-				DRIVERKIT_DEPLOYMENT_TARGET = 27.0;
-				GCC_C_LANGUAGE_STANDARD = c23;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = VideoStatus/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = VideoStatus;
-				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-					"@executable_path/../../Frameworks",
-				);
-				MACOSX_DEPLOYMENT_TARGET = 27.0;
-				MARKETING_VERSION = 0.2.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.makoto.JapaneseLearning.VideoStatus;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				PROVISIONING_PROFILE_SPECIFIER = "";
-				REGISTER_APP_GROUPS = YES;
-				SKIP_INSTALL = YES;
-				STRING_CATALOG_GENERATE_SYMBOLS = YES;
-				SWIFT_APPROACHABLE_CONCURRENCY = YES;
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
-				SWIFT_VERSION = 6.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-				TVOS_DEPLOYMENT_TARGET = 27.0;
-				WATCHOS_DEPLOYMENT_TARGET = 27.0;
-				XROS_DEPLOYMENT_TARGET = 27.0;
-			};
-			name = Release;
-		};
 		0EFF48032F378D38008832D6 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -676,15 +511,6 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		0EDB25CD2FE449FF0091E0BF /* Build configuration list for PBXNativeTarget "VideoStatusExtension" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				0EDB25CE2FE449FF0091E0BF /* Debug */,
-				0EDB25CF2FE449FF0091E0BF /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
 		0EFF48022F378D38008832D6 /* Build configuration list for PBXNativeTarget "JapaneseLearningTests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

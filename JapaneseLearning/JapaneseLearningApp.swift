@@ -14,6 +14,7 @@ struct JapaneseLearningApp: App {
     @State private var navigationStore = AppNavigationStore.shared
     @State private var videoStore = VideoStore()
     @State private var settingsStore = SettingsStore()
+    @State private var appleAccountStore = AppleAccountStore()
 
     init() {
         AVPlayer.isObservationEnabled = true
@@ -27,6 +28,7 @@ struct JapaneseLearningApp: App {
                 .environment(settingsStore)
                 .environment(navigationStore)
                 .environment(videoStore)
+                .environment(appleAccountStore)
         }
     }
 }
