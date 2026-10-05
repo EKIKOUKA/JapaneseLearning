@@ -37,6 +37,8 @@ struct ChargeView: View {
                         Text("\(accountStore.accountCredits.formatted()) クレジット")
                             .fontWeight(.semibold)
                             .monospacedDigit()
+                            .contentTransition(.numericText())
+                            .animation(.smooth(duration: 1.0), value: accountStore.accountCredits)
                     }
                     .font(.subheadline)
                     .padding(.top, 8)
