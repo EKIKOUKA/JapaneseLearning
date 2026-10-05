@@ -81,6 +81,7 @@ extension Character {
 }
 
 extension Array {
+    @available(iOS 27.0, *)
     mutating func apply<CollectionID: Hashable & Sendable>(
         difference: ReorderDifference<Element.ID, CollectionID>
     ) where Element: Identifiable, Element.ID: Sendable {
@@ -101,6 +102,128 @@ extension Array {
     }
 }
 
+extension View {
+    @ViewBuilder
+    func toolbarMinimizationBehaviorIfAvailable() -> some View {
+        if #available(iOS 27.0, *) {
+            self.toolbarMinimizationBehavior(.onScrollDown, for: .navigationBar)
+        } else {
+            self
+        }
+    }
+    @ViewBuilder
+    func tabBarMinimizeBehaviorIfAvailable() -> some View {
+        if #available(iOS 26.0, *) {
+            self.tabBarMinimizeBehavior(.onScrollDown)
+        } else {
+            self
+        }
+    }
+
+    @ViewBuilder
+    func tabViewBottomAccessoryIfAvailable<Accessory: View>(
+        isEnabled: Bool,
+        @ViewBuilder content: () -> Accessory
+    ) -> some View {
+        if #available(iOS 26.1, *) {
+            self.tabViewBottomAccessory(isEnabled: isEnabled, content: content)
+        } else {
+            self.safeAreaInset(edge: .bottom, spacing: 0) {
+                if isEnabled {
+                    content()
+                        .padding(.vertical, 8)
+                        .background(.regularMaterial)
+                }
+            }
+        }
+    }
+    
+    @ViewBuilder
+    func pickerStyle_tabs_IfAvailable() -> some View {
+        if #available(iOS 27.0, *) {
+            self.pickerStyle(.tabs)
+        } else {
+            self
+        }
+    }
+    @ViewBuilder
+    func buttonStyle_glass_IfAvailable() -> some View {
+        if #available(iOS 26.0, *) {
+            self.buttonStyle(.glass)
+        } else {
+            self
+        }
+    }
+    
+    @ViewBuilder
+    func navigationTransition_crossFade_IfAvailable() -> some View {
+        if #available(iOS 27.0, *) {
+            self.navigationTransition(.crossFade)
+        } else {
+            self
+        }
+    }
+    
+    @ViewBuilder
+    func swipeActionsContainer_IfAvailable() -> some View {
+        if #available(iOS 27.0, *) {
+            self.swipeActionsContainer()
+        } else {
+            self
+        }
+    }
+    
+    @ViewBuilder
+    func videoReorderContainerIfAvailable(
+        videos: [VideoItem],
+        move: @escaping ([VideoItem]) -> Void
+    ) -> some View {
+        if #available(iOS 27.0, *) {
+            self.reorderContainer(for: VideoItem.self) { difference in
+                var reordered = videos
+                reordered.apply(difference: difference)
+                move(reordered)
+            }
+        } else {
+            self
+        }
+    }
+    
+    @ViewBuilder
+    func navigationTransition_Zoom_IfAvailable<ID: Hashable>(sourceID: ID, in namespace: Namespace.ID) -> some View {
+        if #available(iOS 18.0, *) {
+            self.navigationTransition(
+                .zoom(
+                    sourceID: sourceID,
+                    in: namespace
+                )
+            )
+        } else {
+            self
+        }
+    }
+
+    @ViewBuilder
+    func matchedTransitionSourceIfAvailable<ID: Hashable>(id: ID, in namespace: Namespace.ID?) -> some View {
+        if #available(iOS 18.0, *), let namespace {
+            self.matchedTransitionSource(id: id, in: namespace)
+        } else {
+            self
+        }
+    }
+}
+
+extension ForEach where Content: View {
+    @ViewBuilder
+    func LazyVGrid_reorderableIfAvailable() -> some View {
+        if #available(iOS 27.0, *) {
+            self.reorderable()
+        } else {
+            self
+        }
+    }
+}
+
 func currentTimeFormatted(_ time: Int) -> String {
     let totalSeconds = time
     let minutes = totalSeconds / 60
@@ -109,7 +232,6 @@ func currentTimeFormatted(_ time: Int) -> String {
 
     return formatted
 }
-
 
 func sqliteDateTimeString(from date: Date) -> String {
     let dateFormatter = DateFormatter()

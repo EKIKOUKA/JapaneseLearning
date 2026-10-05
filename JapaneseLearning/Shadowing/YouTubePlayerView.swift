@@ -177,7 +177,7 @@ private struct YouTubePlaybackOverlay: View {
                 .foregroundStyle(Color.white)
                 .frame(width: size, height: size)
         }
-        .buttonStyle(.glass)
+        .buttonStyle_glass_IfAvailable()
         .buttonBorderShape(.circle)
         .accessibilityLabel(accessibilityLabel)
     }

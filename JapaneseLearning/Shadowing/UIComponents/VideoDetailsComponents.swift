@@ -51,7 +51,7 @@ struct playResumeVideoView: View {
                 .foregroundColor(.primary.opacity(0.89))
         }
         .padding(.top, 5)
-        .buttonStyle(.glass)
+        .buttonStyle_glass_IfAvailable()
         .transition(
             .asymmetric(
                 insertion: .opacity.combined(with: .scale(scale: 0.8)),

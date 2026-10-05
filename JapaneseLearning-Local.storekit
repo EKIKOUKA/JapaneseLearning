@@ -1,0 +1,120 @@
+{
+  "appPolicies" : {
+    "eula" : "",
+    "policies" : [
+      {
+        "locale" : "ja",
+        "policyText" : "",
+        "policyURL" : "https://fjeowofwe"
+      }
+    ]
+  },
+  "identifier" : "C4B319E7",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+    {
+      "displayPrice" : "100",
+      "familyShareable" : false,
+      "internalID" : "A6D11001",
+      "localizations" : [
+        {
+          "description" : "100クレジットを追加します。",
+          "displayName" : "100クレジット",
+          "locale" : "ja"
+        }
+      ],
+      "productID" : "com.makoto.languagelearning.webview.credits.100",
+      "referenceName" : "100 クレジット",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "200",
+      "familyShareable" : false,
+      "internalID" : "A6D11002",
+      "localizations" : [
+        {
+          "description" : "200クレジットを追加します。",
+          "displayName" : "200クレジット",
+          "locale" : "ja"
+        }
+      ],
+      "productID" : "com.makoto.languagelearning.webview.credits.200",
+      "referenceName" : "200 クレジット",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "500",
+      "familyShareable" : false,
+      "internalID" : "A6D11005",
+      "localizations" : [
+        {
+          "description" : "500クレジットを追加します。",
+          "displayName" : "500クレジット",
+          "locale" : "ja"
+        }
+      ],
+      "productID" : "com.makoto.languagelearning.webview.credits.500",
+      "referenceName" : "500 クレジット",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "1000",
+      "familyShareable" : false,
+      "internalID" : "A6D11000",
+      "localizations" : [
+        {
+          "description" : "1000 クレジットを追加します。",
+          "displayName" : "1000 クレジット",
+          "locale" : "ja"
+        }
+      ],
+      "productID" : "com.makoto.languagelearning.webview.credits.1000",
+      "referenceName" : "1000 クレジット",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "8964",
+      "familyShareable" : false,
+      "internalID" : "A6D18964",
+      "localizations" : [
+        {
+          "description" : "8964クレジットを追加します。",
+          "displayName" : "8964クレジット",
+          "locale" : "ja"
+        }
+      ],
+      "productID" : "com.makoto.languagelearning.webview.credits.8964",
+      "referenceName" : "8964 クレジット",
+      "type" : "Consumable"
+    }
+  ],
+  "settings" : {
+    "_askToBuyEnabled" : false,
+    "_billingGracePeriodEnabled" : false,
+    "_billingIssuesEnabled" : false,
+    "_disableDialogs" : false,
+    "_failTransactionsEnabled" : false,
+    "_locale" : "ja",
+    "_renewalBillingIssuesEnabled" : false,
+    "_storefront" : "JPN",
+    "_storeKitErrors" : [
+
+    ],
+    "_timeRate" : 0
+  },
+  "subscriptionBundleGroups" : [
+
+  ],
+  "subscriptionGroups" : [
+
+  ],
+  "subscriptionSuiteGroups" : [
+
+  ],
+  "version" : {
+    "major" : 6,
+    "minor" : 3
+  }
+}

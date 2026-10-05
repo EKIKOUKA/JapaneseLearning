@@ -17,7 +17,9 @@ struct JapaneseLearningApp: App {
     @State private var appleAccountStore = AppleAccountStore()
 
     init() {
-        AVPlayer.isObservationEnabled = true
+        if #available(iOS 26.0, *) {
+            AVPlayer.isObservationEnabled = true
+        }
         URLCache.shared.diskCapacity = 0
         URLCache.shared.memoryCapacity = 0
     }

@@ -9,15 +9,34 @@ import SwiftUI
 import AVFoundation
 
 struct VideoMiniPlayerView: View {
+    var body: some View {
+        if #available(iOS 26.0, *) {
+            ModernVideoMiniPlayerView()
+        } else {
+            VideoMiniPlayerContent(isExpanded: true)
+        }
+    }
+}
+
+@available(iOS 26.0, *)
+private struct ModernVideoMiniPlayerView: View {
+    @Environment(\.tabViewBottomAccessoryPlacement) private var placement
+
+    var body: some View {
+        VideoMiniPlayerContent(isExpanded: placement == .expanded)
+    }
+}
+
+private struct VideoMiniPlayerContent: View {
+    let isExpanded: Bool
     @Environment(AppNavigationStore.self) private var navigationStore
     @Environment(PlayerViewManager.self) private var playerVM
-    @Environment(\.tabViewBottomAccessoryPlacement) private var placement
     @Environment(\.transitionNamespace) private var transitionNamespace
 
     var body: some View {
         if let video = playerVM.currentVideoItem, playerVM.player.currentItem != nil {
             HStack(spacing: 0) {
-                if placement == .expanded || video.title.cleanedVideoTitle.textWidth < 155 {
+                if isExpanded || video.title.cleanedVideoTitle.textWidth < 155 {
                     if let artwork = playerVM.playerNowPlaying.nowPlayingArtwork {
                         Image(uiImage: artwork)
                             .resizable()
@@ -44,7 +63,7 @@ struct VideoMiniPlayerView: View {
                 }
                 .buttonStyle(PressScaleButtonStyle())
 
-                if placement == .expanded {
+                if isExpanded {
                     Button {
                         playerVM.seekForward()
                     } label: {
@@ -56,9 +75,9 @@ struct VideoMiniPlayerView: View {
             .padding(.leading, 14)
             .padding(.trailing, 6)
             .contentShape(Rectangle())
-            .matchedTransitionSource(
+            .matchedTransitionSourceIfAvailable(
                 id: "mini-\(video.id)",
-                in: transitionNamespace!
+                in: transitionNamespace
             )
             .onTapGesture {
                 presentVideo(video.id)

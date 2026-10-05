@@ -37,8 +37,8 @@ struct ContentView: View {
                 }
                 .tag(2)
         }
-        .tabBarMinimizeBehavior(.onScrollDown)
-        .tabViewBottomAccessory(
+        .tabBarMinimizeBehaviorIfAvailable()
+        .tabViewBottomAccessoryIfAvailable(
             isEnabled: playerVM.hasActivePlayback &&
                 (!playerVM.isDetailVisible || navigationStore.presentedVideo != nil)
         ) {
@@ -58,12 +58,7 @@ struct ContentView: View {
                 navigationStore.presentedVideo = nil
             }
             .presentationBackground(.clear)
-            .navigationTransition(
-                .zoom(
-                    sourceID: destination.sourceID,
-                    in: transitionNamespace
-                )
-            )
+            .navigationTransition_Zoom_IfAvailable(sourceID: destination.sourceID, in: transitionNamespace)
         }
         .environment(playerVM)
         .environment(\.transitionNamespace, transitionNamespace)

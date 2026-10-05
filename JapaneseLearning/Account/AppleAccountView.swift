@@ -28,6 +28,12 @@ struct AppleAccountView: View {
                     }
                 }
 
+                Section("チャージ") {
+                    NavigationLink("クレジットを購入") {
+                        ChargeView()
+                    }
+                }
+
                 Section("プライバシー") {
                     NavigationLink("プライバシー政策") {
                         PrivacyPolicyView()
@@ -73,6 +79,8 @@ struct AppleAccountView: View {
 
     private var accountSummary: some View {
         VStack(alignment: .leading, spacing: 12) {
+            accountRow(title: "クレジット残高", value: "\(accountStore.accountCredits.formatted()) クレジット")
+
             Label("Apple ログインしました", systemImage: "checkmark.seal.fill")
                 .foregroundStyle(.green)
                 .font(.headline)
@@ -99,7 +107,7 @@ struct AppleAccountView: View {
     }
 }
 
-private struct PrivacyPolicyView: View {
+struct PrivacyPolicyView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {

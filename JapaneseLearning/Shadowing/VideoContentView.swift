@@ -45,12 +45,13 @@ struct VideoContentView: View {
                             }
                         }
                     }
-                    .navigationTransition(
-                        .zoom(
-                            sourceID: navigationStore.videoTransitionSourceID ?? "list-\(id)",
-                            in: transitionNamespace!
-                        )
-                    )
+                    .navigationTransition_Zoom_IfAvailable(sourceID: navigationStore.videoTransitionSourceID ?? "list-\(id)", in: transitionNamespace!)
+//                    .navigationTransition(
+//                        .zoom(
+//                            sourceID: navigationStore.videoTransitionSourceID ?? "list-\(id)",
+//                            in: transitionNamespace!
+//                        )
+//                    )
                 }
             }
         }

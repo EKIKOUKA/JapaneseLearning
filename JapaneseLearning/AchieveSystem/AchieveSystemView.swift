@@ -88,7 +88,7 @@ struct AchieveSystemView: View {
                 Text(range.title).tag(range)
             }
         }
-        .pickerStyle(.tabs)
+        .pickerStyle_tabs_IfAvailable()
     }
 
     private var summaryCard: some View {

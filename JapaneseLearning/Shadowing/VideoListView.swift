@@ -79,11 +79,9 @@ struct VideoListView: View {
                         .padding(.horizontal, 14)
                         .padding(.bottom, 20)
                     }
-                    .swipeActionsContainer()
-                    .reorderContainer(for: VideoItem.self) { difference in
-                        var reordered = filteredVideos
-                        reordered.apply(difference: difference)
-
+                    .swipeActionsContainer_IfAvailable()
+//                    .swipeActionsContainer()
+                    .videoReorderContainerIfAvailable(videos: filteredVideos) { reordered in
                         if let selectedCategory {
                             store.reorderVideos(reordered, for: selectedCategory)
                         }
@@ -99,7 +97,7 @@ struct VideoListView: View {
                 .padding(.vertical, 8)
                 .padding(.bottom, 4)
         }
-        .toolbarMinimizationBehavior(.onScrollDown, for: .navigationBar)
+        .toolbarMinimizationBehaviorIfAvailable()
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
                 Button {
@@ -119,12 +117,12 @@ struct VideoListView: View {
             AddVideoSheetView { result in
                 selectedCategoryID = store.handleCategory(result)?.id
             }
-            .navigationTransition(.crossFade)
+            .navigationTransition_crossFade_IfAvailable()
         }
         .sheet(isPresented: $showSettingSheet) {
             ShadowingSettingsSheetView(playerVM: nil)
                 .presentationDetents([.medium, .large])
-                .navigationTransition(.crossFade)
+                .navigationTransition_crossFade_IfAvailable()
         }
     }
 
@@ -155,7 +153,7 @@ struct VideoListView: View {
                     .padding(.horizontal, sizeClassIsRegular ? 10 : 4)
                     .padding(.vertical, sizeClassIsRegular ? 8 : 2)
             }
-            .buttonStyle(.glass)
+            .buttonStyle_glass_IfAvailable()
             .foregroundStyle(.black)
             .background(.white.opacity(0.89), in: Capsule())
             .shadow(color: .black.opacity(0.12), radius: 6, y: 2)
@@ -172,7 +170,7 @@ struct VideoListView: View {
                     .padding(.vertical, sizeClassIsRegular ? 8 : 2)
                     .shadow(color: .black.opacity(0.7), radius: 2, y: 1)
             }
-            .buttonStyle(.glass)
+            .buttonStyle_glass_IfAvailable()
             .foregroundStyle(.white)
             .controlSize(sizeClassIsRegular ? .large : .regular)
         }
@@ -212,7 +210,7 @@ struct VideoListView: View {
                         }
                     }
                 }
-                .reorderable()
+                .LazyVGrid_reorderableIfAvailable()
             }
         }
         .id(selectedCategory?.id)
@@ -239,10 +237,14 @@ struct VideoListView: View {
                         }
                     }
                 }
-                .matchedTransitionSource(
+                .matchedTransitionSourceIfAvailable(
                     id: "list-\(video.id)",
                     in: transitionNamespace!
                 )
+//                .matchedTransitionSource(
+//                    id: "list-\(video.id)",
+//                    in: transitionNamespace!
+//                )
                 .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                 .shadow(radius: 1)
                 .contentShape(Rectangle())

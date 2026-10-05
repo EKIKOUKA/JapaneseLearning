@@ -60,6 +60,6 @@ struct AchieveSystemRecord: View {
             }
         }
         .navigationTitle("記録")
-        .toolbarMinimizationBehavior(.onScrollDown, for: .navigationBar)
+        .toolbarMinimizationBehaviorIfAvailable()
     }
 }
