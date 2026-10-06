@@ -65,8 +65,7 @@ struct AppleAccountView: View {
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
 
-            SignInWithAppleButton(.signIn) { request in
-                request.requestedScopes = [.fullName, .email]
+            SignInWithAppleButton(.signIn) { _ in
             } onCompletion: { result in
                 accountStore.handleAuthorization(result)
             }
@@ -86,11 +85,6 @@ struct AppleAccountView: View {
                 .font(.headline)
 
             accountRow(title: "Apple userID", value: accountStore.userID ?? "未取得")
-            accountRow(title: "Email", value: accountStore.email ?? "隠した Email または未提供")
-
-            if let displayName = accountStore.displayName {
-                accountRow(title: "名前", value: displayName)
-            }
         }
         .padding(.vertical, 8)
     }

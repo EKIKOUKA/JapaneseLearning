@@ -15,8 +15,6 @@ enum CreditPurchaseOutcome {
 final class AppleAccountStore {
     private enum Keys {
         static let userID = "apple.account.userID"
-        static let email = "apple.account.email"
-        static let displayName = "apple.account.displayName"
         static let wallet = "credits.localWallet.v1"
     }
 
@@ -34,8 +32,6 @@ final class AppleAccountStore {
     ]
 
     private(set) var userID: String?
-    private(set) var email: String?
-    private(set) var displayName: String?
     private(set) var credentialState: ASAuthorizationAppleIDProvider.CredentialState = .revoked
 
     private(set) var accountCredits: Int
@@ -51,8 +47,6 @@ final class AppleAccountStore {
         accountCredits = wallet?.balance ?? 100
 
         userID = UserDefaults.standard.string(forKey: Keys.userID)
-        email = UserDefaults.standard.string(forKey: Keys.email)
-        displayName = UserDefaults.standard.string(forKey: Keys.displayName)
 
         transactionUpdatesTask = Task { [weak self] in
             for await result in Transaction.updates {
@@ -140,8 +134,6 @@ final class AppleAccountStore {
         }
 
         userID = credential.user
-        email = credential.email ?? email
-        displayName = formattedName(credential.fullName) ?? displayName
         credentialState = .authorized
         persist()
     }
@@ -158,8 +150,6 @@ final class AppleAccountStore {
 
     func signOut() {
         userID = nil
-        email = nil
-        displayName = nil
         credentialState = .revoked
         clearPersistedData()
     }
@@ -172,22 +162,9 @@ final class AppleAccountStore {
 
     private func persist() {
         UserDefaults.standard.set(userID, forKey: Keys.userID)
-        UserDefaults.standard.set(email, forKey: Keys.email)
-        UserDefaults.standard.set(displayName, forKey: Keys.displayName)
     }
 
     private func clearPersistedData() {
-        [Keys.userID, Keys.email, Keys.displayName].forEach {
-            UserDefaults.standard.removeObject(forKey: $0)
-        }
-    }
-
-    private func formattedName(_ name: PersonNameComponents?) -> String? {
-        guard let name else { return nil }
-        let value = [name.familyName, name.givenName]
-            .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty }
-            .joined(separator: " ")
-        return value.isEmpty ? nil : value
+        UserDefaults.standard.removeObject(forKey: Keys.userID)
     }
 }

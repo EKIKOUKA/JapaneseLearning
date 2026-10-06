@@ -24,9 +24,6 @@ struct ChargeView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
                 VStack(alignment: .leading, spacing: 8) {
-                    Label("クレジットチャージ", systemImage: "creditcard.fill")
-                        .font(.title2.bold())
-
                     Text("購入するクレジット数を選択してください。")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
