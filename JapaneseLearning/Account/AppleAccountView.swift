@@ -49,7 +49,7 @@ struct AppleAccountView: View {
                 Button("刪除", role: .destructive) {
                     accountStore.deleteLocalAccountData()
                 }
-                Button("取消", role: .cancel) {}
+                Button("キャンセル", role: .cancel) {}
             } message: {
                 Text("この操作によると、もうアカウントの取り戻すことはできない")
             }
