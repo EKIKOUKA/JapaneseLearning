@@ -1,8 +1,10 @@
 import AuthenticationServices
+import CryptoKit
 import SwiftUI
 
 struct AppleAccountView: View {
     @Environment(AppleAccountStore.self) private var accountStore
+    @State private var rawNonce = ""
     @State private var showingDeleteConfirmation = false
 
     var body: some View {
@@ -16,21 +18,26 @@ struct AppleAccountView: View {
                     }
                 }
 
-                if accountStore.isSignedIn {
-                    Section("アカウント管理") {
-                        Button("ログアウト", role: .destructive) {
-                            accountStore.signOut()
-                        }
-
-                        Button("アカウント削除", role: .destructive) {
-                            showingDeleteConfirmation = true
-                        }
-                    }
-                }
-
                 Section("チャージ") {
                     NavigationLink("クレジットを購入") {
                         ChargeView()
+                    }
+                }
+
+                if accountStore.isSignedIn {
+                    Section("アカウント管理") {
+                        Button("ログアウト", role: .destructive) {
+                            Task { await accountStore.signOut() }
+                        }
+                        .disabled(accountStore.isManagingAccount)
+
+                        Button("アカウントを削除", role: .destructive) {
+                            showingDeleteConfirmation = true
+                        }
+                        .disabled(accountStore.isManagingAccount)
+                        if accountStore.isManagingAccount {
+                            ProgressView("処理中…")
+                        }
                     }
                 }
 
@@ -45,13 +52,21 @@ struct AppleAccountView: View {
             .task {
                 await accountStore.refreshCredentialState()
             }
-            .confirmationDialog("アカウントを削除しますか？", isPresented: $showingDeleteConfirmation) {
-                Button("刪除", role: .destructive) {
-                    accountStore.deleteLocalAccountData()
+            .confirmationDialog("アカウントを削除しますか？", isPresented: $showingDeleteConfirmation, titleVisibility: .visible) {
+                Button("アカウントを削除", role: .destructive) {
+                    Task { await accountStore.deleteAccount() }
                 }
                 Button("キャンセル", role: .cancel) {}
             } message: {
-                Text("この操作によると、もうアカウントの取り戻すことはできない")
+                Text("本アプリのアカウントとクレジット残高を削除し、Apple との連携を解除します。この操作は取り消せません。")
+            }
+            .alert("アカウント操作に失敗しました", isPresented: Binding(
+                get: { accountStore.signInError != nil },
+                set: { if !$0 { accountStore.clearSignInError() } }
+            )) {
+                Button("閉じる", role: .cancel) { accountStore.clearSignInError() }
+            } message: {
+                Text(accountStore.signInError ?? "")
             }
         }
     }
@@ -65,13 +80,21 @@ struct AppleAccountView: View {
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
 
-            SignInWithAppleButton(.signIn) { _ in
-            } onCompletion: { result in
-                accountStore.handleAuthorization(result)
-            }
+            SignInWithAppleButton(
+                .signIn,
+                onRequest: { request in
+                    rawNonce = Self.makeNonce()
+                    request.nonce = Self.hashedNonce(rawNonce)
+                },
+                onCompletion: { result in
+                    let nonce = Self.hashedNonce(rawNonce)
+                    Task { await accountStore.handleAuthorization(result, hashedNonce: nonce) }
+                }
+            )
             .signInWithAppleButtonStyle(.black)
             .frame(height: 48)
             .clipShape(RoundedRectangle(cornerRadius: 8))
+            .disabled(accountStore.isManagingAccount)
         }
         .padding(.vertical, 8)
     }
@@ -99,6 +122,17 @@ struct AppleAccountView: View {
                 .textSelection(.enabled)
         }
     }
+
+    private static func makeNonce(length: Int = 32) -> String {
+        let characters = Array("0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._")
+        return String((0..<length).compactMap { _ in characters.randomElement() })
+    }
+
+    private static func hashedNonce(_ nonce: String) -> String {
+        SHA256.hash(data: Data(nonce.utf8))
+            .map { String(format: "%02x", $0) }
+            .joined()
+    }
 }
 
 struct PrivacyPolicyView: View {
@@ -106,9 +140,10 @@ struct PrivacyPolicyView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
                 Text("プライバシー政策").font(.largeTitle.bold())
-                Text("最後更新：2026 年 9 月 30 日").foregroundStyle(.secondary)
+                Text("最終更新：2026 年 10 月 9 日").foregroundStyle(.secondary)
                 privacySection("はじめに", "シャドーイング（以下「本アプリ」）は、利用者のプライバシーを尊重します。本ポリシーでは、本アプリにおける情報の取り扱いについて説明します。")
                 privacySection("取得する情報", "本アプリは、基本的な学習機能の利用にあたり、氏名、住所、連絡先などの個人情報の登録を求めません。学習記録などの情報は、利用者の端末上で機能を提供するために使用されます。")
+                privacySection("Apple ログインとアカウント", "Apple ログインを利用する場合、Apple が発行したユーザー識別子、クレジット残高、ログイン情報をサーバーに保存します。Apple の更新トークンは暗号化して保存し、ログイン用トークンは端末の Keychain に、サーバーにはそのハッシュ値を保存します。ログイン状態に固定の有効期限はありません。アカウント画面から削除すると、Apple との連携を解除し、アカウント情報とすべてのログイン情報を削除します。")
                 privacySection("外部サービス", "本アプリでは、利用者が選択した動画を表示するために外部の動画サービスへアクセスする場合があります。外部サービスにおける情報の取り扱いについては、各サービスのプライバシーポリシーをご確認ください。")
                 privacySection("情報の共有", "本アプリは、法令に基づく場合を除き、利用者の個人情報を第三者へ販売、貸与、または共有しません。")
                 privacySection("ポリシーの変更", "本ポリシーは、必要に応じて変更されることがあります。重要な変更がある場合は、本ページでお知らせします。")

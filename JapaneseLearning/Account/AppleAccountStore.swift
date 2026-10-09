@@ -1,6 +1,7 @@
 import AuthenticationServices
 import Foundation
 import Observation
+import Security
 import StoreKit
 
 enum CreditPurchaseOutcome {
@@ -27,18 +28,20 @@ final class AppleAccountStore {
         "com.makoto.languagelearning.webview.credits.100": 100,
         "com.makoto.languagelearning.webview.credits.200": 200,
         "com.makoto.languagelearning.webview.credits.500": 500,
-        "com.makoto.languagelearning.webview.credits.1000": 1000,
-        "com.makoto.languagelearning.webview.credits.8964": 8964
+        "com.makoto.languagelearning.webview.credits.1000": 1000
     ]
 
     private(set) var userID: String?
     private(set) var credentialState: ASAuthorizationAppleIDProvider.CredentialState = .revoked
+    private(set) var signInError: String?
+    private(set) var isManagingAccount = false
 
     private(set) var accountCredits: Int
+    @ObservationIgnored private var sessionToken: String?
     @ObservationIgnored private var transactionUpdatesTask: Task<Void, Never>?
 
     var isSignedIn: Bool {
-        userID != nil && credentialState != .revoked && credentialState != .notFound
+        userID != nil && sessionToken != nil && credentialState != .revoked && credentialState != .notFound
     }
 
     init() {
@@ -47,6 +50,13 @@ final class AppleAccountStore {
         accountCredits = wallet?.balance ?? 100
 
         userID = UserDefaults.standard.string(forKey: Keys.userID)
+        sessionToken = AppleSessionKeychain.read()
+        if userID != nil, sessionToken != nil {
+            credentialState = .authorized
+        } else if userID == nil {
+            AppleSessionKeychain.delete()
+            sessionToken = nil
+        }
 
         transactionUpdatesTask = Task { [weak self] in
             for await result in Transaction.updates {
@@ -57,6 +67,43 @@ final class AppleAccountStore {
                 }
             }
         }
+    }
+
+    private struct AppleLoginRequest: Encodable {
+        let identityToken: String
+        let authorizationCode: String
+        let hashedNonce: String
+    }
+
+    private struct AppleLoginResponse: Decodable {
+        let appleUserID: String
+        let creditBalance: Int
+        let sessionToken: String
+    }
+
+    private struct AppleAccountProfile: Decodable {
+        let appleUserID: String
+        let creditBalance: Int
+    }
+
+    private func makeAppleLoginRequest(
+        from credential: ASAuthorizationAppleIDCredential,
+        hashedNonce: String
+    ) throws -> AppleLoginRequest {
+        guard
+            let tokenData = credential.identityToken,
+            let identityToken = String(data: tokenData, encoding: .utf8),
+            let codeData = credential.authorizationCode,
+            let authorizationCode = String(data: codeData, encoding: .utf8)
+        else {
+            throw URLError(.cannotDecodeContentData)
+        }
+
+        return AppleLoginRequest(
+            identityToken: identityToken,
+            authorizationCode: authorizationCode,
+            hashedNonce: hashedNonce
+        )
     }
 
     static var creditProductIDs: [String] {
@@ -127,37 +174,146 @@ final class AppleAccountStore {
         return .purchased(added: wasAlreadyApplied ? 0 : amount, balance: wallet.balance)
     }
 
-    func handleAuthorization(_ result: Result<ASAuthorization, Error>) {
+    func handleAuthorization(_ result: Result<ASAuthorization, Error>, hashedNonce: String) async {
+        guard !isManagingAccount else { return }
+        isManagingAccount = true
+        defer { isManagingAccount = false }
         guard case .success(let authorization) = result,
               let credential = authorization.credential as? ASAuthorizationAppleIDCredential else {
+            if case .failure(let error) = result,
+               (error as? ASAuthorizationError)?.code != .canceled {
+                signInError = error.localizedDescription
+            }
             return
         }
 
-        userID = credential.user
-        credentialState = .authorized
-        persist()
-    }
+        do {
+            let request = try makeAppleLoginRequest(from: credential, hashedNonce: hashedNonce)
 
-    func refreshCredentialState() async {
-        guard let userID else { return }
-
-        credentialState = await withCheckedContinuation { continuation in
-            ASAuthorizationAppleIDProvider().getCredentialState(forUserID: userID) { state, _ in
-                continuation.resume(returning: state)
+            let response: AppleLoginResponse = try await WorkersAPI.postForResponse(
+                "auth/apple_login",
+                body: request
+            )
+            guard AppleSessionKeychain.save(response.sessionToken) else {
+                try? await WorkersAPI.post(
+                    "auth/logout",
+                    body: EmptyRequest(),
+                    authorizationToken: response.sessionToken
+                )
+                throw URLError(.cannotWriteToFile)
             }
+
+            sessionToken = response.sessionToken
+            userID = response.appleUserID
+            accountCredits = response.creditBalance
+            credentialState = .authorized
+            signInError = nil
+            persist()
+        } catch {
+            signInError = error.localizedDescription
+            print("Apple login request failed:", error.localizedDescription)
         }
     }
 
-    func signOut() {
-        userID = nil
-        credentialState = .revoked
-        clearPersistedData()
+    func refreshCredentialState() async {
+        guard !isManagingAccount, let userID else { return }
+
+        do {
+            let state: ASAuthorizationAppleIDProvider.CredentialState = try await withCheckedThrowingContinuation { continuation in
+                ASAuthorizationAppleIDProvider().getCredentialState(forUserID: userID) { state, error in
+                    if let error {
+                        continuation.resume(throwing: error)
+                    } else {
+                        continuation.resume(returning: state)
+                    }
+                }
+            }
+            guard self.userID == userID, !isManagingAccount else { return }
+            if state == .revoked || state == .notFound {
+                clearLocalSession()
+                return
+            }
+            credentialState = state
+        } catch {
+            // A temporary Apple/network failure must not erase the saved session.
+            return
+        }
+
+        guard let sessionToken else { return }
+
+        do {
+            let profile: AppleAccountProfile = try await WorkersAPI.get(
+                "users",
+                authorizationToken: sessionToken
+            )
+            guard self.sessionToken == sessionToken, !isManagingAccount else { return }
+            self.userID = profile.appleUserID
+            accountCredits = profile.creditBalance
+            persist()
+        } catch {
+            guard self.sessionToken == sessionToken, !isManagingAccount else { return }
+            if let apiError = error as? WorkersAPIError, apiError.statusCode == 401 {
+                clearLocalSession()
+            }
+            signInError = error.localizedDescription
+        }
+    }
+
+    func signOut() async {
+        guard !isManagingAccount else { return }
+        isManagingAccount = true
+        defer { isManagingAccount = false }
+        if let sessionToken {
+            try? await WorkersAPI.post(
+                "auth/logout",
+                body: EmptyRequest(),
+                authorizationToken: sessionToken
+            )
+        }
+        clearLocalSession()
+    }
+
+    func deleteAccount() async {
+        guard !isManagingAccount else { return }
+        guard let sessionToken else {
+            signInError = "アカウントを削除するには、Apple でログインしてください。"
+            return
+        }
+
+        isManagingAccount = true
+        defer { isManagingAccount = false }
+
+        do {
+            try await WorkersAPI.post(
+                "auth/delete_account",
+                body: EmptyRequest(),
+                authorizationToken: sessionToken
+            )
+            deleteLocalAccountData()
+            signInError = nil
+        } catch {
+            signInError = error.localizedDescription
+        }
+    }
+
+    func clearSignInError() {
+        signInError = nil
     }
 
     func deleteLocalAccountData() {
-        signOut()
+        clearLocalSession()
+        UserDefaults.standard.removeObject(forKey: Keys.wallet)
+        accountCredits = 100
         UserDefaults.standard.removeObject(forKey: "cached_videos")
         UserDefaults.standard.removeObject(forKey: "cached_playlist_categories")
+    }
+
+    private func clearLocalSession() {
+        userID = nil
+        sessionToken = nil
+        credentialState = .revoked
+        AppleSessionKeychain.delete()
+        clearPersistedData()
     }
 
     private func persist() {
@@ -166,5 +322,47 @@ final class AppleAccountStore {
 
     private func clearPersistedData() {
         UserDefaults.standard.removeObject(forKey: Keys.userID)
+    }
+}
+
+private struct EmptyRequest: Encodable {}
+
+private enum AppleSessionKeychain {
+    private static let account = "apple.account.sessionToken"
+    private static var service: String { Bundle.main.bundleIdentifier ?? "JapaneseLearning" }
+
+    static func read() -> String? {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: account,
+            kSecReturnData as String: true,
+            kSecMatchLimit as String: kSecMatchLimitOne,
+        ]
+        var result: CFTypeRef?
+        guard SecItemCopyMatching(query as CFDictionary, &result) == errSecSuccess,
+              let data = result as? Data else { return nil }
+        return String(data: data, encoding: .utf8)
+    }
+
+    static func save(_ token: String) -> Bool {
+        delete()
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: account,
+            kSecValueData as String: Data(token.utf8),
+            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
+        ]
+        return SecItemAdd(query as CFDictionary, nil) == errSecSuccess
+    }
+
+    static func delete() {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: account,
+        ]
+        SecItemDelete(query as CFDictionary)
     }
 }

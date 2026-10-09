@@ -11,29 +11,62 @@ enum WorkersAPI {
     private static let baseURL = URL(string: Config.CloudflareWorkersURL)!
 
     // MARK: - GET
-    static func get<T: Decodable>(_ path: String, queryItems: [URLQueryItem]? = nil) async throws -> T {
+    static func get<T: Decodable>(
+        _ path: String,
+        queryItems: [URLQueryItem]? = nil,
+        authorizationToken: String? = nil
+    ) async throws -> T {
         var url = baseURL.appending(path: path)
         if let queryItems {
             url = url.appending(queryItems: queryItems)
         }
 
-        let (data, response) = try await URLSession.shared.data(from: url)
+        var request = URLRequest(url: url)
+        if let authorizationToken {
+            request.setValue("Bearer \(authorizationToken)", forHTTPHeaderField: "Authorization")
+        }
+        let (data, response) = try await URLSession.shared.data(for: request)
         try response.validateHTTPStatus(data)
 
         return try JSONDecoder().decode(T.self, from: data)
     }
 
     // MARK: - POST (Encodable Body)
-    static func post<T: Encodable>(_ path: String, body: T) async throws {
+    static func post<T: Encodable>(
+        _ path: String,
+        body: T,
+        authorizationToken: String? = nil
+    ) async throws {
         let url = baseURL.appending(path: path)
 
-        let request = URLRequest(url: url)
+        var request = URLRequest(url: url)
             .setMethod("POST")
             .setJSONBody(body)
+        if let authorizationToken {
+            request.setValue("Bearer \(authorizationToken)", forHTTPHeaderField: "Authorization")
+        }
 
         let (data, response) = try await URLSession.shared.data(for: request)
 
         try response.validateHTTPStatus(data)
+    }
+
+    static func postForResponse<Response: Decodable, Body: Encodable>(
+        _ path: String,
+        body: Body,
+        authorizationToken: String? = nil
+    ) async throws -> Response {
+        let url = baseURL.appending(path: path)
+        var request = URLRequest(url: url)
+            .setMethod("POST")
+            .setJSONBody(body)
+        if let authorizationToken {
+            request.setValue("Bearer \(authorizationToken)", forHTTPHeaderField: "Authorization")
+        }
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+        try response.validateHTTPStatus(data)
+        return try JSONDecoder().decode(Response.self, from: data)
     }
 
     // MARK: - POST (Raw Data)
@@ -97,12 +130,29 @@ extension URLResponse {
 
         guard (200...299).contains(httpResponse.statusCode) else {
             print("❌ Cloudflare Workers HTTP Error Code: \(httpResponse.statusCode)")
+            let message = (try? JSONDecoder().decode(WorkersAPIErrorBody.self, from: data).error)
+            throw WorkersAPIError.httpStatus(httpResponse.statusCode, message)
+        }
+    }
+}
 
-            if let body = String(data: data, encoding: .utf8), !body.isEmpty {
-                print("❌ Response Body: \(body)")
-            }
+private struct WorkersAPIErrorBody: Decodable {
+    let error: String?
+}
 
-            throw URLError(.badServerResponse)
+enum WorkersAPIError: LocalizedError {
+    case httpStatus(Int, String?)
+
+    var statusCode: Int {
+        switch self {
+        case .httpStatus(let status, _): return status
+        }
+    }
+
+    var errorDescription: String? {
+        switch self {
+        case .httpStatus(_, let message):
+            return message ?? "サーバーとの通信に失敗しました。"
         }
     }
 }

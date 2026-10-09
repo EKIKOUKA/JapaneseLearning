@@ -18,7 +18,7 @@ struct ChargeView: View {
     @State private var purchaseAlertTitle = ""
     @State private var purchaseAlertMessage = ""
 
-    private let creditOptions = [100, 200, 500, 1000, 8964]
+    private let creditOptions = [100, 200, 500, 1000]
 
     var body: some View {
         ScrollView {
@@ -113,13 +113,16 @@ struct ChargeView: View {
         defer { isLoadingProducts = false }
 
         do {
-            products = try await Product.products(for: AppleAccountStore.creditProductIDs)
+            let fetchedProducts = try await Product.products(for: AppleAccountStore.creditProductIDs)
+            print("StoreKit raw products:", fetchedProducts.map { "\($0.id) [\($0.type)]" })
+
+            products = fetchedProducts
                 .filter { $0.type == .consumable }
                 .sorted {
                 (accountStore.credits(for: $0.id) ?? 0) <
                     (accountStore.credits(for: $1.id) ?? 0)
                 }
-            print("products: ", products)
+            print("StoreKit consumable products:", products.map { "\($0.id) [\($0.type)]" })
         } catch {
             products = []
             purchaseAlertTitle = "商品を読み込めませんでした"

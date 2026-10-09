@@ -73,21 +73,6 @@
       "productID" : "com.makoto.languagelearning.webview.credits.1000",
       "referenceName" : "1000 クレジット",
       "type" : "Consumable"
-    },
-    {
-      "displayPrice" : "8964",
-      "familyShareable" : false,
-      "internalID" : "A6D18964",
-      "localizations" : [
-        {
-          "description" : "8964クレジットを追加します。",
-          "displayName" : "8964クレジット",
-          "locale" : "ja"
-        }
-      ],
-      "productID" : "com.makoto.languagelearning.webview.credits.8964",
-      "referenceName" : "8964 クレジット",
-      "type" : "Consumable"
     }
   ],
   "settings" : {
