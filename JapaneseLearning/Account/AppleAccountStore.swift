@@ -300,6 +300,22 @@ final class AppleAccountStore {
         signInError = nil
     }
 
+    func requestAIExplanation(_ question: AIExplanationQuestion) async throws -> AIExplanationResponse {
+        guard isSignedIn, let sessionToken else {
+            throw WorkersAPIError.httpStatus(401, "アカウントタブから Apple でログインしてください。")
+        }
+        let response: AIExplanationResponse = try await WorkersAPI.postForResponse(
+            "request_ai_question",
+            body: AIExplanationRequest(question: question.text, mode: question.mode, request_id: question.id.uuidString),
+            authorizationToken: sessionToken
+        )
+        // Do not apply a response to an account that signed out during the request.
+        if self.sessionToken == sessionToken {
+            accountCredits = response.creditBalance
+        }
+        return response
+    }
+
     func deleteLocalAccountData() {
         clearLocalSession()
         UserDefaults.standard.removeObject(forKey: Keys.wallet)

@@ -73,6 +73,7 @@ final class PlayerViewManager {
         let word: String
     }
     var activeLookUpWordIdentifiable: LookUpWordIdentifiable? = nil
+    var activeAIQuestion: AIExplanationQuestion?
 
     // Private Observers
     private var playbackObservationTask: Task<Void, Never>?
@@ -1025,8 +1026,15 @@ final class PlayerViewManager {
                 self.speakWork(word)
             }
         } else {
-            UINotificationFeedbackGenerator().notificationOccurred(.warning)
+            showAIExplanation(word, mode: .word)
         }
+    }
+
+    func showAIExplanation(_ text: String, mode: AIExplanationMode) {
+        guard activeAIQuestion == nil else { return }
+        pausePlayer()
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        activeAIQuestion = AIExplanationQuestion(text: text, mode: mode)
     }
 
     func speakWork(_ word: String) {

@@ -135,6 +135,11 @@ struct VideoDetailsView: View {
                 .presentationDragIndicator(.visible)
                 .navigationTransition(.crossFade)
         }
+        .sheet(item: $playerVM.activeAIQuestion) { question in
+            AIExplanationView(question: question)
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+        }
         .onDisappear {
             Task {
                 await playerVM.endVideo(videoID: videoID)
@@ -404,6 +409,13 @@ struct SubtitlesRowView: View, Equatable {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .contentShape(Rectangle())
+        .contextMenu {
+            Button {
+                playerVM.showAIExplanation(line.text, mode: .sentence)
+            } label: {
+                Label("AI 解説（1 クレジット）", systemImage: "sparkles")
+            }
+        }
     }
 
     private func triggerHighlight() {
