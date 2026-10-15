@@ -1,3 +1,10 @@
+//
+//  AppleAccountStore.swift
+//  JapaneseLearning
+//
+//  Created by Makoto on 2026/10/05.
+//
+
 import AuthenticationServices
 import CryptoKit
 import Foundation

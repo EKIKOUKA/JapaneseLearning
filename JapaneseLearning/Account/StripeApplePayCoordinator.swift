@@ -1,3 +1,10 @@
+//
+//  StripeApplePayCoordinator.swift
+//  JapaneseLearning
+//
+//  Created by Makoto on 2026/10/15.
+//
+
 import PassKit
 @preconcurrency import StripeApplePay
 import SwiftUI
