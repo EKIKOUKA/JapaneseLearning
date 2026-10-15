@@ -58,8 +58,7 @@ final class StripeApplePayCoordinator: NSObject, ApplePayContextDelegate {
         return try await accountStore.createStripeTestIntent(credits: credits, requestID: requestID).clientSecret
     }
 
-    func applePayContext(_ context: STPApplePayContext, didCompleteWith status: STPApplePayContext.PaymentStatus,
-                         error: Error?) {
+    func applePayContext(_ context: STPApplePayContext, didCompleteWith status: STPApplePayContext.PaymentStatus, error: Error?) {
         switch status {
             case .success:
                 Task {
