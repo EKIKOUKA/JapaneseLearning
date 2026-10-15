@@ -9,14 +9,6 @@ import SwiftUI
 import Observation
 
 struct AppSettings: Codable {
-    // Grammar
-    var showGrammarListAddButton: Bool = false
-    var showGrammarListCount: Bool = true
-    var showGrammarListAllItemTag: Bool = false
-    var showGrammarEditorButton: Bool = true
-    var showGrammarListItemImportantImage: Bool = true
-    var showGrammarListItemSwipeActions: Bool = true
-
     var Nationality: String = "JP"
 
     // Shadowing

@@ -81,11 +81,6 @@ struct VideoListView: View {
                     }
                     .swipeActionsContainer_IfAvailable()
 //                    .swipeActionsContainer()
-                    .videoReorderContainerIfAvailable(videos: filteredVideos) { reordered in
-                        if let selectedCategory {
-                            store.reorderVideos(reordered, for: selectedCategory)
-                        }
-                    }
                     .contentMargins(.top, 56, for: .scrollIndicators)
                 }
             }

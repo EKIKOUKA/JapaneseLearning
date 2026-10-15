@@ -29,12 +29,12 @@ struct AppleAccountView: View {
                         Button("ログアウト", role: .destructive) {
                             Task { await accountStore.signOut() }
                         }
-                        .disabled(accountStore.isManagingAccount)
+                        .disabled(accountStore.isAccountOperationBlocked)
 
                         Button("アカウントを削除", role: .destructive) {
                             showingDeleteConfirmation = true
                         }
-                        .disabled(accountStore.isManagingAccount)
+                        .disabled(accountStore.isAccountOperationBlocked)
                         if accountStore.isManagingAccount {
                             ProgressView("処理中…")
                         }
@@ -68,6 +68,14 @@ struct AppleAccountView: View {
             } message: {
                 Text(accountStore.signInError ?? "")
             }
+            .alert("アカウントを削除しました", isPresented: Binding(
+                get: { accountStore.accountNotice != nil },
+                set: { if !$0 { accountStore.clearAccountNotice() } }
+            )) {
+                Button("閉じる", role: .cancel) { accountStore.clearAccountNotice() }
+            } message: {
+                Text(accountStore.accountNotice ?? "")
+            }
         }
     }
 
@@ -94,7 +102,7 @@ struct AppleAccountView: View {
             .signInWithAppleButtonStyle(.black)
             .frame(height: 48)
             .clipShape(RoundedRectangle(cornerRadius: 8))
-            .disabled(accountStore.isManagingAccount)
+            .disabled(accountStore.isAccountOperationBlocked)
         }
         .padding(.vertical, 8)
     }
@@ -123,6 +131,7 @@ struct AppleAccountView: View {
         }
     }
 
+    /// 認証のたびに新しい nonce を生成し、Apple の JWT に同じハッシュ値が含まれることを確認する。
     private static func makeNonce(length: Int = 32) -> String {
         let characters = Array("0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._")
         return String((0..<length).compactMap { _ in characters.randomElement() })

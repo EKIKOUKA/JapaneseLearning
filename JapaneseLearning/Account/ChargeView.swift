@@ -10,7 +10,7 @@ import StoreKit
 
 struct ChargeView: View {
     @Environment(AppleAccountStore.self) private var accountStore
-    @State private var selectedCredits = 100
+    @State private var selectedCredits = 0
     @State private var products: [Product] = []
     @State private var isLoadingProducts = true
     @State private var isPurchasing = false
@@ -18,7 +18,11 @@ struct ChargeView: View {
     @State private var purchaseAlertTitle = ""
     @State private var purchaseAlertMessage = ""
 
-    private let creditOptions = [100, 200, 500, 1000]
+    @State private var stripeConfiguration: StripeTestConfiguration?
+    @State private var stripeSetupMessage: String?
+    @State private var stripeCoordinator = StripeApplePayCoordinator()
+
+    private var creditOptions: [Int] { accountStore.creditProducts.map(\.credits) }
 
     var body: some View {
         ScrollView {
@@ -59,6 +63,7 @@ struct ChargeView: View {
                         if isPurchasing {
                             ProgressView().tint(.white)
                         }
+
                         Text(purchaseButtonTitle)
                     }
                     .font(.headline)
@@ -66,7 +71,33 @@ struct ChargeView: View {
                     .padding(.vertical, 15)
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(isPurchasing || isLoadingProducts || selectedProduct == nil)
+                .disabled(isPurchasing || isLoadingProducts || selectedProduct == nil || accountStore.isAccountOperationBlocked)
+
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Apple Pay（Stripe テスト）").font(.headline)
+                    if let configuration = stripeConfiguration,
+                       let option = configuration.options.first(where: { $0.credits == selectedCredits }) {
+                        Text("\(option.credits) クレジット · ¥\(option.amount)（テスト決済）")
+                            .font(.subheadline)
+                        if StripeApplePayCoordinator.isSupported {
+                            StripeApplePayButton {
+                                stripeCoordinator.start(configuration: configuration, credits: selectedCredits,
+                                                        accountStore: accountStore) { outcome in
+                                    showPurchaseOutcome(outcome)
+                                }
+                            }
+                            .frame(height: 48)
+                            .disabled(accountStore.isAccountOperationBlocked)
+                        } else {
+                            Text("Apple Pay 対応端末で Wallet にカードを追加してください。")
+                                .font(.footnote).foregroundStyle(.secondary)
+                        }
+                    } else {
+                        Text(stripeSetupMessage ?? "Stripe の設定を読み込み中…")
+                            .font(.footnote).foregroundStyle(.secondary)
+                        Button("設定を再読み込み") { Task { await loadStripeConfiguration() } }
+                    }
+                }
 
                 if isLoadingProducts {
                     ProgressView("価格を読み込み中…")
@@ -77,7 +108,7 @@ struct ChargeView: View {
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, alignment: .center)
                 } else {
-                    Text("購入はApp Storeを通じて行われます。")
+                    Text("上の購入ボタンでは App Store を通じて決済されます。")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, alignment: .center)
@@ -89,6 +120,7 @@ struct ChargeView: View {
         .navigationBarTitleDisplayMode(.inline)
         .task {
             await loadProducts()
+            await loadStripeConfiguration()
         }
         .alert(purchaseAlertTitle, isPresented: $showingPurchaseAlert) {
             Button("OK", role: .cancel) {}
@@ -108,12 +140,15 @@ struct ChargeView: View {
         return "\(selectedCredits.formatted())クレジットを購入 · \(selectedProduct.displayPrice)"
     }
 
+    /// 価格は StoreKit がストア地域に応じて返す表示価格を使う。アプリ内の固定値で請求しない。
     private func loadProducts() async {
         isLoadingProducts = true
         defer { isLoadingProducts = false }
 
         do {
-            let fetchedProducts = try await Product.products(for: AppleAccountStore.creditProductIDs)
+            try await accountStore.loadCreditProducts()
+            if !creditOptions.contains(selectedCredits) { selectedCredits = creditOptions.first ?? 0 }
+            let fetchedProducts = try await Product.products(for: accountStore.creditProductIDs)
             print("StoreKit raw products:", fetchedProducts.map { "\($0.id) [\($0.type)]" })
 
             products = fetchedProducts
@@ -131,12 +166,17 @@ struct ChargeView: View {
         }
     }
 
+    /// この画面は結果の表示を担当し、検証・残高反映・再送・finish は Store に集約する。
     private func purchaseSelectedCredits() async {
         guard let selectedProduct else { return }
         isPurchasing = true
         defer { isPurchasing = false }
 
-        switch await accountStore.purchaseCredits(selectedProduct) {
+        showPurchaseOutcome(await accountStore.purchaseCredits(selectedProduct))
+    }
+
+    private func showPurchaseOutcome(_ outcome: CreditPurchaseOutcome) {
+        switch outcome {
             case .purchased(let added, let balance):
                 purchaseAlertTitle = "チャージしました"
                 purchaseAlertMessage = added > 0
@@ -156,9 +196,24 @@ struct ChargeView: View {
         }
     }
 
+    private func loadStripeConfiguration() async {
+        do {
+            stripeConfiguration = try await accountStore.stripeTestConfiguration()
+            stripeSetupMessage = nil
+            _ = try await accountStore.reconcileStripeTestPayments()
+        } catch {
+            stripeSetupMessage = error.localizedDescription
+            if stripeConfiguration != nil {
+                purchaseAlertTitle = "支払いの確認が必要です"
+                purchaseAlertMessage = "前回のテスト決済を確認できませんでした。時間をおいて設定を再読み込みしてください。"
+                showingPurchaseAlert = true
+            }
+        }
+    }
+
     private func creditOption(_ credits: Int) -> some View {
         let isSelected = selectedCredits == credits
-        let productID = AppleAccountStore.productID(for: credits)
+        let productID = accountStore.productID(for: credits)
         let price = productID.flatMap { id in products.first { $0.id == id }?.displayPrice }
 
         return Button {

@@ -80,28 +80,6 @@ extension Character {
     }
 }
 
-extension Array {
-    @available(iOS 27.0, *)
-    mutating func apply<CollectionID: Hashable & Sendable>(
-        difference: ReorderDifference<Element.ID, CollectionID>
-    ) where Element: Identifiable, Element.ID: Sendable {
-        guard let sourceIndex = firstIndex(where: { $0.id == difference.sources[0] }) else { return }
-        let movedItem = remove(at: sourceIndex)
-
-        var destination: Int
-
-        switch difference.destination.position {
-            case let .before(value):
-                guard let index = firstIndex(where: { $0.id == value }) else { return }
-                destination = index
-            case .end:
-                destination = endIndex
-        }
-
-        insert(movedItem, at: destination)
-    }
-}
-
 extension View {
     @ViewBuilder
     func toolbarMinimizationBehaviorIfAvailable() -> some View {
@@ -168,22 +146,6 @@ extension View {
     func swipeActionsContainer_IfAvailable() -> some View {
         if #available(iOS 27.0, *) {
             self.swipeActionsContainer()
-        } else {
-            self
-        }
-    }
-    
-    @ViewBuilder
-    func videoReorderContainerIfAvailable(
-        videos: [VideoItem],
-        move: @escaping ([VideoItem]) -> Void
-    ) -> some View {
-        if #available(iOS 27.0, *) {
-            self.reorderContainer(for: VideoItem.self) { difference in
-                var reordered = videos
-                reordered.apply(difference: difference)
-                move(reordered)
-            }
         } else {
             self
         }

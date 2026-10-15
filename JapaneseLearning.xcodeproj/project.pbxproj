@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		0EEFE0292FEFD02500BFC25F /* UtilityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EEFE0282FEFD02500BFC25F /* UtilityTests.swift */; };
+		A10203040506070809101112 /* StripeApplePay in Frameworks */ = {isa = PBXBuildFile; productRef = A10203040506070809101113 /* StripeApplePay */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -21,7 +22,6 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		0E0640583073C5DE002EEB01 /* JapaneseLearning-Local.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = "JapaneseLearning-Local.storekit"; sourceTree = "<group>"; };
 		0E63A3F030052DCD0026C378 /* VideoStatusExtension */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = VideoStatusExtension; sourceTree = "<group>"; };
 		0EDB25B82FE449FD0091E0BF /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		0EDB25BA2FE449FD0091E0BF /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
@@ -64,6 +64,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A10203040506070809101112 /* StripeApplePay in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -90,7 +91,6 @@
 		7FF22E852ED7EC6600603529 = {
 			isa = PBXGroup;
 			children = (
-				0E0640583073C5DE002EEB01 /* JapaneseLearning-Local.storekit */,
 				0E63A3F030052DCD0026C378 /* VideoStatusExtension */,
 				7FF22E902ED7EC6600603529 /* JapaneseLearning */,
 				7F086B992F6ABDE600288521 /* README.md */,
@@ -141,6 +141,7 @@
 			);
 			name = JapaneseLearning;
 			packageProductDependencies = (
+				A10203040506070809101113 /* StripeApplePay */,
 			);
 			productName = JapaneseGrammar;
 			productReference = 7F4336D12F70600400783EE3 /* JapaneseLearning.app */;
@@ -175,6 +176,7 @@
 			mainGroup = 7FF22E852ED7EC6600603529;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
+				A10203040506070809101114 /* XCRemoteSwiftPackageReference "stripe-ios-spm" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 7FF22E852ED7EC6600603529;
@@ -541,6 +543,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		A10203040506070809101114 /* XCRemoteSwiftPackageReference "stripe-ios-spm" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/stripe/stripe-ios-spm";
+			requirement = {
+				kind = exactVersion;
+				version = 26.9.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		A10203040506070809101113 /* StripeApplePay */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A10203040506070809101114 /* XCRemoteSwiftPackageReference "stripe-ios-spm" */;
+			productName = StripeApplePay;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 7FF22E862ED7EC6600603529 /* Project object */;
 }

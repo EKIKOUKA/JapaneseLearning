@@ -80,8 +80,7 @@ struct ContentView: View {
                 return
             }
 
-            navigationStore.selectedTab = 0
-            navigationStore.quickActionTarget = .resumeVideo(id: videoID)
+            navigationStore.resumeVideo(id: videoID)
         }
     }
 }

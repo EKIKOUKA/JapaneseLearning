@@ -13,8 +13,9 @@ struct VideoSheetDestination: Identifiable {
     let dismissesToMiniPlayer: Bool
 }
 
+@MainActor
 @Observable
-class AppNavigationStore {
+final class AppNavigationStore {
     static let shared = AppNavigationStore()
 
     var quickActionTarget: QuickActionTarget?
@@ -23,6 +24,14 @@ class AppNavigationStore {
     var presentedVideo: VideoSheetDestination?
 
     private init() {}
+
+    /// 外部からの動画遷移はミニプレイヤーの遷移元を引き継がない。
+    func resumeVideo(id: String) {
+        guard !id.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        selectedTab = 0
+        videoTransitionSourceID = nil
+        quickActionTarget = .resumeVideo(id: id)
+    }
 
     func clearTarget() {
         quickActionTarget = nil

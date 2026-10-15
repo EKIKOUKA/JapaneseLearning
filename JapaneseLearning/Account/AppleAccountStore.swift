@@ -1,4 +1,5 @@
 import AuthenticationServices
+import CryptoKit
 import Foundation
 import Observation
 import Security
@@ -16,38 +17,35 @@ enum CreditPurchaseOutcome {
 final class AppleAccountStore {
     private enum Keys {
         static let userID = "apple.account.userID"
-        static let wallet = "credits.localWallet.v1"
     }
-
-    private struct WalletState: Codable {
-        var balance = 100
-        var processedTransactionIDs = Set<UInt64>()
-    }
-
-    private static let creditAmountsByProductID: [String: Int] = [
-        "com.makoto.languagelearning.webview.credits.100": 100,
-        "com.makoto.languagelearning.webview.credits.200": 200,
-        "com.makoto.languagelearning.webview.credits.500": 500,
-        "com.makoto.languagelearning.webview.credits.1000": 1000
-    ]
 
     private(set) var userID: String?
     private(set) var credentialState: ASAuthorizationAppleIDProvider.CredentialState = .revoked
     private(set) var signInError: String?
+    private(set) var accountNotice: String?
     private(set) var isManagingAccount = false
+    private(set) var isPurchasingCredits = false
+    private(set) var isApplyingCreditTransactions = false
+
+    // 購入確認・残高反映中はアカウントを固定し、途中のログアウトや退会を防ぐ。
+    var isAccountOperationBlocked: Bool {
+        isManagingAccount || isPurchasingCredits || isApplyingCreditTransactions
+    }
 
     private(set) var accountCredits: Int
+    @ObservationIgnored private var balanceRevision = 0
+    @ObservationIgnored private var creditTransactionTaskID: UUID?
     @ObservationIgnored private var sessionToken: String?
+    @ObservationIgnored private var creditTransactionTask: Task<CreditPurchaseOutcome, Never>?
     @ObservationIgnored private var transactionUpdatesTask: Task<Void, Never>?
 
     var isSignedIn: Bool {
         userID != nil && sessionToken != nil && credentialState != .revoked && credentialState != .notFound
     }
 
+    /// Keychain には本アプリの session のみ保存する。Apple の refresh token と残高はサーバーで管理する。
     init() {
-        let walletData = UserDefaults.standard.data(forKey: Keys.wallet)
-        let wallet = walletData.flatMap { try? JSONDecoder().decode(WalletState.self, from: $0) }
-        accountCredits = wallet?.balance ?? 100
+        accountCredits = 0
 
         userID = UserDefaults.standard.string(forKey: Keys.userID)
         sessionToken = AppleSessionKeychain.read()
@@ -59,6 +57,8 @@ final class AppleAccountStore {
         }
 
         transactionUpdatesTask = Task { [weak self] in
+            await self?.retryUnfinishedCreditTransactions()
+
             for await result in Transaction.updates {
                 guard let self else { return }
                 let outcome = await self.processCreditTransaction(result)
@@ -69,23 +69,7 @@ final class AppleAccountStore {
         }
     }
 
-    private struct AppleLoginRequest: Encodable {
-        let identityToken: String
-        let authorizationCode: String
-        let hashedNonce: String
-    }
-
-    private struct AppleLoginResponse: Decodable {
-        let appleUserID: String
-        let creditBalance: Int
-        let sessionToken: String
-    }
-
-    private struct AppleAccountProfile: Decodable {
-        let appleUserID: String
-        let creditBalance: Int
-    }
-
+    /// Apple の認証結果をサーバーに送る。端末から送られた user ID だけでは本人と判断しない。
     private func makeAppleLoginRequest(
         from credential: ASAuthorizationAppleIDCredential,
         hashedNonce: String
@@ -106,25 +90,72 @@ final class AppleAccountStore {
         )
     }
 
-    static var creditProductIDs: [String] {
-        creditAmountsByProductID.keys.sorted()
-    }
+    private(set) var creditProducts: [CreditProduct] = []
 
-    static func productID(for credits: Int) -> String? {
-        creditAmountsByProductID.first(where: { $0.value == credits })?.key
+    var creditProductIDs: [String] { creditProducts.map(\.appStoreProductID) }
+
+    func productID(for credits: Int) -> String? {
+        creditProducts.first(where: { $0.credits == credits })?.appStoreProductID
     }
 
     func credits(for productID: String) -> Int? {
-        Self.creditAmountsByProductID[productID]
+        creditProducts.first(where: { $0.appStoreProductID == productID })?.credits
     }
 
+    func loadCreditProducts() async throws {
+        let catalog: CreditProductCatalog = try await WorkersAPI.get("credit_products")
+        creditProducts = catalog.products
+    }
+
+    // Stripe はテスト専用。Release では購入経路自体を含めない。
+    func beginStripeTestPurchase() -> Bool {
+        guard isSignedIn, !isAccountOperationBlocked else { return false }
+        isPurchasingCredits = true
+        return true
+    }
+
+    func endStripeTestPurchase() { isPurchasingCredits = false }
+
+    func stripeTestConfiguration() async throws -> StripeTestConfiguration {
+        guard let sessionToken, isSignedIn else { throw URLError(.userAuthenticationRequired) }
+        return try await WorkersAPI.postForResponse("payments/stripe/config", body: [String: String](),
+                                                     authorizationToken: sessionToken)
+    }
+
+    func createStripeTestIntent(credits: Int, requestID: String) async throws -> StripeTestIntent {
+        guard let sessionToken, isSignedIn else { throw URLError(.userAuthenticationRequired) }
+        return try await WorkersAPI.postForResponse("payments/stripe/create",
+            body: StripeTestCreateRequest(credits: credits, requestID: requestID), authorizationToken: sessionToken)
+    }
+
+    /// 再起動・通信断の後も Stripe の確定状態から復旧する。端末側で残高を足し算しない。
+    func reconcileStripeTestPayments() async throws -> CreditChargeResponse {
+        guard let sessionToken, isSignedIn else { throw URLError(.userAuthenticationRequired) }
+        let initialBalanceRevision = balanceRevision
+        let response: CreditChargeResponse = try await WorkersAPI.postForResponse("payments/stripe/reconcile",
+            body: [String: String](), authorizationToken: sessionToken)
+        if self.sessionToken == sessionToken, balanceRevision == initialBalanceRevision {
+            setCreditBalance(response.creditBalance)
+        }
+        return response
+    }
+
+    /// appAccountToken で購入を現在のアカウントに紐付ける。.pending は承認待ちで、まだ残高には反映しない。
     func purchaseCredits(_ product: Product) async -> CreditPurchaseOutcome {
+        guard isSignedIn, let userID else {
+            return .failed("チャージするには、Apple でログインしてください。")
+        }
+        guard !isAccountOperationBlocked else {
+            return .failed("アカウントまたは購入を処理中です。完了してから再度お試しください。")
+        }
         guard credits(for: product.id) != nil, product.type == .consumable else {
             return .failed("選択した商品を確認できませんでした。")
         }
 
+        isPurchasingCredits = true
+        defer { isPurchasingCredits = false }
         do {
-            switch try await product.purchase() {
+            switch try await product.purchase(options: [.appAccountToken(Self.creditAccountToken(for: userID))]) {
                 case .success(let verificationResult):
                     return await processCreditTransaction(verificationResult)
                 case .pending:
@@ -139,6 +170,8 @@ final class AppleAccountStore {
         }
     }
 
+    /// 端末の StoreKit 検証に加え、サーバーでも JWS を検証し、取引 ID で二重付与を防ぐ。
+    /// DB への付与確認後にだけ finish する。通信失敗時は未完了のまま残して再送する。
     private func processCreditTransaction(
         _ verificationResult: VerificationResult<Transaction>
     ) async -> CreditPurchaseOutcome {
@@ -146,34 +179,76 @@ final class AppleAccountStore {
             return .failed("Appleによる購入の検証に失敗しました。")
         }
 
-        guard let amount = credits(for: transaction.productID),
-              transaction.productType == .consumable else {
+        // 未完了取引は商品一覧の取得前にも届く。所属商品の最終判定はサーバーで行う。
+        guard transaction.productType == .consumable else {
             return .failed("購入商品がクレジット商品と一致しません。")
         }
 
-        var wallet = UserDefaults.standard.data(forKey: Keys.wallet)
-            .flatMap { try? JSONDecoder().decode(WalletState.self, from: $0) }
-            ?? WalletState()
-
-        let wasAlreadyApplied = wallet.processedTransactionIDs.contains(transaction.id)
-        if !wasAlreadyApplied {
-            wallet.processedTransactionIDs.insert(transaction.id)
-            wallet.balance += amount
-
-            do {
-                let data = try JSONEncoder().encode(wallet)
-                UserDefaults.standard.set(data, forKey: Keys.wallet)
-            } catch {
-                return .failed("購入情報を端末に保存できませんでした。")
+        // purchase()・updates・unfinished に同じ取引が届くため、直列化し、サーバーでも重複を排除する。
+        let taskID = UUID()
+        creditTransactionTaskID = taskID
+        isApplyingCreditTransactions = true
+        let previous = creditTransactionTask
+        let task = Task { [weak self] () -> CreditPurchaseOutcome in
+            if let previous { _ = await previous.value }
+            guard let self, self.isSignedIn, let sessionToken = self.sessionToken else {
+                return .failed("購入は保留されています。Apple でログインすると再度反映されます。")
             }
 
-            accountCredits = wallet.balance
+            do {
+                let response: CreditChargeResponse = try await WorkersAPI.postForResponse(
+                    "user/credit_charge",
+                    body: CreditChargeRequest(signedTransaction: verificationResult.jwsRepresentation),
+                    authorizationToken: sessionToken
+                )
+
+                if self.sessionToken == sessionToken {
+                    self.setCreditBalance(response.creditBalance)
+                }
+                // 通信失敗時に finish しないことで、次回起動・ログイン時の再送を可能にする。
+                await transaction.finish()
+
+                return .purchased(added: response.addedCredits, balance: response.creditBalance)
+            } catch {
+                return .failed("購入の反映に失敗しました。再接続後に再度反映されます。\n\(error.localizedDescription)")
+            }
         }
 
-        await transaction.finish()
-        return .purchased(added: wasAlreadyApplied ? 0 : amount, balance: wallet.balance)
+        creditTransactionTask = task
+        let outcome = await task.value
+        // 古い処理が後続のタスクを消さないよう、最後のタスクだけがキューの状態を解除する。
+        if creditTransactionTaskID == taskID {
+            creditTransactionTask = nil
+            creditTransactionTaskID = nil
+            isApplyingCreditTransactions = false
+        }
+        return outcome
     }
 
+    /// サーバーと同じ「SHA-256 → 先頭16バイト → UUID」で購入の帰属を示す。認証用の秘密情報ではない。
+    private static func creditAccountToken(for userID: String) -> UUID {
+        let hex = SHA256.hash(data: Data(userID.utf8)).prefix(16)
+            .map { String(format: "%02x", $0) }.joined()
+        let parts = [0..<8, 8..<12, 12..<16, 16..<20, 20..<32].map { range in
+            String(hex[hex.index(hex.startIndex, offsetBy: range.lowerBound)..<hex.index(hex.startIndex, offsetBy: range.upperBound)])
+        }
+
+        return UUID(uuidString: parts.joined(separator: "-"))!
+    }
+
+    /// 未完了の消耗型取引だけを再送する。完了済みのチャージを再付与する処理ではない。
+    private func retryUnfinishedCreditTransactions() async {
+        guard isSignedIn else { return }
+
+        for await result in Transaction.unfinished {
+            guard case .verified(let transaction) = result,
+                  transaction.productType == .consumable else { continue }
+            _ = await processCreditTransaction(result)
+        }
+    }
+
+    /// 初回登録と再ログインは同じ API を使い、Apple の sub で新規作成または既存アカウントを特定する。
+    /// session を Keychain に保存できてからログイン済みにする。
     func handleAuthorization(_ result: Result<ASAuthorization, Error>, hashedNonce: String) async {
         guard !isManagingAccount else { return }
         isManagingAccount = true
@@ -196,7 +271,7 @@ final class AppleAccountStore {
             )
             guard AppleSessionKeychain.save(response.sessionToken) else {
                 try? await WorkersAPI.post(
-                    "auth/logout",
+                    "user/logout",
                     body: EmptyRequest(),
                     authorizationToken: response.sessionToken
                 )
@@ -205,18 +280,20 @@ final class AppleAccountStore {
 
             sessionToken = response.sessionToken
             userID = response.appleUserID
-            accountCredits = response.creditBalance
+            setCreditBalance(response.creditBalance)
             credentialState = .authorized
             signInError = nil
             persist()
+            await retryUnfinishedCreditTransactions()
         } catch {
             signInError = error.localizedDescription
             print("Apple login request failed:", error.localizedDescription)
         }
     }
 
+    /// Apple の連携状態とアプリの session を別々に確認する。一時的な通信失敗ではログアウトしない。
     func refreshCredentialState() async {
-        guard !isManagingAccount, let userID else { return }
+        guard !isManagingAccount, let userID, let initialSessionToken = sessionToken else { return }
 
         do {
             let state: ASAuthorizationAppleIDProvider.CredentialState = try await withCheckedThrowingContinuation { continuation in
@@ -228,28 +305,34 @@ final class AppleAccountStore {
                     }
                 }
             }
-            guard self.userID == userID, !isManagingAccount else { return }
+
+            guard self.userID == userID, self.sessionToken == initialSessionToken, !isManagingAccount else { return }
             if state == .revoked || state == .notFound {
                 clearLocalSession()
                 return
             }
             credentialState = state
         } catch {
-            // A temporary Apple/network failure must not erase the saved session.
+            // 一時的な Apple 側・通信の障害では保存済み session を消さない。
             return
         }
 
-        guard let sessionToken else { return }
+        let sessionToken = initialSessionToken
 
         do {
+            let requestedBalanceRevision = balanceRevision
             let profile: AppleAccountProfile = try await WorkersAPI.get(
                 "users",
                 authorizationToken: sessionToken
             )
             guard self.sessionToken == sessionToken, !isManagingAccount else { return }
             self.userID = profile.appleUserID
-            accountCredits = profile.creditBalance
+            // 取得中にチャージや消費が完了した場合、古い profile の残高で上書きしない。
+            if balanceRevision == requestedBalanceRevision {
+                setCreditBalance(profile.creditBalance)
+            }
             persist()
+            await retryUnfinishedCreditTransactions()
         } catch {
             guard self.sessionToken == sessionToken, !isManagingAccount else { return }
             if let apiError = error as? WorkersAPIError, apiError.statusCode == 401 {
@@ -259,22 +342,31 @@ final class AppleAccountStore {
         }
     }
 
+    /// ログアウトは現在の session だけを無効化する。アカウント・残高・Apple との連携は残す。
     func signOut() async {
-        guard !isManagingAccount else { return }
+        guard !isAccountOperationBlocked else { return }
         isManagingAccount = true
         defer { isManagingAccount = false }
-        if let sessionToken {
-            try? await WorkersAPI.post(
-                "auth/logout",
-                body: EmptyRequest(),
-                authorizationToken: sessionToken
-            )
+
+        do {
+            if let sessionToken {
+                try await WorkersAPI.post(
+                    "user/logout",
+                    body: EmptyRequest(),
+                    authorizationToken: sessionToken
+                )
+            }
+            clearLocalSession()
+            signInError = nil
+        } catch {
+            // 無効化に失敗した場合はログイン状態を保ち、画面だけがログアウト済みになることを防ぐ。
+            signInError = error.localizedDescription
         }
-        clearLocalSession()
     }
 
+    /// サーバーの退会処理が成功してから、端末の認証情報とキャッシュを消す。
     func deleteAccount() async {
-        guard !isManagingAccount else { return }
+        guard !isAccountOperationBlocked else { return }
         guard let sessionToken else {
             signInError = "アカウントを削除するには、Apple でログインしてください。"
             return
@@ -284,16 +376,24 @@ final class AppleAccountStore {
         defer { isManagingAccount = false }
 
         do {
-            try await WorkersAPI.post(
-                "auth/delete_account",
+            let response: AppleAccountDeletionResponse = try await WorkersAPI.postForResponse(
+                "user/delete_account",
                 body: EmptyRequest(),
                 authorizationToken: sessionToken
             )
+
             deleteLocalAccountData()
             signInError = nil
+            if response.requiresManualAppleRevocation == true {
+                accountNotice = "アカウントを削除しました。Apple の連携情報が保存されていなかったため、iPhone の設定から「Apple でサインイン」の本アプリとの連携も解除してください。"
+            }
         } catch {
             signInError = error.localizedDescription
         }
+    }
+
+    func clearAccountNotice() {
+        accountNotice = nil
     }
 
     func clearSignInError() {
@@ -304,28 +404,36 @@ final class AppleAccountStore {
         guard isSignedIn, let sessionToken else {
             throw WorkersAPIError.httpStatus(401, "アカウントタブから Apple でログインしてください。")
         }
+
         let response: AIExplanationResponse = try await WorkersAPI.postForResponse(
             "request_ai_question",
             body: AIExplanationRequest(question: question.text, mode: question.mode, request_id: question.id.uuidString),
             authorizationToken: sessionToken
         )
-        // Do not apply a response to an account that signed out during the request.
+        // 通信中にログアウト・別アカウントへの切り替えが起きた場合、その応答で残高を更新しない。
         if self.sessionToken == sessionToken {
-            accountCredits = response.creditBalance
+            setCreditBalance(response.creditBalance)
         }
+
         return response
     }
 
     func deleteLocalAccountData() {
         clearLocalSession()
-        UserDefaults.standard.removeObject(forKey: Keys.wallet)
-        accountCredits = 100
+        accountCredits = 0
         UserDefaults.standard.removeObject(forKey: "cached_videos")
         UserDefaults.standard.removeObject(forKey: "cached_playlist_categories")
     }
 
+    private func setCreditBalance(_ balance: Int) {
+        accountCredits = balance
+        balanceRevision += 1
+    }
+
+    /// 端末の情報削除だけでは session は無効にならない。通常のログアウトは先に user/logout を呼ぶ。
     private func clearLocalSession() {
         userID = nil
+        setCreditBalance(0)
         sessionToken = nil
         credentialState = .revoked
         AppleSessionKeychain.delete()
@@ -355,22 +463,29 @@ private enum AppleSessionKeychain {
             kSecReturnData as String: true,
             kSecMatchLimit as String: kSecMatchLimitOne,
         ]
+
         var result: CFTypeRef?
         guard SecItemCopyMatching(query as CFDictionary, &result) == errSecSuccess,
               let data = result as? Data else { return nil }
+
         return String(data: data, encoding: .utf8)
     }
 
+    /// 既存項目は上書きし、未登録時だけ追加する。保存失敗で元の session まで失わないようにする。
     static func save(_ token: String) -> Bool {
-        delete()
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecAttrAccount as String: account,
+        ]
+        let attributes: [String: Any] = [
             kSecValueData as String: Data(token.utf8),
             kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
         ]
-        return SecItemAdd(query as CFDictionary, nil) == errSecSuccess
+        let status = SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
+        if status == errSecSuccess { return true }
+        guard status == errSecItemNotFound else { return false }
+        return SecItemAdd(query.merging(attributes) { _, new in new } as CFDictionary, nil) == errSecSuccess
     }
 
     static func delete() {
@@ -379,6 +494,7 @@ private enum AppleSessionKeychain {
             kSecAttrService as String: service,
             kSecAttrAccount as String: account,
         ]
+
         SecItemDelete(query as CFDictionary)
     }
 }

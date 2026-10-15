@@ -10,7 +10,6 @@ import UIKit
 
 struct VideoContentView: View {
     @Environment(AppNavigationStore.self) private var navigationStore
-    @Environment(SettingsStore.self) private var settingsStore
     @Environment(PlayerViewManager.self) private var playerVM
     @Environment(\.transitionNamespace) private var transitionNamespace
 
@@ -46,36 +45,27 @@ struct VideoContentView: View {
                         }
                     }
                     .navigationTransition_Zoom_IfAvailable(sourceID: navigationStore.videoTransitionSourceID ?? "list-\(id)", in: transitionNamespace!)
-//                    .navigationTransition(
-//                        .zoom(
-//                            sourceID: navigationStore.videoTransitionSourceID ?? "list-\(id)",
-//                            in: transitionNamespace!
-//                        )
-//                    )
                 }
             }
         }
         .background(Color.black)
-        .onChange(of: navigationStore.quickActionTarget) {_, target in
+        .onChange(of: navigationStore.quickActionTarget, initial: true) { _, target in
             guard let target else { return }
+            let id = target.videoID
 
-            if case .resumeVideo = target {
-                if case .resumeVideo(let id) = target {
-                    if navigationStore.videoTransitionSourceID?.hasPrefix("mini-") == true {
-                        navigationStore.presentedVideo = VideoSheetDestination(
-                            id: id,
-                            sourceID: "mini-\(id)",
-                            dismissesToMiniPlayer: true
-                        )
-                    } else {
-                        navigationStore.videoTransitionSourceID = "list-\(id)"
-                        videoPath.removeLast(videoPath.count)
-                        videoPath.append(QuickActionTarget.resumeVideo(id: id))
-                    }
-                }
-
-                navigationStore.clearTarget()
+            if navigationStore.videoTransitionSourceID == "mini-\(id)" {
+                navigationStore.presentedVideo = VideoSheetDestination(
+                    id: id,
+                    sourceID: "mini-\(id)",
+                    dismissesToMiniPlayer: true
+                )
+            } else {
+                navigationStore.videoTransitionSourceID = "list-\(id)"
+                videoPath = NavigationPath()
+                videoPath.append(target)
             }
+
+            navigationStore.clearTarget()
         }
     }
 }
