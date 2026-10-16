@@ -593,6 +593,7 @@ class VideoStore {
         endedAt: Date,
         durationSeconds: Int
     ) async {
+        guard let sessionToken = AppleAccountStore.savedSessionToken else { return }
         let payload = PracticeSessionPayload(
             id: UUID().uuidString,
             contentLanguage: contentLanguage,
@@ -603,7 +604,7 @@ class VideoStore {
         )
 
         do {
-            try await WorkersAPI.post("update_practice_session", body: payload)
+            try await WorkersAPI.post("update_practice_session", body: payload, authorizationToken: sessionToken)
         } catch {
             print("❌ practice session sync failed:", error)
         }

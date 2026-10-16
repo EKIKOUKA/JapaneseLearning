@@ -8,6 +8,7 @@
 import SwiftUI
 
 struct AchieveSystemView: View {
+    @Environment(AppleAccountStore.self) private var accountStore
     @State private var store = AchieveSystemStore()
     @State private var selectedRange: PracticeRange = .day
     @State private var language: LanguageFilter = .all
@@ -54,7 +55,10 @@ struct AchieveSystemView: View {
             .background(backgroundView.ignoresSafeArea())
         }
         .onAppear {
+            store.goalMinutes = Double(accountStore.dailyPracticeGoalMinutes)
             Task {
+                await accountStore.refreshCredentialState()
+                store.goalMinutes = Double(accountStore.dailyPracticeGoalMinutes)
                 await store.fetchPracticeSessions(
                     anchorDate: Date()
                 )
@@ -67,6 +71,9 @@ struct AchieveSystemView: View {
         }
         .onChange(of: language) { _, newValue in
             store.updateLanguage(newValue)
+        }
+        .onChange(of: accountStore.dailyPracticeGoalMinutes) { _, minutes in
+            store.goalMinutes = Double(minutes)
         }
     }
 
@@ -123,7 +130,7 @@ struct AchieveSystemView: View {
                     .tint(accent)
                     .scaleEffect(x: 1, y: 1.25, anchor: .center)
 
-                Text("64分を基準に、日・週・月・6か月・年の流れを確認できます。")
+                Text("\(Int(store.goalMinutes))分を基準に、日・週・月・6か月・年の流れを確認できます。")
                     .font(.system(size: 12, weight: .medium, design: .rounded))
                     .foregroundStyle(Color.secondary.opacity(0.50))
             }

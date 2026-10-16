@@ -21,14 +21,7 @@ struct AppSettings: Codable {
     var videoAllowsPictureInPicturePlayback: Bool = false
     var useNativeVideoPlayer: Bool = false
     var videoSubtitleFontColor: Color.Resolved?
-
-    // Somethings
-    var showKanjiWordsDiffToShinaLangListCount: Bool = true
-    var showMemoryHardWordsListCount: Bool = true
-    var showElegantSentenceListCount: Bool = true
-    var showIdiomsListCount: Bool = true
-    var showSampleRubyWordsListCount: Bool = true
-    var showMediaProductsListCount: Bool = true
+    var aiExplanationLanguage: String = "JP"
 }
 
 @Observable
@@ -72,7 +65,15 @@ final class SettingsStore {
     }
 
     init() {
-        if let decoded = try? JSONDecoder().decode(AppSettings.self, from: settingsData) {
+        // Older saved settings do not contain the new AI language preference.
+        var data = settingsData
+        if var values = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
+            values["aiExplanationLanguage"] == nil {
+            values["aiExplanationLanguage"] = "JP"
+            data = (try? JSONSerialization.data(withJSONObject: values)) ?? data
+        }
+
+        if let decoded = try? JSONDecoder().decode(AppSettings.self, from: data) {
             self._settings = decoded
         }
     }

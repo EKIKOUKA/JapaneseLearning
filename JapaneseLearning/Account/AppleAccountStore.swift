@@ -22,6 +22,8 @@ enum CreditPurchaseOutcome {
 @MainActor
 @Observable
 final class AppleAccountStore {
+    static var savedSessionToken: String? { AppleSessionKeychain.read() }
+    static var savedUserID: String? { UserDefaults.standard.string(forKey: Keys.userID) }
     private enum Keys {
         static let userID = "apple.account.userID"
     }
@@ -33,10 +35,13 @@ final class AppleAccountStore {
     private(set) var isManagingAccount = false
     private(set) var isPurchasingCredits = false
     private(set) var isApplyingCreditTransactions = false
+    private(set) var dailyPracticeGoalMinutes = 10
+    private(set) var isSavingDailyPracticeGoal = false
+    @ObservationIgnored private var goalRevision = 0
 
     // 購入確認・残高反映中はアカウントを固定し、途中のログアウトや退会を防ぐ。
     var isAccountOperationBlocked: Bool {
-        isManagingAccount || isPurchasingCredits || isApplyingCreditTransactions
+        isManagingAccount || isPurchasingCredits || isApplyingCreditTransactions || isSavingDailyPracticeGoal
     }
 
     private(set) var accountCredits: Int
@@ -286,11 +291,13 @@ final class AppleAccountStore {
             }
 
             sessionToken = response.sessionToken
+            setDailyPracticeGoal(response.dailyPracticeGoalMinutes ?? 10)
             userID = response.appleUserID
             setCreditBalance(response.creditBalance)
             credentialState = .authorized
             signInError = nil
             persist()
+            await syncAPNsDeviceToken()
             await retryUnfinishedCreditTransactions()
         } catch {
             signInError = error.localizedDescription
@@ -328,6 +335,7 @@ final class AppleAccountStore {
 
         do {
             let requestedBalanceRevision = balanceRevision
+            let requestedGoalRevision = goalRevision
             let profile: AppleAccountProfile = try await WorkersAPI.get(
                 "users",
                 authorizationToken: sessionToken
@@ -337,6 +345,9 @@ final class AppleAccountStore {
             // 取得中にチャージや消費が完了した場合、古い profile の残高で上書きしない。
             if balanceRevision == requestedBalanceRevision {
                 setCreditBalance(profile.creditBalance)
+            }
+            if goalRevision == requestedGoalRevision && !isSavingDailyPracticeGoal {
+                setDailyPracticeGoal(profile.dailyPracticeGoalMinutes ?? 10)
             }
             persist()
             await retryUnfinishedCreditTransactions()
@@ -359,7 +370,7 @@ final class AppleAccountStore {
             if let sessionToken {
                 try await WorkersAPI.post(
                     "user/logout",
-                    body: EmptyRequest(),
+                    body: APNsDeviceTokenRequest(deviceToken: APNsTokenStore.shared.token),
                     authorizationToken: sessionToken
                 )
             }
@@ -407,15 +418,63 @@ final class AppleAccountStore {
         signInError = nil
     }
 
-    func requestAIExplanation(_ question: AIExplanationQuestion) async throws -> AIExplanationResponse {
+    func saveDailyPracticeGoal(_ minutes: Int) async throws {
+        guard isSignedIn, let sessionToken else {
+            throw WorkersAPIError.httpStatus(401, "Apple でログインしてください。")
+        }
+        guard (1...480).contains(minutes), !isAccountOperationBlocked else {
+            throw WorkersAPIError.httpStatus(400, "目標は 1〜480 分で設定してください。処理中の場合はしばらくお待ちください。")
+        }
+        isSavingDailyPracticeGoal = true
+        defer { isSavingDailyPracticeGoal = false }
+        let settings: PracticeGoalSettings = try await WorkersAPI.postForResponse(
+            "user/practice_goal",
+            body: PracticeGoalSettings(dailyPracticeGoalMinutes: minutes),
+            authorizationToken: sessionToken
+        )
+        guard self.sessionToken == sessionToken else { return }
+        setDailyPracticeGoal(settings.dailyPracticeGoalMinutes)
+    }
+
+    private func setDailyPracticeGoal(_ minutes: Int) {
+        dailyPracticeGoalMinutes = min(480, max(1, minutes))
+        goalRevision += 1
+    }
+
+    func syncAPNsDeviceToken() async {
+        guard isSignedIn, let sessionToken, let token = APNsTokenStore.shared.token else { return }
+
+        do {
+            try await WorkersAPI.post(
+                "user/apns_device_token",
+                body: APNsDeviceTokenRequest(deviceToken: token),
+                authorizationToken: sessionToken
+            )
+        } catch is CancellationError {
+            // A changed token starts a new synchronization task.
+        } catch {
+            print("APNs token の同期に失敗しました:", error.localizedDescription)
+        }
+    }
+
+    func requestAIExplanation(
+        _ question: AIExplanationQuestion,
+        onDelta: @MainActor (String) -> Void = { _ in }
+    ) async throws -> AIExplanationResponse {
         guard isSignedIn, let sessionToken else {
             throw WorkersAPIError.httpStatus(401, "アカウントタブから Apple でログインしてください。")
         }
 
-        let response: AIExplanationResponse = try await WorkersAPI.postForResponse(
-            "request_ai_question",
-            body: AIExplanationRequest(question: question.text, mode: question.mode, request_id: question.id.uuidString),
-            authorizationToken: sessionToken
+        let response = try await WorkersAPI.streamAIExplanation(
+            body: AIExplanationRequest(
+                question: question.text,
+                mode: question.mode,
+                request_id: question.id.uuidString,
+                parent_request_id: question.parentRequestID?.uuidString,
+                language: question.language
+            ),
+            authorizationToken: sessionToken,
+            onDelta: onDelta
         )
         // 通信中にログアウト・別アカウントへの切り替えが起きた場合、その応答で残高を更新しない。
         if self.sessionToken == sessionToken {
@@ -440,6 +499,7 @@ final class AppleAccountStore {
     /// 端末の情報削除だけでは session は無効にならない。通常のログアウトは先に user/logout を呼ぶ。
     private func clearLocalSession() {
         userID = nil
+        setDailyPracticeGoal(10)
         setCreditBalance(0)
         sessionToken = nil
         credentialState = .revoked
@@ -457,6 +517,10 @@ final class AppleAccountStore {
 }
 
 private struct EmptyRequest: Encodable {}
+
+private struct APNsDeviceTokenRequest: Encodable {
+    let deviceToken: String?
+}
 
 private enum AppleSessionKeychain {
     private static let account = "apple.account.sessionToken"

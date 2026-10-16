@@ -63,7 +63,6 @@ struct ShadowingSettingsSheetView: View {
                         Text("発音を表示")
                     }
                 }
-
             }
             .contentMargins(.top, 0)
             .navigationTitle("シャドーイング設定")

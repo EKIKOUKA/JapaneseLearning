@@ -15,6 +15,7 @@ struct JapaneseLearningApp: App {
     @State private var videoStore = VideoStore()
     @State private var settingsStore = SettingsStore()
     @State private var appleAccountStore = AppleAccountStore()
+    @State private var apnsTokenStore = APNsTokenStore.shared
 
     init() {
         if #available(iOS 26.0, *) {
@@ -31,6 +32,9 @@ struct JapaneseLearningApp: App {
                 .environment(navigationStore)
                 .environment(videoStore)
                 .environment(appleAccountStore)
+                .task(id: apnsTokenStore.token) {
+                    await appleAccountStore.syncAPNsDeviceToken()
+                }
         }
     }
 }

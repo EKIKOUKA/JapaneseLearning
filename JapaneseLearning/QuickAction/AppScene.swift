@@ -72,14 +72,13 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
     }
 
     // 🔹 推播成功取得 token
+    @MainActor
     func application(
         _ application: UIApplication,
         didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
     ) {
         let token = deviceToken.map { String(format: "%02.2hhx", $0) }.joined()
-        print("DEVICE TOKEN:")
-        print(token)
-        // TODO: 傳到你的 server
+        APNsTokenStore.shared.token = token
     }
 
     // 🔹 推播失敗

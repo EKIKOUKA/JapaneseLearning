@@ -53,6 +53,12 @@ struct AppleAccountView: View {
                         PrivacyPolicyView()
                     }
                 }
+
+                Section("設定") {
+                    NavigationLink("設定") {
+                        AppSettingsView()
+                    }
+                }
             }
             .navigationTitle("アカウントとプライバシー")
             .navigationBarTitleDisplayMode(.inline)
@@ -117,6 +123,7 @@ struct AppleAccountView: View {
     private var accountSummary: some View {
         VStack(alignment: .leading, spacing: 12) {
             accountRow(title: "クレジット残高", value: "\(accountStore.accountCredits.formatted()) クレジット")
+                .animation(.smooth(duration: 1.0), value: accountStore.accountCredits)
 
             Label("Apple ログインしました", systemImage: "checkmark.seal.fill")
                 .foregroundStyle(.green)
@@ -151,6 +158,7 @@ struct AppleAccountView: View {
     }
 }
 
+
 struct PrivacyPolicyView: View {
     var body: some View {
         ScrollView {
@@ -175,6 +183,94 @@ struct PrivacyPolicyView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text(title).font(.headline)
             Text(text).foregroundStyle(.secondary)
+                .textSelection(.enabled)
         }
+    }
+}
+
+struct AppSettingsView: View {
+    @Environment(SettingsStore.self) private var settingsStore
+    @Environment(AppleAccountStore.self) private var accountStore
+    @State private var goalHours = 0
+    @State private var goalMinutes = 10
+    @State private var isLoadingGoal = true
+    @State private var goalError: String?
+
+    private var selectedGoalMinutes: Int { goalHours * 60 + goalMinutes }
+
+    private let aiLanguageList: [(name: String, code: String)] = [
+        (name: "🇯🇵 日本語", code: "JP"),
+        (name: "🇺🇸 英語", code: "EN"),
+        (name: "🇹🇼 台湾語", code: "TW")
+    ]
+
+    var body: some View {
+        @Bindable var settingsStoreBindable = settingsStore
+
+        Form {
+            Section(header: Text("言語"), footer: Text("字幕のAI解説に表示する言語")) {
+                Picker("AI解説に使用言語", selection: $settingsStoreBindable.aiExplanationLanguage) {
+                    ForEach(aiLanguageList, id: \.code) {item in
+                        Text(item.name).tag(item.code)
+                    }
+                }
+            }
+
+            Section {
+                HStack(spacing: 0) {
+                    Picker("時間", selection: $goalHours) {
+                        ForEach(0...8, id: \.self) { Text("\($0) 時間").tag($0) }
+                    }
+
+                    Picker("分", selection: $goalMinutes) {
+                        ForEach(0...59, id: \.self) { Text("\($0) 分").tag($0) }
+                    }
+                    .disabled(goalHours == 8)
+                }
+                .pickerStyle(.wheel)
+                .frame(height: 160)
+                .clipped()
+                .onChange(of: goalHours) { _, value in
+                    if value == 8 { goalMinutes = 0 }
+                }
+
+                Text("現在の目標：\(accountStore.dailyPracticeGoalMinutes) 分")
+                    .foregroundStyle(.secondary)
+
+                if let goalError { Text(goalError).foregroundStyle(.red) }
+
+                Button {
+                    Task {
+                        goalError = nil
+                        do { try await accountStore.saveDailyPracticeGoal(selectedGoalMinutes) }
+                        catch { goalError = error.localizedDescription }
+                    }
+                } label: {
+                    if accountStore.isSavingDailyPracticeGoal { ProgressView() }
+                    else { Text("目標を保存") }
+                }
+                .disabled(!(1...480).contains(selectedGoalMinutes)
+                    || selectedGoalMinutes == accountStore.dailyPracticeGoalMinutes)
+            } header: {
+                Text("一日の練習目標")
+            } footer: {
+                Text(accountStore.isSignedIn
+                    ? "1 分〜8 時間で設定できます。学習記録と達成通知に適用され、過去の達成率も現在の目標で計算されます。"
+                    : "目標を保存するには Apple でログインしてください。")
+            }
+            .disabled(!accountStore.isSignedIn || isLoadingGoal || accountStore.isSavingDailyPracticeGoal)
+        }
+        .navigationTitle("設定")
+        .task {
+            await accountStore.refreshCredentialState()
+            loadGoal()
+            isLoadingGoal = false
+        }
+        .onChange(of: accountStore.dailyPracticeGoalMinutes) { _, _ in loadGoal() }
+    }
+
+    private func loadGoal() {
+        goalHours = accountStore.dailyPracticeGoalMinutes / 60
+        goalMinutes = accountStore.dailyPracticeGoalMinutes % 60
     }
 }

@@ -28,11 +28,17 @@ struct AppleLoginResponse: Decodable {
     let appleUserID: String
     let creditBalance: Int
     let sessionToken: String
+    let dailyPracticeGoalMinutes: Int?
 }
 
 struct AppleAccountProfile: Decodable {
     let appleUserID: String
     let creditBalance: Int
+    let dailyPracticeGoalMinutes: Int?
+}
+
+struct PracticeGoalSettings: Codable {
+    let dailyPracticeGoalMinutes: Int
 }
 
 struct AppleAccountDeletionResponse: Decodable {

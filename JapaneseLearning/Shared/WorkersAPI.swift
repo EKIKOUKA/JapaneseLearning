@@ -10,6 +10,56 @@ import Foundation
 enum WorkersAPI {
     private static let baseURL = URL(string: Config.CloudflareWorkersURL)!
 
+    @MainActor
+    static func streamAIExplanation(
+        body: AIExplanationRequest,
+        authorizationToken: String,
+        onDelta: @MainActor (String) -> Void
+    ) async throws -> AIExplanationResponse {
+        var request = URLRequest(url: baseURL.appending(path: "request_ai_question"))
+            .setMethod("POST")
+            .setJSONBody(body)
+        request.setValue("Bearer \(authorizationToken)", forHTTPHeaderField: "Authorization")
+        request.setValue("text/event-stream", forHTTPHeaderField: "Accept")
+        request.timeoutInterval = 90
+
+        let (bytes, response) = try await URLSession.shared.bytes(for: request)
+        let http = response as? HTTPURLResponse
+
+        guard let http, (200...299).contains(http.statusCode),
+              http.value(forHTTPHeaderField: "Content-Type")?.contains("text/event-stream") == true else {
+            // Completed requests replay as JSON; pre-stream validation errors are JSON too.
+            var data = Data()
+            for try await byte in bytes {
+                guard data.count < 1_048_576 else { throw URLError(.dataLengthExceedsMaximum) }
+                data.append(byte)
+            }
+            try response.validateHTTPStatus(data)
+
+            return try JSONDecoder().decode(AIExplanationResponse.self, from: data)
+        }
+
+        for try await line in bytes.lines {
+            try Task.checkCancellation()
+            guard line.hasPrefix("data: ") else { continue }
+            let event = try JSONDecoder().decode(AIExplanationStreamEvent.self, from: Data(line.dropFirst(6).utf8))
+
+            switch event.type {
+                case "delta":
+                    if let delta = event.delta { onDelta(delta) }
+                case "done":
+                    guard let result = event.response else { throw URLError(.cannotParseResponse) }
+                    return result
+                case "error":
+                    throw WorkersAPIError.httpStatus(502, event.error)
+                default:
+                    break
+            }
+        }
+
+        throw WorkersAPIError.httpStatus(502, "通信が中断されました。同じリクエストで再確認してください。")
+    }
+
     // MARK: - GET
     static func get<T: Decodable>(
         _ path: String,
