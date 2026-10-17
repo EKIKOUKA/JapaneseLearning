@@ -42,14 +42,15 @@ struct AppleAccountView: View {
                             showingDeleteConfirmation = true
                         }
                         .disabled(accountStore.isAccountOperationBlocked)
+                        
                         if accountStore.isManagingAccount {
                             ProgressView("処理中…")
                         }
                     }
                 }
 
-                Section("プライバシー") {
-                    NavigationLink("プライバシー政策") {
+                Section("プライバシーポリシー") {
+                    NavigationLink("プライバシーポリシー") {
                         PrivacyPolicyView()
                     }
                 }
@@ -163,7 +164,6 @@ struct PrivacyPolicyView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
-                Text("プライバシー政策").font(.largeTitle.bold())
                 Text("最終更新：2026 年 10 月 9 日").foregroundStyle(.secondary)
                 privacySection("はじめに", "シャドーイング（以下「本アプリ」）は、利用者のプライバシーを尊重します。本ポリシーでは、本アプリにおける情報の取り扱いについて説明します。")
                 privacySection("取得する情報", "本アプリは、基本的な学習機能の利用にあたり、氏名、住所、連絡先などの個人情報の登録を求めません。学習記録などの情報は、利用者の端末上で機能を提供するために使用されます。")
@@ -175,8 +175,7 @@ struct PrivacyPolicyView: View {
             }
             .padding()
         }
-        .navigationTitle("プライバシー政策")
-        .navigationBarTitleDisplayMode(.inline)
+        .navigationTitle("プライバシーポリシー")
     }
 
     private func privacySection(_ title: String, _ text: String) -> some View {
@@ -219,11 +218,15 @@ struct AppSettingsView: View {
             Section {
                 HStack(spacing: 0) {
                     Picker("時間", selection: $goalHours) {
-                        ForEach(0...8, id: \.self) { Text("\($0) 時間").tag($0) }
+                        ForEach(0...8, id: \.self) {
+                            Text("\($0) 時間").tag($0)
+                        }
                     }
 
                     Picker("分", selection: $goalMinutes) {
-                        ForEach(0...59, id: \.self) { Text("\($0) 分").tag($0) }
+                        ForEach(0...59, id: \.self) {
+                            Text("\($0) 分").tag($0)
+                        }
                     }
                     .disabled(goalHours == 8)
                 }
@@ -237,20 +240,26 @@ struct AppSettingsView: View {
                 Text("現在の目標：\(accountStore.dailyPracticeGoalMinutes) 分")
                     .foregroundStyle(.secondary)
 
-                if let goalError { Text(goalError).foregroundStyle(.red) }
+                if let goalError {
+                    Text(goalError)
+                        .foregroundStyle(.red)
+                }
 
                 Button {
                     Task {
                         goalError = nil
-                        do { try await accountStore.saveDailyPracticeGoal(selectedGoalMinutes) }
-                        catch { goalError = error.localizedDescription }
+                        
+                        do {
+                            try await accountStore.saveDailyPracticeGoal(selectedGoalMinutes)
+                        } catch {
+                            goalError = error.localizedDescription
+                        }
                     }
                 } label: {
                     if accountStore.isSavingDailyPracticeGoal { ProgressView() }
                     else { Text("目標を保存") }
                 }
-                .disabled(!(1...480).contains(selectedGoalMinutes)
-                    || selectedGoalMinutes == accountStore.dailyPracticeGoalMinutes)
+                .disabled(!(1...480).contains(selectedGoalMinutes) || selectedGoalMinutes == accountStore.dailyPracticeGoalMinutes)
             } header: {
                 Text("一日の練習目標")
             } footer: {
