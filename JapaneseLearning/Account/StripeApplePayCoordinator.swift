@@ -45,7 +45,7 @@ final class StripeApplePayCoordinator: NSObject, ApplePayContextDelegate {
         
         request.paymentSummaryItems = [
             PKPaymentSummaryItem(
-                label: "ことね-言語シャドーイング（テスト）",
+                label: "ことね-言語シャドーイング",
                 amount: NSDecimalNumber(value: option.amount)
             )
         ]

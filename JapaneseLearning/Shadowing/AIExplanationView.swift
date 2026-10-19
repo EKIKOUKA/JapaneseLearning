@@ -6,6 +6,7 @@ struct AIExplanationView: View {
     let question: AIExplanationQuestion
     @State private var turns: [AIExplanationTurn]
     @State private var isLoading = false
+    @State private var hasStartedInitialExplanation = false
     @State private var draft = ""
     @FocusState private var isInputFocused: Bool
 
@@ -70,6 +71,12 @@ struct AIExplanationView: View {
             .navigationBarTitleDisplayMode(.inline)
         }
         .interactiveDismissDisabled(isLoading)
+        .task {
+            // 再表示で同じ質問を自動送信しない。失敗後は再確認ボタンから再試行する。
+            guard !hasStartedInitialExplanation else { return }
+            hasStartedInitialExplanation = true
+            await explain(at: 0)
+        }
     }
 
     @ViewBuilder
@@ -94,20 +101,14 @@ struct AIExplanationView: View {
                         .font(.footnote).foregroundStyle(.secondary)
                 }
             } else if !isLoading {
-                if index == 0 {
-                    Text("解説のため、このテキストを Cloudflare 経由で OpenAI に送信します。1 回の質問と回答で 1 クレジットを使用します。内容には誤りが含まれる場合があります。")
-                        .font(.subheadline).foregroundStyle(.secondary)
-                }
-
                 if let error = turn.errorMessage {
                     Text(error).foregroundStyle(.red)
+                    Button("同じリクエストを再確認") {
+                        Task { await explain(at: index) }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(!accountStore.isSignedIn)
                 }
-
-                Button(turn.errorMessage == nil ? "解説する（1 クレジット）" : "同じリクエストを再確認") {
-                    Task { await explain(at: index) }
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(!accountStore.isSignedIn)
 
                 if !accountStore.isSignedIn {
                     Text("アカウントタブから Apple でログインしてください。")
@@ -151,6 +152,7 @@ struct AIExplanationView: View {
                 default: turns[index].question.language = "ja"
             }
         }
+        
         turns[index].errorMessage = nil
         turns[index].streamingText = ""
         defer { isLoading = false }

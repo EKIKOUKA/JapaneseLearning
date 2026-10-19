@@ -31,6 +31,18 @@ struct AppleAccountView: View {
                     }
                 }
 
+                Section("プライバシーポリシー") {
+                    NavigationLink("プライバシーポリシー") {
+                        PrivacyPolicyView()
+                    }
+                }
+
+                Section("設定") {
+                    NavigationLink("設定") {
+                        AppSettingsView()
+                    }
+                }
+                
                 if accountStore.isSignedIn {
                     Section("アカウント管理") {
                         Button("ログアウト", role: .destructive) {
@@ -46,18 +58,6 @@ struct AppleAccountView: View {
                         if accountStore.isManagingAccount {
                             ProgressView("処理中…")
                         }
-                    }
-                }
-
-                Section("プライバシーポリシー") {
-                    NavigationLink("プライバシーポリシー") {
-                        PrivacyPolicyView()
-                    }
-                }
-
-                Section("設定") {
-                    NavigationLink("設定") {
-                        AppSettingsView()
                     }
                 }
             }
@@ -95,21 +95,21 @@ struct AppleAccountView: View {
 
     private var signInView: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Label("Apple ログインしてません", systemImage: "person.crop.circle")
+            Label("ログインしていません", systemImage: "person.crop.circle")
                 .font(.headline)
 
-            Text("Apple ログインした後，ユーザーのユニックコードを確認することができます。")
+            Text("Apple でログインして、クレジットのチャージや AI 解説を利用できます。")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
 
             SignInWithAppleButton(
                 .signIn,
                 onRequest: { request in
-                    rawNonce = Self.makeNonce()
-                    request.nonce = Self.hashedNonce(rawNonce)
+                    rawNonce = accountStore.makeNonce()
+                    request.nonce = accountStore.hashedNonce(rawNonce)
                 },
                 onCompletion: { result in
-                    let nonce = Self.hashedNonce(rawNonce)
+                    let nonce = accountStore.hashedNonce(rawNonce)
                     Task { await accountStore.handleAuthorization(result, hashedNonce: nonce) }
                 }
             )
@@ -122,40 +122,40 @@ struct AppleAccountView: View {
     }
 
     private var accountSummary: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            accountRow(title: "クレジット残高", value: "\(accountStore.accountCredits.formatted()) クレジット")
-                .animation(.smooth(duration: 1.0), value: accountStore.accountCredits)
-
-            Label("Apple ログインしました", systemImage: "checkmark.seal.fill")
-                .foregroundStyle(.green)
-                .font(.headline)
-
-            accountRow(title: "Apple userID", value: accountStore.userID ?? "未取得")
-        }
-        .padding(.vertical, 8)
-    }
-
-    private func accountRow(title: String, value: String) -> some View {
-        VStack(alignment: .leading, spacing: 3) {
-            Text(title)
+        VStack(alignment: .leading, spacing: 18) {
+            HStack {
+                Text("クレジット残高")
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(.secondary)
+                Spacer()
+                
+                HStack(spacing: 3) {
+                    Image(systemName: "checkmark.circle.fill")
+                    Text("ログイン済み")
+                }
                 .font(.caption)
+                .foregroundStyle(.green)
+            }
+
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text(accountStore.accountCredits.formatted())
+                    .font(.system(size: 40, weight: .bold, design: .rounded))
+                    .monospacedDigit()
+                    .contentTransition(.numericText())
+                    .minimumScaleFactor(0.6)
+                    .lineLimit(1)
+                
+                Text("クレジット")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            .animation(.smooth, value: accountStore.accountCredits)
+
+            Text("AI 解説・追加の質問に利用できます。")
+                .font(.footnote)
                 .foregroundStyle(.secondary)
-            Text(value)
-                .font(.footnote.monospaced())
-                .textSelection(.enabled)
         }
-    }
-
-    /// 認証のたびに新しい nonce を生成し、Apple の JWT に同じハッシュ値が含まれることを確認する。
-    private static func makeNonce(length: Int = 32) -> String {
-        let characters = Array("0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._")
-        return String((0..<length).compactMap { _ in characters.randomElement() })
-    }
-
-    private static func hashedNonce(_ nonce: String) -> String {
-        SHA256.hash(data: Data(nonce.utf8))
-            .map { String(format: "%02x", $0) }
-            .joined()
+        .padding(.vertical, 12)
     }
 }
 

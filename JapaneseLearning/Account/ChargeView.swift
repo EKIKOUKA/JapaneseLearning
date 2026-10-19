@@ -28,7 +28,7 @@ struct ChargeView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("購入するクレジット数を選択してください。")
+                    Text("チャージするクレジット数を選んで、お支払いください")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
 
@@ -54,68 +54,26 @@ struct ChargeView: View {
                     }
                 }
 
-                Button {
-                    Task {
-                        await purchaseSelectedCredits()
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(alignment: .firstTextBaseline) {
+                        Text("お支払い金額").font(.headline)
+                        Spacer()
+                        Text(selectedPrice ?? "—")
+                            .font(.title2.bold().monospacedDigit())
                     }
-                } label: {
-                    HStack {
-                        if isPurchasing {
-                            ProgressView().tint(.white)
-                        }
+                    .padding(.bottom, 8)
 
-                        Text(purchaseButtonTitle)
-                    }
-                    .font(.headline)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 15)
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(isPurchasing || isLoadingProducts || selectedProduct == nil || accountStore.isAccountOperationBlocked)
+                    Text("お支払い方法").font(.headline)
 
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("Apple Pay（Stripe テスト）").font(.headline)
-                    if let configuration = stripeConfiguration,
-                       let option = configuration.options.first(where: { $0.credits == selectedCredits }) {
-                        Text("\(option.credits) クレジット · ¥\(option.amount)（テスト決済）")
-                            .font(.subheadline)
-                        if StripeApplePayCoordinator.isSupported {
-                            StripeApplePayButton {
-                                stripeCoordinator.start(configuration: configuration, credits: selectedCredits,
-                                                        accountStore: accountStore) { outcome in
-                                    showPurchaseOutcome(outcome)
-                                }
-                            }
-                            .frame(height: 48)
-                            .disabled(accountStore.isAccountOperationBlocked)
-                        } else {
-                            Text("Apple Pay 対応端末で Wallet にカードを追加してください。")
-                                .font(.footnote).foregroundStyle(.secondary)
-                        }
-                    } else {
-                        Text(stripeSetupMessage ?? "Stripe の設定を読み込み中…")
-                            .font(.footnote).foregroundStyle(.secondary)
-                        Button("設定を再読み込み") { Task { await loadStripeConfiguration() } }
-                    }
+                    AppStorePayment
+                    ApplePayPayment
                 }
-
-                if isLoadingProducts {
-                    ProgressView("価格を読み込み中…")
-                        .frame(maxWidth: .infinity)
-                } else if products.isEmpty {
-                    Text("購入商品を読み込めませんでした。時間をおいて再度お試しください。")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .center)
-                } else {
-                    Text("上の購入ボタンでは App Store を通じて決済されます。")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .center)
-                }
+                .padding(20)
+                .background(.background, in: RoundedRectangle(cornerRadius: 20))
             }
             .padding(20)
         }
+        .background(Color(.systemGroupedBackground))
         .navigationTitle("クレジットチャージ")
         .navigationBarTitleDisplayMode(.inline)
         .task {
@@ -133,11 +91,67 @@ struct ChargeView: View {
         products.first { accountStore.credits(for: $0.id) == selectedCredits }
     }
 
-    private var purchaseButtonTitle: String {
-        guard let selectedProduct else {
-            return "商品を利用できません"
+    private var stripeOption: StripeTestConfiguration.Option? {
+        stripeConfiguration?.options.first { $0.credits == selectedCredits }
+    }
+
+    private var selectedPrice: String? {
+        selectedProduct?.displayPrice
+            ?? stripeOption.map { $0.amount.formatted(.currency(code: "JPY").precision(.fractionLength(0))) }
+    }
+
+    private var AppStorePayment: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Button {
+                Task { await purchaseSelectedCredits() }
+            } label: {
+                HStack(spacing: 6) {
+                    if isPurchasing { ProgressView() }
+                    Text("アプリ内購入")
+                }
+                .font(.subheadline.weight(.semibold))
+                .frame(maxWidth: .infinity, minHeight: 48)
+                .foregroundStyle(.white)
+                .background(Color.accentColor, in: RoundedRectangle(cornerRadius: 8))
+            }
+            .buttonStyle(.plain)
+            .opacity(isPurchasing || isLoadingProducts || selectedProduct == nil || accountStore.isAccountOperationBlocked ? 0.45 : 1)
+            .disabled(isPurchasing || isLoadingProducts || selectedProduct == nil || accountStore.isAccountOperationBlocked)
+
+            if !isLoadingProducts && selectedProduct == nil {
+                Text("商品を利用できません")
+                    .font(.caption).foregroundStyle(.secondary)
+                Button("再読み込み") { Task { await loadProducts() } }
+                    .font(.caption)
+                    .disabled(accountStore.isAccountOperationBlocked)
+            }
         }
-        return "\(selectedCredits.formatted())クレジットを購入 · \(selectedProduct.displayPrice)"
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var ApplePayPayment: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            StripeApplePayButton {
+                guard let configuration = stripeConfiguration, stripeOption != nil else { return }
+                stripeCoordinator.start(configuration: configuration, credits: selectedCredits, accountStore: accountStore) {
+                    showPurchaseOutcome($0)
+                }
+            }
+            .frame(height: 48)
+            .disabled(stripeOption == nil || !StripeApplePayCoordinator.isSupported || accountStore.isAccountOperationBlocked)
+
+            if stripeOption == nil {
+                Text(stripeSetupMessage ?? (stripeConfiguration == nil ? "設定を読み込み中…" : "この商品は利用できません"))
+                    .font(.caption).foregroundStyle(.secondary)
+                Button("再読み込み") { Task { await loadStripeConfiguration() } }
+                    .font(.caption)
+                    .disabled(accountStore.isAccountOperationBlocked)
+            } else if !StripeApplePayCoordinator.isSupported {
+                Text("対応端末の Wallet にカードを追加してください。")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     /// 価格は StoreKit がストア地域に応じて返す表示価格を使う。アプリ内の固定値で請求しない。
@@ -213,8 +227,6 @@ struct ChargeView: View {
 
     private func creditOption(_ credits: Int) -> some View {
         let isSelected = selectedCredits == credits
-        let productID = accountStore.productID(for: credits)
-        let price = productID.flatMap { id in products.first { $0.id == id }?.displayPrice }
 
         return Button {
             selectedCredits = credits
@@ -227,10 +239,6 @@ struct ChargeView: View {
                 Text("クレジット")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
-
-                Text(price ?? (isLoadingProducts ? "読み込み中…" : "販売なし"))
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(price == nil ? Color.secondary : Color.accentColor)
             }
             .padding(.vertical, 20)
             .frame(maxWidth: .infinity)

@@ -50,7 +50,7 @@ struct VideoUploadOptionsView: View {
                 PlaybackRateSliderView(
                     rateValue: $playbackRate,
                     minValue: 0.50,
-                    maxValue: 2.00,
+                    maxValue: 1.50,
                     step: 0.05
                 )
             }

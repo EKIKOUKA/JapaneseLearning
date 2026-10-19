@@ -422,16 +422,20 @@ final class AppleAccountStore {
         guard isSignedIn, let sessionToken else {
             throw WorkersAPIError.httpStatus(401, "Apple でログインしてください。")
         }
+        
         guard (1...480).contains(minutes), !isAccountOperationBlocked else {
             throw WorkersAPIError.httpStatus(400, "目標は 1〜480 分で設定してください。処理中の場合はしばらくお待ちください。")
         }
+        
         isSavingDailyPracticeGoal = true
         defer { isSavingDailyPracticeGoal = false }
+        
         let settings: PracticeGoalSettings = try await WorkersAPI.postForResponse(
             "user/practice_goal",
             body: PracticeGoalSettings(dailyPracticeGoalMinutes: minutes),
             authorizationToken: sessionToken
         )
+        
         guard self.sessionToken == sessionToken else { return }
         setDailyPracticeGoal(settings.dailyPracticeGoalMinutes)
     }
@@ -513,6 +517,18 @@ final class AppleAccountStore {
 
     private func clearPersistedData() {
         UserDefaults.standard.removeObject(forKey: Keys.userID)
+    }
+
+    /// 認証のたびに新しい nonce を生成し、Apple の JWT に同じハッシュ値が含まれることを確認する。
+    func makeNonce(length: Int = 32) -> String {
+        let characters = Array("0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._")
+        return String((0..<length).compactMap { _ in characters.randomElement() })
+    }
+
+    func hashedNonce(_ nonce: String) -> String {
+        SHA256.hash(data: Data(nonce.utf8))
+            .map { String(format: "%02x", $0) }
+            .joined()
     }
 }
 

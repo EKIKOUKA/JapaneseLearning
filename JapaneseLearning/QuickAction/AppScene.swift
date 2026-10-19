@@ -36,10 +36,10 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
     @MainActor
     private func requestPushPermission() async {
         do {
-            let granted = try await UNUserNotificationCenter.current().requestAuthorization(
+            try await UNUserNotificationCenter.current().requestAuthorization(
                 options: [.alert, .sound, .badge]
             )
-            print("Permission:", granted)
+
             UIApplication.shared.registerForRemoteNotifications()
         } catch {
             print("Push authorization failed: \(error)")

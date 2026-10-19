@@ -137,7 +137,7 @@ struct VideoDetailsView: View {
         }
         .sheet(item: $playerVM.activeAIQuestion) { question in
             AIExplanationView(question: question)
-                .presentationDetents([.medium, .large])
+                .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
         }
         .onDisappear {
@@ -413,7 +413,7 @@ struct SubtitlesRowView: View, Equatable {
             Button {
                 playerVM.showAIExplanation(line.text, mode: .sentence)
             } label: {
-                Label("AI 解説（1 クレジット）", systemImage: "sparkles")
+                Label("AI 解説", systemImage: "sparkles")
             }
         }
     }
