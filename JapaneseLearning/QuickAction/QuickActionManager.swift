@@ -10,79 +10,64 @@ import UIKit
 enum QuickActionType: String {
     case resumeVideo = "com.japanese.resumeVideo"
     case recentGrammar = "com.japanese.recentGrammar"
+
+    static let videoIDKey = "videoID"
 }
 
-class QuickActionManager {
+@MainActor
+final class QuickActionManager {
     static let shared = QuickActionManager()
 
-    func currentResumeVideoID() -> String? {
-        guard let item = UIApplication.shared.shortcutItems?.first(where: {
-            $0.type == QuickActionType.resumeVideo.rawValue
-        }) else {
-            return nil
-        }
+    private init() {}
 
-        return item.userInfo?["videoID"] as? String
+    /// 動画と文法の有効なショートカットを残し、不正・重複したアクションだけを除去する。
+    func removeObsoleteActions() {
+        var seen = Set<String>()
+        UIApplication.shared.shortcutItems = (UIApplication.shared.shortcutItems ?? [])
+            .filter { QuickActionTarget(shortcutItem: $0) != nil && seen.insert($0.type).inserted }
+    }
+
+    func currentResumeVideoID() -> String? {
+        UIApplication.shared.shortcutItems?
+            .compactMap { QuickActionTarget(shortcutItem: $0)?.videoID }
+            .first
     }
 
     func updateResumeVideoAction(videoID: String, title: String, time: String) {
-        updateShortcutItem(
-            type: .resumeVideo,
-            title: "続きから再生",
-            subtitle: "\(time) ・ \(title)",
-            iconName: "play.rectangle.fill",
-            userInfo: ["videoID": videoID]
-        )
+        guard !videoID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        
+        updateAction(UIApplicationShortcutItem(
+            type: QuickActionType.resumeVideo.rawValue,
+            localizedTitle: "続きから再生",
+            localizedSubtitle: "\(time) ・ \(title)",
+            icon: UIApplicationShortcutIcon(systemImageName: "play.rectangle.fill"),
+            userInfo: [QuickActionType.videoIDKey: videoID as NSString]
+        ))
     }
 
     func updateRecentGrammarAction(grammarID: String, title: String, level: String) {
-        updateShortcutItem(
-            type: .recentGrammar,
-            title: "最近の文法",
-            subtitle: title,
-            iconName: "text.book.closed.fill",
-            userInfo: ["grammarID": grammarID, "level": level]
+        let item = UIApplicationShortcutItem(
+            type: QuickActionType.recentGrammar.rawValue,
+            localizedTitle: "最近の文法",
+            localizedSubtitle: title,
+            icon: UIApplicationShortcutIcon(systemImageName: "text.book.closed.fill"),
+            userInfo: ["grammarID": grammarID as NSString, "level": level as NSString]
         )
+        guard QuickActionTarget(shortcutItem: item) != nil else { return }
+        updateAction(item)
     }
 
-    private func updateShortcutItem(type: QuickActionType, title: String, subtitle: String?, iconName: String, userInfo: [String: String]) {
-        var existingItems = UIApplication.shared.shortcutItems ?? []
-
-        let secureUserInfo: [String: NSSecureCoding] = userInfo.reduce(into: [:]) { result, element in
-            result[element.key] = element.value as NSString
-        }
-
-        let icon = UIApplicationShortcutIcon(systemImageName: iconName)
-        let newItem = UIMutableApplicationShortcutItem(
-            type: type.rawValue,
-            localizedTitle: title,
-            localizedSubtitle: subtitle,
-            icon: icon,
-            userInfo: secureUserInfo
-        )
-
-        existingItems.removeAll { $0.type == type.rawValue }
-        existingItems.append(newItem)
-
-        // order
-        existingItems.sort { (item1, item2) -> Bool in
-            let priority: [String: Int] = [
-                QuickActionType.recentGrammar.rawValue: 0,
-                QuickActionType.resumeVideo.rawValue: 1
-            ]
-            return (priority[item1.type] ?? 0) < (priority[item2.type] ?? 0)
-        }
-
-        if existingItems.count > 4 {
-            existingItems = Array(existingItems.prefix(4))
-        }
-
-        UIApplication.shared.shortcutItems = existingItems
+    /// 片方の更新で、もう片方のアクションを消さない。
+    private func updateAction(_ item: UIApplicationShortcutItem) {
+        removeObsoleteActions()
+        var items = UIApplication.shared.shortcutItems ?? []
+        items.removeAll { $0.type == item.type }
+        items.append(item)
+        items.sort { $0.type == QuickActionType.recentGrammar.rawValue && $1.type != QuickActionType.recentGrammar.rawValue }
+        UIApplication.shared.shortcutItems = items
     }
 
     func clearResumeVideo() {
-        var items = UIApplication.shared.shortcutItems ?? []
-            items.removeAll { $0.type == QuickActionType.resumeVideo.rawValue }
-            UIApplication.shared.shortcutItems = items
+        UIApplication.shared.shortcutItems?.removeAll { $0.type == QuickActionType.resumeVideo.rawValue }
     }
 }

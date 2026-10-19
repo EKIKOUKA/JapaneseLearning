@@ -64,9 +64,17 @@ struct ShadowingSettingsSheetView: View {
                     }
                 }
 
-                Section(footer: Text("ビデオのピクチャ・イン・ピクチャ（PiP）を許可します。")) {
-                    Toggle(isOn: $settingsStoreBindable.videoAllowsPictureInPicturePlayback) {
-                        Text("ピクチャ・イン・ピクチャ")
+                if playerVM == nil {
+                    Section(footer: Text("オンにするとネイティブプレーヤーで再生します。オフにするとYouTubeのオンラインプレーヤーで再生します。")) {
+                        Toggle("ネイティブプレーヤーを使用", isOn: $settingsStoreBindable.useNativeVideoPlayer)
+                    }
+                }
+                
+                if (settingsStoreBindable.useNativeVideoPlayer) {
+                    Section(footer: Text("ビデオのピクチャ・イン・ピクチャ（PiP）を許可します。")) {
+                        Toggle(isOn: $settingsStoreBindable.videoAllowsPictureInPicturePlayback) {
+                            Text("ピクチャ・イン・ピクチャ")
+                        }
                     }
                 }
             }

@@ -1,6 +1,6 @@
 import Foundation
 
-/// Main app and Live Activity extension share thumbnails through this container.
+/// メインアプリと Live Activity が、プレーヤーの種類に関係なく同じサムネイルを参照する。
 enum AppGroupThumbnailStorage {
     static let groupIdentifier = "group.com.makoto.JapaneseLearning"
 

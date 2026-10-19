@@ -11,6 +11,7 @@
 		0EDB25BB2FE449FD0091E0BF /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0EDB25BA2FE449FD0091E0BF /* SwiftUI.framework */; };
 		0EDB25CC2FE449FF0091E0BF /* VideoStatusExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 0EDB25B72FE449FC0091E0BF /* VideoStatusExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		0EEFE0292FEFD02500BFC25F /* UtilityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EEFE0282FEFD02500BFC25F /* UtilityTests.swift */; };
+		A10203040506070809101112 /* StripeApplePay in Frameworks */ = {isa = PBXBuildFile; productRef = A10203040506070809101113 /* StripeApplePay */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -128,6 +129,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A10203040506070809101112 /* StripeApplePay in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -230,6 +232,7 @@
 			);
 			name = JapaneseLearning;
 			packageProductDependencies = (
+				A10203040506070809101113 /* StripeApplePay */,
 			);
 			productName = JapaneseGrammar;
 			productReference = 7F4336D12F70600400783EE3 /* JapaneseLearning.app */;
@@ -267,6 +270,7 @@
 			mainGroup = 7FF22E852ED7EC6600603529;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
+				A10203040506070809101114 /* XCRemoteSwiftPackageReference "stripe-ios-spm" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 7FF22E852ED7EC6600603529;
@@ -748,6 +752,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		A10203040506070809101114 /* XCRemoteSwiftPackageReference "stripe-ios-spm" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/stripe/stripe-ios-spm";
+			requirement = {
+				kind = exactVersion;
+				version = 26.9.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		A10203040506070809101113 /* StripeApplePay */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A10203040506070809101114 /* XCRemoteSwiftPackageReference "stripe-ios-spm" */;
+			productName = StripeApplePay;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 7FF22E862ED7EC6600603529 /* Project object */;
 }

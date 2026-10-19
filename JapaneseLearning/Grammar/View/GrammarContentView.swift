@@ -29,7 +29,7 @@ struct GrammarContentView: View {
                     }
                 }
         }
-        .onChange(of: navigationStore.quickActionTarget) { _, target in
+        .onChange(of: navigationStore.quickActionTarget, initial: true) { _, target in
             guard let target = target else { return }
 
             if case .lastGrammar(let id, let level) = target {

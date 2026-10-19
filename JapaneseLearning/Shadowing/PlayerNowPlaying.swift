@@ -98,20 +98,18 @@ final class PlayerNowPlaying {
             nowPlayingInfo.removeValue(forKey: MPMediaItemPropertyArtwork)
         }
 
-        if let item = playerManager.player.currentItem {
-            let duration = item.duration.seconds
-            if duration.isFinite {
-                nowPlayingInfo[MPMediaItemPropertyPlaybackDuration] = duration
-            }
+        let duration = playerManager.playbackDuration
+        if duration.isFinite, duration > 0 {
+            nowPlayingInfo[MPMediaItemPropertyPlaybackDuration] = duration
         }
 
-        let current = playerManager.player.currentTime().seconds
+        let current = playerManager.playbackCurrentTime
         if current.isFinite {
             nowPlayingInfo[MPNowPlayingInfoPropertyElapsedPlaybackTime] = current
             lastPublishedElapsedSecond = Int(current.rounded(.down))
         }
 
-        let playbackRate = playerManager.isPlaying ? playerManager.player.rate : 0
+        let playbackRate = playerManager.isPlaying ? playerManager.rate : 0
         nowPlayingInfo[MPNowPlayingInfoPropertyPlaybackRate] = playbackRate
         nowPlayingInfo[MPNowPlayingInfoPropertyDefaultPlaybackRate] = playerManager.rate
         lastPublishedPlaybackRate = playbackRate
@@ -121,11 +119,11 @@ final class PlayerNowPlaying {
 
     @MainActor
     func updateNowPlayingProgress() {
-        let current = playerManager.player.currentTime().seconds
+        let current = playerManager.playbackCurrentTime
         guard current.isFinite else { return }
 
         let currentSecond = Int(current.rounded(.down))
-        let playbackRate = playerManager.isPlaying ? playerManager.player.rate : 0
+        let playbackRate = playerManager.isPlaying ? playerManager.rate : 0
         if lastPublishedElapsedSecond == currentSecond, lastPublishedPlaybackRate == playbackRate {
             return
         }
@@ -140,8 +138,8 @@ final class PlayerNowPlaying {
 
     @MainActor
     func updatePlaybackRate() {
-        let playbackRate = playerManager.isPlaying ? playerManager.player.rate : 0
-        let currentSecond = Int(playerManager.player.currentTime().seconds.rounded(.down))
+        let playbackRate = playerManager.isPlaying ? playerManager.rate : 0
+        let currentSecond = Int(playerManager.playbackCurrentTime.rounded(.down))
         if lastPublishedElapsedSecond == currentSecond, lastPublishedPlaybackRate == playbackRate {
             return
         }

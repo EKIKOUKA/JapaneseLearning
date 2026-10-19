@@ -14,9 +14,13 @@ struct JapaneseLearningApp: App {
     @State private var navigationStore = AppNavigationStore.shared
     @State private var videoStore = VideoStore()
     @State private var settingsStore = SettingsStore()
+    @State private var appleAccountStore = AppleAccountStore()
+    @State private var apnsTokenStore = APNsTokenStore.shared
 
     init() {
-        AVPlayer.isObservationEnabled = true
+        if #available(iOS 26.0, *) {
+            AVPlayer.isObservationEnabled = true
+        }
         URLCache.shared.diskCapacity = 0
         URLCache.shared.memoryCapacity = 0
     }
@@ -27,6 +31,10 @@ struct JapaneseLearningApp: App {
                 .environment(settingsStore)
                 .environment(navigationStore)
                 .environment(videoStore)
+                .environment(appleAccountStore)
+                .task(id: apnsTokenStore.token) {
+                    await appleAccountStore.syncAPNsDeviceToken()
+                }
         }
     }
 }

@@ -17,10 +17,13 @@ class AchieveSystemStore {
     var language: LanguageFilter = .all
     var selectedDate: Date = Date()
     var isRefreshing = false
-    let goalMinutes: Double = 64
+    var goalMinutes: Double = 10
 
     @ObservationIgnored
-    private let cacheKey = "achieve_system_practice_sessions_v1"
+    private var cacheKey: String {
+        "achieve_system_practice_sessions_v2.\(AppleAccountStore.savedUserID ?? "signed-out")"
+    }
+    @ObservationIgnored private var cachedUserID: String?
 
     private var loadToken: Int = 0
 
@@ -77,6 +80,12 @@ class AchieveSystemStore {
         anchorDate: Date,
         language: LanguageFilter = .all
     ) async {
+        if cachedUserID != AppleAccountStore.savedUserID { loadCache() }
+        guard let sessionToken = AppleAccountStore.savedSessionToken else {
+            rawSessions = []
+            rebuildChartWindow()
+            return
+        }
         self.language = language
         selectedDate = Self.normalizedAnchorDate(anchorDate, range: selectedRange)
         rebuildChartWindow()
@@ -88,8 +97,10 @@ class AchieveSystemStore {
 
         do {
             let queryData = Self.makeQuery()
-            let rows: [PracticeTimingRow] = try await WorkersAPI.get(queryData.path, queryItems: queryData.queryItems)
-            guard token == loadToken else { return }
+            let rows: [PracticeTimingRow] = try await WorkersAPI.get(
+                queryData.path, queryItems: queryData.queryItems, authorizationToken: sessionToken
+            )
+            guard token == loadToken, sessionToken == AppleAccountStore.savedSessionToken else { return }
 
             rawSessions = rows.sorted { $0.started_at < $1.started_at }
             saveCache()
@@ -100,6 +111,8 @@ class AchieveSystemStore {
     }
 
     private func loadCache() {
+        cachedUserID = AppleAccountStore.savedUserID
+        rawSessions = []
         guard let data = UserDefaults.standard.data(forKey: cacheKey),
               let cachedRows = try? JSONDecoder().decode([PracticeTimingRow].self, from: data) else {
             return
@@ -558,8 +571,11 @@ class AchieveSystemStore {
     }
 
     func deleteRawRecord(_ id: UUID) async {
+        guard let sessionToken = AppleAccountStore.savedSessionToken else { return }
+
         do {
-            try await WorkersAPI.post("delete_practice_session", body: [ "id": id ])
+            try await WorkersAPI.post("delete_practice_session", body: [ "id": id ], authorizationToken: sessionToken)
+            guard sessionToken == AppleAccountStore.savedSessionToken else { return }
             rawSessions.removeAll { $0.id == id }
             saveCache()
             rebuildChartWindow()

@@ -25,6 +25,8 @@ struct VideoDetailsView: View {
     @State private var drawerOffset: CGFloat = 0
     @State private var lastDragOffset: CGFloat = 0
 
+    @State private var youtubePlayerStatus = "Loading YouTube player…"
+
     private var displayAspectRatio: CGFloat {
         guard let ratio = video?.aspectRatio, ratio > 0 else {
             return 16.0 / 9.0
@@ -52,18 +54,33 @@ struct VideoDetailsView: View {
                 } else {
                     ZStack(alignment: .top) {
                         layout {
-                            VideoContentArea(
-                                playerVM: playerVM,
-                                videoID: videoID,
-                                drawerOffset: $drawerOffset,
-                                lastDragOffset: $lastDragOffset,
-                                maxDrawerOffset: currentVideoHeight,
-                                containerWidth: fullWidth,
-                                aspectRatio: displayAspectRatio,
-                                isLandscape: isLandscape,
-                                isPlayerReady: playerVM.currentVideoItem?.id == videoID &&
-                                    !playerVM.isVideoLoading
-                            )
+                            Group {
+                                if playerVM.activePlaybackUsesYouTube {
+                                    YouTubeVideoContentArea(
+                                        videoID: videoID,
+                                        playerManager: playerVM,
+                                        playerStatus: $youtubePlayerStatus,
+                                        drawerOffset: $drawerOffset,
+                                        lastDragOffset: $lastDragOffset,
+                                        maxDrawerOffset: currentVideoHeight,
+                                        containerWidth: fullWidth,
+                                        aspectRatio: displayAspectRatio,
+                                        isLandscape: isLandscape
+                                    )
+                                } else {
+                                    VideoContentArea(
+                                        playerVM: playerVM,
+                                        videoID: videoID,
+                                        drawerOffset: $drawerOffset,
+                                        lastDragOffset: $lastDragOffset,
+                                        maxDrawerOffset: currentVideoHeight,
+                                        containerWidth: fullWidth,
+                                        aspectRatio: displayAspectRatio,
+                                        isLandscape: isLandscape,
+                                        isPlayerReady: playerVM.currentVideoItem?.id == videoID && !playerVM.isVideoLoading
+                                    )
+                                }
+                            }
                             .simultaneousGesture(
                                 DragGesture(minimumDistance: 8, coordinateSpace: .global)
                                     .onChanged { value in
@@ -113,6 +130,10 @@ struct VideoDetailsView: View {
             guard let video else { return }
             playerVM.startVideo(video)
         }
+        .onChange(of: settingsStore.useNativeVideoPlayer) { _, _ in
+            guard let video else { return }
+            playerVM.startVideo(video)
+        }
         .sheet(isPresented: $showDictionarySheet,
                onDismiss: {
             playerVM.activeLookUpWordIdentifiable = nil
@@ -133,6 +154,11 @@ struct VideoDetailsView: View {
                 .presentationDetents(sizeClassRegular ? [.large] : [.medium, .large])
                 .presentationDragIndicator(.visible)
                 .navigationTransition(.crossFade)
+        }
+        .sheet(item: $playerVM.activeAIQuestion) { question in
+            AIExplanationView(question: question)
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
         }
         .onDisappear {
             Task {
@@ -403,6 +429,13 @@ struct SubtitlesRowView: View, Equatable {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .contentShape(Rectangle())
+        .contextMenu {
+            Button {
+                playerVM.showAIExplanation(line.text, mode: .sentence)
+            } label: {
+                Label("AI 解説", systemImage: "sparkles")
+            }
+        }
     }
 
     private func triggerHighlight() {

@@ -11,7 +11,7 @@ struct VideoUploadOptionsView: View {
     @Environment(VideoStore.self) private var store
     @State private var selectedLanguage: VideoContentLanguage = .ja
     @State private var createCaptionByAi: Bool = false
-    @State private var playbackRate: Float = 1.50
+    @State private var playbackRate: Float = 1.0
     @State private var videoTitle: String
     @State private var selectedCategoryID: String
     let showTitleField: Bool
@@ -50,7 +50,7 @@ struct VideoUploadOptionsView: View {
                 PlaybackRateSliderView(
                     rateValue: $playbackRate,
                     minValue: 0.50,
-                    maxValue: 2.00,
+                    maxValue: 1.50,
                     step: 0.05
                 )
             }

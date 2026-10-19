@@ -180,31 +180,40 @@ struct VideoListView: View {
 
     private func videoItemGrid(columns: [GridItem]) -> some View {
         LazyVGrid(columns: columns, spacing: 24) {
-            ForEach(filteredVideos) { video in
-                Button {
-                    onSelectVideo(video.id)
-                } label: {
-                    videoListItemView(video)
-                }
-                .buttonStyle(.plain)
-                .swipeActions {
-                    Button(role: .destructive) {
-                        withAnimation(.spring(duration: 0.35)) {
-                            store.videos.removeAll { $0.id == video.id }
-                        }
-
-                        Task {
-                            await MainActor.run {
-                                playerVM.handleDeletedVideo(id: video.id)
-                            }
-                            await store.deleteVideo(video.id)
-                        }
+            if filteredVideos.isEmpty {
+                ContentUnavailableView(
+                    "動画がありません",
+                    systemImage: "video",
+                    description: Text("右上の＋ボタンからリンクまたは再生リストに動画を追加してください")
+                )
+                .padding(.top, 200)
+            } else {
+                ForEach(filteredVideos) { video in
+                    Button {
+                        onSelectVideo(video.id)
                     } label: {
-                        Image(systemName: "trash")
+                        videoListItemView(video)
+                    }
+                    .buttonStyle(.plain)
+                    .swipeActions {
+                        Button(role: .destructive) {
+                            withAnimation(.spring(duration: 0.35)) {
+                                store.videos.removeAll { $0.id == video.id }
+                            }
+
+                            Task {
+                                await MainActor.run {
+                                    playerVM.handleDeletedVideo(id: video.id)
+                                }
+                                await store.deleteVideo(video.id)
+                            }
+                        } label: {
+                            Image(systemName: "trash")
+                        }
                     }
                 }
+                .reorderable()
             }
-            .reorderable()
         }
         .id(selectedCategory?.id)
         .transition(.opacity)

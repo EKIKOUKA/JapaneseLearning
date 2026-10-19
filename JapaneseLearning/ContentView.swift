@@ -42,6 +42,12 @@ struct ContentView: View {
                     Label("　　文法　　", systemImage: "book.pages")
                 }
                 .tag(3)
+
+            AppleAccountView()
+                .tabItem {
+                    Label("メニュー", systemImage: "line.3.horizontal")
+                }
+                .tag(4)
         }
         .tabBarMinimizeBehavior(.onScrollDown)
         .tabViewBottomAccessory(
@@ -91,8 +97,7 @@ struct ContentView: View {
                 return
             }
 
-            navigationStore.selectedTab = 0
-            navigationStore.quickActionTarget = .resumeVideo(id: videoID)
+            navigationStore.resumeVideo(id: videoID)
         }
     }
 }

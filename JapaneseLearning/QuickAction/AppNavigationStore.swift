@@ -13,8 +13,9 @@ struct VideoSheetDestination: Identifiable {
     let dismissesToMiniPlayer: Bool
 }
 
+@MainActor
 @Observable
-class AppNavigationStore {
+final class AppNavigationStore {
     static let shared = AppNavigationStore()
 
     var quickActionTarget: QuickActionTarget?
@@ -24,8 +25,22 @@ class AppNavigationStore {
 
     private init() {}
 
+    /// 外部からの動画遷移はミニプレイヤーの遷移元を引き継がない。
+    func resumeVideo(id: String) {
+        guard !id.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        selectedTab = 0
+        videoTransitionSourceID = nil
+        quickActionTarget = .resumeVideo(id: id)
+    }
+
     func clearTarget() {
         quickActionTarget = nil
     }
 
+    /// 文法タブへ切り替え、直近に開いた文法の詳細へ遷移する。
+    func openGrammar(id: Int, level: String) {
+        guard !level.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        selectedTab = 3
+        quickActionTarget = .lastGrammar(id: id, level: level)
+    }
 }

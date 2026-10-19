@@ -164,19 +164,11 @@ class VideoStore {
                 }
             }
 
-            let liveActivityToken = await VideoStatusLiveActivityManager.shared.start(video: video)
-            let didCreateServerRecord = await self.syncAddedVideoToServer(
+            _ = await self.syncAddedVideoToServer(
                 video,
                 createCaptionByAi: createCaptionByAi,
-                liveActivityToken: liveActivityToken
+                liveActivityToken: nil
             )
-
-            if didCreateServerRecord {
-                VideoStatusLiveActivityManager.shared.observeTokenChanges(
-                    videoID: video.id,
-                    initialToken: liveActivityToken
-                )
-            }
 
         }
     }
@@ -564,13 +556,24 @@ class VideoStore {
         return "listening"
     }
 
-    // MARK: - AppGroupThumbnailStorage Thumbnail
+    // MARK: - Shared Thumbnail Storage
     private static func thumbnailSourceURL(for video: VideoItem) async -> URL {
         await YouTubeService.fetchBestThumbnailURL(for: video.id)
     }
     private static func cacheThumbnail(for video: VideoItem) async {
         guard AppGroupThumbnailStorage.existingFileURL(for: video.id) == nil else {
             return
+        }
+
+        // WebView 版のローカルキャッシュを共有領域へコピーし、再ダウンロードを避ける。
+        if let localURL = LocalThumbnailStorage.existingFileURL(for: video.id),
+           let data = try? Data(contentsOf: localURL) {
+            do {
+                try AppGroupThumbnailStorage.save(data, for: video.id)
+                return
+            } catch {
+                print("サムネイルの共有領域への移行に失敗しました: \(error)")
+            }
         }
 
         let sourceURL = await thumbnailSourceURL(for: video)
@@ -601,6 +604,7 @@ class VideoStore {
         endedAt: Date,
         durationSeconds: Int
     ) async {
+        guard let sessionToken = AppleAccountStore.savedSessionToken else { return }
         let payload = PracticeSessionPayload(
             id: UUID().uuidString,
             contentLanguage: contentLanguage,
@@ -611,7 +615,7 @@ class VideoStore {
         )
 
         do {
-            try await WorkersAPI.post("update_practice_session", body: payload)
+            try await WorkersAPI.post("update_practice_session", body: payload, authorizationToken: sessionToken)
         } catch {
             print("❌ practice session sync failed:", error)
         }
