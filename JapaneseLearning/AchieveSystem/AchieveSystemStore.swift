@@ -572,6 +572,7 @@ class AchieveSystemStore {
 
     func deleteRawRecord(_ id: UUID) async {
         guard let sessionToken = AppleAccountStore.savedSessionToken else { return }
+
         do {
             try await WorkersAPI.post("delete_practice_session", body: [ "id": id ], authorizationToken: sessionToken)
             guard sessionToken == AppleAccountStore.savedSessionToken else { return }

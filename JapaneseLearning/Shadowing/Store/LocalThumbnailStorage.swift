@@ -15,6 +15,7 @@ enum LocalThumbnailStorage {
             at: directoryURL,
             withIntermediateDirectories: true
         )
+
         return directoryURL
     }
 
@@ -28,6 +29,7 @@ enum LocalThumbnailStorage {
               (attributes[.size] as? NSNumber)?.intValue ?? 0 > 0 else {
             return nil
         }
+
         return url
     }
 

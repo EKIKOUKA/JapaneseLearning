@@ -34,7 +34,7 @@ final class QuickActionManager {
 
     func updateResumeVideoAction(videoID: String, title: String, time: String) {
         guard !videoID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
-        
+
         UIApplication.shared.shortcutItems = [UIApplicationShortcutItem(
             type: QuickActionType.resumeVideo.rawValue,
             localizedTitle: "続きから再生",

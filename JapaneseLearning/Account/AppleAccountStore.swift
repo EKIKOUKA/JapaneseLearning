@@ -74,6 +74,7 @@ final class AppleAccountStore {
             for await result in Transaction.updates {
                 guard let self else { return }
                 let outcome = await self.processCreditTransaction(result)
+
                 if case .failed(let message) = outcome {
                     print("Credit transaction update failed: \(message)")
                 }
@@ -123,6 +124,7 @@ final class AppleAccountStore {
     func beginStripeTestPurchase() -> Bool {
         guard isSignedIn, !isAccountOperationBlocked else { return false }
         isPurchasingCredits = true
+
         return true
     }
 
@@ -130,25 +132,38 @@ final class AppleAccountStore {
 
     func stripeTestConfiguration() async throws -> StripeTestConfiguration {
         guard let sessionToken, isSignedIn else { throw URLError(.userAuthenticationRequired) }
-        return try await WorkersAPI.postForResponse("payments/stripe/config", body: [String: String](),
-                                                     authorizationToken: sessionToken)
+
+        return try await WorkersAPI.postForResponse(
+            "payments/stripe/config",
+            body: [String: String](),
+            authorizationToken: sessionToken
+        )
     }
 
     func createStripeTestIntent(credits: Int, requestID: String) async throws -> StripeTestIntent {
         guard let sessionToken, isSignedIn else { throw URLError(.userAuthenticationRequired) }
-        return try await WorkersAPI.postForResponse("payments/stripe/create",
-            body: StripeTestCreateRequest(credits: credits, requestID: requestID), authorizationToken: sessionToken)
+
+        return try await WorkersAPI.postForResponse(
+            "payments/stripe/create",
+            body: StripeTestCreateRequest(credits: credits, requestID: requestID),
+            authorizationToken: sessionToken
+        )
     }
 
     /// 再起動・通信断の後も Stripe の確定状態から復旧する。端末側で残高を足し算しない。
     func reconcileStripeTestPayments() async throws -> CreditChargeResponse {
         guard let sessionToken, isSignedIn else { throw URLError(.userAuthenticationRequired) }
         let initialBalanceRevision = balanceRevision
-        let response: CreditChargeResponse = try await WorkersAPI.postForResponse("payments/stripe/reconcile",
-            body: [String: String](), authorizationToken: sessionToken)
+        let response: CreditChargeResponse = try await WorkersAPI.postForResponse(
+            "payments/stripe/reconcile",
+            body: [String: String](),
+            authorizationToken: sessionToken
+        )
+
         if self.sessionToken == sessionToken, balanceRevision == initialBalanceRevision {
             setCreditBalance(response.creditBalance)
         }
+
         return response
     }
 
@@ -234,6 +249,7 @@ final class AppleAccountStore {
             creditTransactionTaskID = nil
             isApplyingCreditTransactions = false
         }
+
         return outcome
     }
 
@@ -265,12 +281,14 @@ final class AppleAccountStore {
         guard !isManagingAccount else { return }
         isManagingAccount = true
         defer { isManagingAccount = false }
+
         guard case .success(let authorization) = result,
               let credential = authorization.credential as? ASAuthorizationAppleIDCredential else {
             if case .failure(let error) = result,
                (error as? ASAuthorizationError)?.code != .canceled {
                 signInError = error.localizedDescription
             }
+
             return
         }
 
@@ -281,6 +299,7 @@ final class AppleAccountStore {
                 "auth/apple_login",
                 body: request
             )
+
             guard AppleSessionKeychain.save(response.sessionToken) else {
                 try? await WorkersAPI.post(
                     "user/logout",
@@ -340,6 +359,7 @@ final class AppleAccountStore {
                 "users",
                 authorizationToken: sessionToken
             )
+
             guard self.sessionToken == sessionToken, !isManagingAccount else { return }
             self.userID = profile.appleUserID
             // 取得中にチャージや消費が完了した場合、古い profile の残高で上書きしない。
@@ -350,6 +370,7 @@ final class AppleAccountStore {
                 setDailyPracticeGoal(profile.dailyPracticeGoalMinutes ?? 10)
             }
             persist()
+
             await retryUnfinishedCreditTransactions()
         } catch {
             guard self.sessionToken == sessionToken, !isManagingAccount else { return }
@@ -402,6 +423,7 @@ final class AppleAccountStore {
 
             deleteLocalAccountData()
             signInError = nil
+
             if response.requiresManualAppleRevocation == true {
                 accountNotice = "アカウントを削除しました。Apple の連携情報が保存されていなかったため、iPhone の設定から「Apple でサインイン」の本アプリとの連携も解除してください。"
             }
@@ -422,20 +444,20 @@ final class AppleAccountStore {
         guard isSignedIn, let sessionToken else {
             throw WorkersAPIError.httpStatus(401, "Apple でログインしてください。")
         }
-        
+
         guard (1...480).contains(minutes), !isAccountOperationBlocked else {
             throw WorkersAPIError.httpStatus(400, "目標は 1〜480 分で設定してください。処理中の場合はしばらくお待ちください。")
         }
-        
+
         isSavingDailyPracticeGoal = true
         defer { isSavingDailyPracticeGoal = false }
-        
+
         let settings: PracticeGoalSettings = try await WorkersAPI.postForResponse(
             "user/practice_goal",
             body: PracticeGoalSettings(dailyPracticeGoalMinutes: minutes),
             authorizationToken: sessionToken
         )
-        
+
         guard self.sessionToken == sessionToken else { return }
         setDailyPracticeGoal(settings.dailyPracticeGoalMinutes)
     }
@@ -475,7 +497,8 @@ final class AppleAccountStore {
                 mode: question.mode,
                 request_id: question.id.uuidString,
                 parent_request_id: question.parentRequestID?.uuidString,
-                language: question.language
+                language: question.language,
+                provider: question.provider
             ),
             authorizationToken: sessionToken,
             onDelta: onDelta
@@ -548,7 +571,7 @@ private enum AppleSessionKeychain {
             kSecAttrService as String: service,
             kSecAttrAccount as String: account,
             kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne,
+            kSecMatchLimit as String: kSecMatchLimitOne
         ]
 
         var result: CFTypeRef?
@@ -563,15 +586,16 @@ private enum AppleSessionKeychain {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
-            kSecAttrAccount as String: account,
+            kSecAttrAccount as String: account
         ]
         let attributes: [String: Any] = [
             kSecValueData as String: Data(token.utf8),
-            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
+            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
         ]
         let status = SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
         if status == errSecSuccess { return true }
         guard status == errSecItemNotFound else { return false }
+
         return SecItemAdd(query.merging(attributes) { _, new in new } as CFDictionary, nil) == errSecSuccess
     }
 
@@ -579,7 +603,7 @@ private enum AppleSessionKeychain {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
-            kSecAttrAccount as String: account,
+            kSecAttrAccount as String: account
         ]
 
         SecItemDelete(query as CFDictionary)

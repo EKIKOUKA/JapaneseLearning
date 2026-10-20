@@ -50,8 +50,7 @@ struct VideoContentView: View {
         }
         .background(Color.black)
         .onChange(of: navigationStore.quickActionTarget, initial: true) { _, target in
-            guard let target else { return }
-            let id = target.videoID
+            guard let target, case .resumeVideo(let id) = target else { return }
 
             if navigationStore.videoTransitionSourceID == "mini-\(id)" {
                 navigationStore.presentedVideo = VideoSheetDestination(

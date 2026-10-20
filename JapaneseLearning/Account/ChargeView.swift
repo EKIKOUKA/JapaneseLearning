@@ -13,6 +13,7 @@ struct ChargeView: View {
     @State private var selectedCredits = 0
     @State private var products: [Product] = []
     @State private var isLoadingProducts = true
+    @State private var hasLoadedProducts = false
     @State private var isPurchasing = false
     @State private var showingPurchaseAlert = false
     @State private var purchaseAlertTitle = ""
@@ -20,6 +21,7 @@ struct ChargeView: View {
 
     @State private var stripeConfiguration: StripeTestConfiguration?
     @State private var stripeSetupMessage: String?
+    @State private var isLoadingStripeConfiguration = true
     @State private var stripeCoordinator = StripeApplePayCoordinator()
 
     private var creditOptions: [Int] { accountStore.creditProducts.map(\.credits) }
@@ -118,7 +120,7 @@ struct ChargeView: View {
             .opacity(isPurchasing || isLoadingProducts || selectedProduct == nil || accountStore.isAccountOperationBlocked ? 0.45 : 1)
             .disabled(isPurchasing || isLoadingProducts || selectedProduct == nil || accountStore.isAccountOperationBlocked)
 
-            if !isLoadingProducts && selectedProduct == nil {
+            if hasLoadedProducts && !isLoadingProducts && selectedProduct == nil {
                 Text("商品を利用できません")
                     .font(.caption).foregroundStyle(.secondary)
                 Button("再読み込み") { Task { await loadProducts() } }
@@ -138,15 +140,18 @@ struct ChargeView: View {
                 }
             }
             .frame(height: 48)
-            .disabled(stripeOption == nil || !StripeApplePayCoordinator.isSupported || accountStore.isAccountOperationBlocked)
+            .disabled(isLoadingStripeConfiguration || stripeOption == nil || !StripeApplePayCoordinator.isSupported || accountStore.isAccountOperationBlocked)
 
-            if stripeOption == nil {
-                Text(stripeSetupMessage ?? (stripeConfiguration == nil ? "設定を読み込み中…" : "この商品は利用できません"))
+            if !isLoadingStripeConfiguration, stripeOption == nil {
+                Text(stripeSetupMessage ?? "この商品は利用できません")
                     .font(.caption).foregroundStyle(.secondary)
-                Button("再読み込み") { Task { await loadStripeConfiguration() } }
-                    .font(.caption)
-                    .disabled(accountStore.isAccountOperationBlocked)
-            } else if !StripeApplePayCoordinator.isSupported {
+
+                Button("再読み込み") { Task {
+                    await loadStripeConfiguration()
+                }}
+                .font(.caption)
+                .disabled(accountStore.isAccountOperationBlocked)
+            } else if !isLoadingStripeConfiguration && !StripeApplePayCoordinator.isSupported {
                 Text("対応端末の Wallet にカードを追加してください。")
                     .font(.caption).foregroundStyle(.secondary)
             }
@@ -157,7 +162,10 @@ struct ChargeView: View {
     /// 価格は StoreKit がストア地域に応じて返す表示価格を使う。アプリ内の固定値で請求しない。
     private func loadProducts() async {
         isLoadingProducts = true
-        defer { isLoadingProducts = false }
+        defer {
+            isLoadingProducts = false
+            hasLoadedProducts = true
+        }
 
         do {
             try await accountStore.loadCreditProducts()
@@ -168,7 +176,7 @@ struct ChargeView: View {
             products = fetchedProducts
                 .filter { $0.type == .consumable }
                 .sorted {
-                (accountStore.credits(for: $0.id) ?? 0) <
+                    (accountStore.credits(for: $0.id) ?? 0) <
                     (accountStore.credits(for: $1.id) ?? 0)
                 }
             print("StoreKit consumable products:", products.map { "\($0.id) [\($0.type)]" })
@@ -211,6 +219,10 @@ struct ChargeView: View {
     }
 
     private func loadStripeConfiguration() async {
+        isLoadingStripeConfiguration = true
+        stripeSetupMessage = nil
+        defer { isLoadingStripeConfiguration = false }
+
         do {
             stripeConfiguration = try await accountStore.stripeTestConfiguration()
             stripeSetupMessage = nil

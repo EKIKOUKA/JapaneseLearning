@@ -99,10 +99,18 @@ final class PlayerViewManager {
     }
 
     func startVideo(_ video: VideoItem) {
-        // App Store build: playback is exclusively handled by YouTube's IFrame player.
-        let useYouTube = true
+        let useYouTube = !(settingsStore?.useNativeVideoPlayer ?? false)
         let isDifferentVideo = currentVideoItem?.id != video.id
         let isChangingBackend = activePlaybackUsesYouTube != useYouTube
+
+        // 同じ動画を開き直す場合も、古い一覧モデルではなく再生中の位置と速度を引き継ぐ。
+        var playbackVideo = video
+        if !isDifferentVideo {
+            let time = playbackCurrentTime
+            if time.isFinite, !isVideoLoading { playbackVideo.currentTime = time }
+            else { playbackVideo.currentTime = currentVideoItem?.currentTime ?? video.currentTime }
+            playbackVideo.rate = rate
+        }
 
         if isDifferentVideo {
             saveCurrentProgressBeforeSwitch()
@@ -119,12 +127,27 @@ final class PlayerViewManager {
             }
             playerItemStatusTask?.cancel()
             playerItemStatusTask = nil
+            presentationSizeTask?.cancel()
+            presentationSizeTask = nil
+            if let periodicTimeObserver {
+                player.removeTimeObserver(periodicTimeObserver)
+                self.periodicTimeObserver = nil
+            }
+            removeLoopObserver()
+            isYouTubeBuffering = false
+            isYouTubeSeeking = false
+            pendingYouTubeSeekTarget = nil
             isPlaying = false
         }
 
         isDetailVisible = true
         activePlaybackUsesYouTube = useYouTube
-        prepareYouTubeVideo(video)
+        if useYouTube {
+            prepareYouTubeVideo(playbackVideo)
+        } else {
+            setupAudioSession()
+            prepareVideo(playbackVideo)
+        }
         syncCaptionToCurrentPlayback()
         startPracticeTimingIfNeeded()
     }
@@ -359,7 +382,7 @@ final class PlayerViewManager {
 
         do {
             let sources = try await videoStore.fetchVideoSources(videoItem.id)
-            guard currentVideoItem?.id == videoItem.id else { return }
+            guard currentVideoItem?.id == videoItem.id, !activePlaybackUsesYouTube else { return }
 
             print("✅ fetchVideoDataFromServer success: \(videoItem.id)")
             self.setupPlayer(with: sources.url)
@@ -370,7 +393,7 @@ final class PlayerViewManager {
 
                 do {
                     let captions = try await self.videoStore.fetchCaptions(from: captionsURL)
-                    guard self.currentVideoItem?.id == videoItem.id else {
+                    guard self.currentVideoItem?.id == videoItem.id, !self.activePlaybackUsesYouTube else {
                         return
                     }
 
@@ -380,6 +403,7 @@ final class PlayerViewManager {
                 }
             }
         } catch {
+            guard currentVideoItem?.id == videoItem.id, !activePlaybackUsesYouTube else { return }
             isProgressing = true
             print("❌ 失敗: \(error)")
             print("❌ 失敗: \(error.localizedDescription)")
@@ -421,7 +445,7 @@ final class PlayerViewManager {
             queue: .main
         ) { [weak self] time in
             Task { @MainActor in
-                guard let self else { return }
+                guard let self, !self.activePlaybackUsesYouTube else { return }
 
                 self.playerNowPlaying.updateNowPlayingProgress()
 
@@ -521,7 +545,9 @@ final class PlayerViewManager {
         let seekTime = CMTime(seconds: videoProgress, preferredTimescale: 600)
         player.seek(to: seekTime, toleranceBefore: .zero, toleranceAfter: .zero) { [weak self] _ in
             Task { @MainActor [weak self] in
-                guard let self = self else { return }
+                guard let self = self,
+                      !self.activePlaybackUsesYouTube,
+                      self.currentVideoItem?.id == videoItem.id else { return }
 
                 self.updateCaptionIndexForSeek(to: videoProgress)
                 self.player.playImmediately(atRate: videoRate)
@@ -856,7 +882,7 @@ final class PlayerViewManager {
         do {
             let session = AVAudioSession.sharedInstance()
             try session.setCategory(.playback, mode: .moviePlayback)
-            try session.setActive(true)
+            activateAudioSession(session)
         } catch {
             print("YouTube audio session activation failed: \(error.localizedDescription)")
         }
@@ -1007,9 +1033,20 @@ final class PlayerViewManager {
                 mode: .spokenAudio,
                 options: []
             )
-            try session.setActive(true)
+            activateAudioSession(session)
         } catch {
             print("Audio Session 設定失敗: \(error)")
+        }
+    }
+
+    /// システムの非同期 API を使い、音声ルートの準備でメインスレッドをブロックしない。
+    private func activateAudioSession(_ session: AVAudioSession) {
+        session.activate(options: []) { activated, error in
+            if let error {
+                print("オーディオセッションの有効化に失敗しました: \(error.localizedDescription)")
+            } else if !activated {
+                print("オーディオセッションを有効化できませんでした。")
+            }
         }
     }
 

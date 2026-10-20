@@ -244,6 +244,7 @@ struct YouTubePlayerView: UIViewRepresentable {
         context.coordinator.loadedVideoID = videoID
         playerManager?.attachYouTubeController(context.coordinator)
         loadPlayer(in: webView, videoID: videoID)
+
         return webView
     }
 

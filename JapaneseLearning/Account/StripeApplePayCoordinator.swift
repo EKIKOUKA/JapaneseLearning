@@ -30,26 +30,26 @@ final class StripeApplePayCoordinator: NSObject, ApplePayContextDelegate {
             completion(.failed("ログイン状態と購入の処理状況を確認してください。"))
             return
         }
-        
+
         self.accountStore = accountStore
         self.credits = credits
         self.requestID = UUID().uuidString
         self.completion = completion
         StripeAPI.defaultPublishableKey = configuration.publishableKey
-        
+
         let request = StripeAPI.paymentRequest(
             withMerchantIdentifier: configuration.merchantID,
             country: configuration.country,
             currency: configuration.currency
         )
-        
+
         request.paymentSummaryItems = [
             PKPaymentSummaryItem(
                 label: "ことね-言語シャドーイング",
                 amount: NSDecimalNumber(value: option.amount)
             )
         ]
-        
+
         guard let context = STPApplePayContext(paymentRequest: request, delegate: self) else {
             finish(.failed("Apple Pay の設定と Wallet のカードを確認してください。"))
             return
@@ -62,6 +62,7 @@ final class StripeApplePayCoordinator: NSObject, ApplePayContextDelegate {
     func applePayContext(_ context: STPApplePayContext, didCreatePaymentMethod paymentMethod: StripeAPI.PaymentMethod,
              paymentInformation: PKPayment) async throws -> String {
         guard let accountStore else { throw URLError(.userAuthenticationRequired) }
+
         return try await accountStore.createStripeTestIntent(credits: credits, requestID: requestID).clientSecret
     }
 
@@ -70,7 +71,7 @@ final class StripeApplePayCoordinator: NSObject, ApplePayContextDelegate {
             case .success:
                 Task {
                     guard let accountStore else { return }
-                    
+
                     do {
                         let result = try await accountStore.reconcileStripeTestPayments()
                         finish(.purchased(added: result.addedCredits, balance: result.creditBalance))
@@ -97,11 +98,15 @@ final class StripeApplePayCoordinator: NSObject, ApplePayContextDelegate {
 struct StripeApplePayButton: UIViewRepresentable {
     let action: () -> Void
     func makeUIView(context: Context) -> PKPaymentButton {
-        let button = PKPaymentButton(paymentButtonType: .buy, paymentButtonStyle: .automatic)
+        let button = PKPaymentButton(
+            paymentButtonType: .topUp,
+            paymentButtonStyle: .automatic
+        )
         button.addTarget(context.coordinator, action: #selector(Coordinator.tap), for: .touchUpInside)
+
         return button
     }
-    
+
     func updateUIView(_ uiView: PKPaymentButton, context: Context) { context.coordinator.action = action }
     func makeCoordinator() -> Coordinator { Coordinator(action: action) }
     final class Coordinator: NSObject {

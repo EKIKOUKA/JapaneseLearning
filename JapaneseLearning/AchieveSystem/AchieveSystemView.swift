@@ -56,6 +56,7 @@ struct AchieveSystemView: View {
         }
         .onAppear {
             store.goalMinutes = Double(accountStore.dailyPracticeGoalMinutes)
+
             Task {
                 await accountStore.refreshCredentialState()
                 store.goalMinutes = Double(accountStore.dailyPracticeGoalMinutes)

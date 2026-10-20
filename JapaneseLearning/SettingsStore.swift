@@ -21,7 +21,8 @@ struct AppSettings: Codable {
     var videoAllowsPictureInPicturePlayback: Bool = false
     var useNativeVideoPlayer: Bool = false
     var videoSubtitleFontColor: Color.Resolved?
-    var aiExplanationLanguage: String = "JP"
+    var AIExplanationLanguage: String = "JP"
+    var AIProvider: String = "Claude"
 }
 
 @Observable

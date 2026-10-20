@@ -1,3 +1,10 @@
+//
+//  AIExplanationView.swift
+//  JapaneseLearning
+//
+//  Created by 宇都宮　誠 on 2026/10/13.
+//
+
 import SwiftUI
 
 struct AIExplanationView: View {
@@ -56,7 +63,7 @@ struct AIExplanationView: View {
                             Button(action: sendFollowUp) {
                                 Image(systemName: "arrow.up.circle.fill").font(.title)
                             }
-                            .accessibilityLabel("質問を送信（1 クレジット）")
+                            .accessibilityLabel("質問を送信する")
                             .disabled(!canSend)
                         }
 
@@ -103,6 +110,7 @@ struct AIExplanationView: View {
             } else if !isLoading {
                 if let error = turn.errorMessage {
                     Text(error).foregroundStyle(.red)
+
                     Button("同じリクエストを再確認") {
                         Task { await explain(at: index) }
                     }
@@ -146,14 +154,17 @@ struct AIExplanationView: View {
         isLoading = true
         // Freeze the language for retries of the same charged request.
         if turns[index].question.language == nil {
-            switch settingsStore.aiExplanationLanguage {
+            switch settingsStore.AIExplanationLanguage {
                 case "EN": turns[index].question.language = "en"
                 case "TW": turns[index].question.language = "zh-TW"
                 default: turns[index].question.language = "ja"
             }
         }
-        
+
         turns[index].errorMessage = nil
+        if turns[index].question.provider == nil {
+            turns[index].question.provider = settingsStore.AIProvider
+        }
         turns[index].streamingText = ""
         defer { isLoading = false }
 
