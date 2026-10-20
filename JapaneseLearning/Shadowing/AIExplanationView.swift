@@ -154,7 +154,7 @@ struct AIExplanationView: View {
         isLoading = true
         // Freeze the language for retries of the same charged request.
         if turns[index].question.language == nil {
-            switch settingsStore.aiExplanationLanguage {
+            switch settingsStore.AIExplanationLanguage {
                 case "EN": turns[index].question.language = "en"
                 case "TW": turns[index].question.language = "zh-TW"
                 default: turns[index].question.language = "ja"
@@ -162,6 +162,9 @@ struct AIExplanationView: View {
         }
 
         turns[index].errorMessage = nil
+        if turns[index].question.provider == nil {
+            turns[index].question.provider = settingsStore.AIProvider
+        }
         turns[index].streamingText = ""
         defer { isLoading = false }
 

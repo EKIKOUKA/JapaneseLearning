@@ -498,7 +498,8 @@ final class AppleAccountStore {
                 mode: question.mode,
                 request_id: question.id.uuidString,
                 parent_request_id: question.parentRequestID?.uuidString,
-                language: question.language
+                language: question.language,
+                provider: question.provider
             ),
             authorizationToken: sessionToken,
             onDelta: onDelta

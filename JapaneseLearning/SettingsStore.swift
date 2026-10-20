@@ -27,9 +27,10 @@ struct AppSettings: Codable {
     var videoSubtitleDimInactiveLines: Bool = true
     var videoAutoJumpToNextLine: Bool = false
     var videoAllowsPictureInPicturePlayback: Bool = false
-    var useNativeVideoPlayer: Bool = false
+    var useNativeVideoPlayer: Bool = true
     var videoSubtitleFontColor: Color.Resolved?
-    var aiExplanationLanguage: String = "JP"
+    var AIExplanationLanguage: String = "JP"
+    var AIProvider: String = "Claude"
 
     // Somethings
     var showKanjiWordsDiffToShinaLangListCount: Bool = true

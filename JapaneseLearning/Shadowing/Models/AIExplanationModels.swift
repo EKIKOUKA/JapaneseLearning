@@ -17,6 +17,7 @@ struct AIExplanationQuestion: Identifiable {
     let mode: AIExplanationMode
     var parentRequestID: UUID? = nil
     var language: String? = nil
+    var provider: String? = nil
 }
 
 struct AIExplanationRequest: Encodable {
@@ -25,6 +26,7 @@ struct AIExplanationRequest: Encodable {
     let request_id: String
     var parent_request_id: String? = nil
     var language: String? = nil
+    var provider: String? = nil
 }
 
 struct AIExplanationTurn: Identifiable {
