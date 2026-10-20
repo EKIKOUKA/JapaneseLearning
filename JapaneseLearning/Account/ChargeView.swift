@@ -56,22 +56,35 @@ struct ChargeView: View {
                     }
                 }
 
-                VStack(alignment: .leading, spacing: 12) {
-                    HStack(alignment: .firstTextBaseline) {
-                        Text("お支払い金額").font(.headline)
-                        Spacer()
-                        Text(selectedPrice ?? "—")
-                            .font(.title2.bold().monospacedDigit())
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("お支払い金額")
+                        .font(.headline)
+
+                    Group {
+                        if let selected_price = selectedPrice {
+                            Text(selected_price)
+                                .font(.title2.bold().monospacedDigit())
+                        } else {
+                            ProgressView()
+                                .controlSize(.regular)
+                        }
                     }
-                    .padding(.bottom, 8)
-
-                    Text("お支払い方法").font(.headline)
-
-                    AppStorePayment
-                    ApplePayPayment
+                    .frame(maxWidth: .infinity, minHeight: 64, alignment: .leading)
+                    .padding(.horizontal, 18)
+                    .background(.background, in: RoundedRectangle(cornerRadius: 18))
                 }
-                .padding(20)
-                .background(.background, in: RoundedRectangle(cornerRadius: 20))
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("お支払い方法")
+                        .font(.headline)
+
+                    VStack(alignment: .leading, spacing: 14) {
+                        AppStorePayment
+                        ApplePayPayment
+                    }
+                    .padding(18)
+                    .background(.background, in: RoundedRectangle(cornerRadius: 18))
+                }
             }
             .padding(20)
         }
