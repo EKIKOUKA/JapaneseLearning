@@ -21,6 +21,7 @@ final class VideoStatusLiveActivityManager {
     private var observedVideoIDs: Set<String> = []
 
     func start(video: VideoItem) async -> String? {
+        guard ActivityAuthorizationInfo().areActivitiesEnabled else { return nil }
         if let activity = activities[video.id]
             ?? Activity<VideoStatusAttributes>.activities.first(where: {
                 $0.attributes.videoId == video.id
@@ -68,6 +69,12 @@ final class VideoStatusLiveActivityManager {
         return nil
     }
 
+    func end(videoID: String) async {
+        guard let activity = activities.removeValue(forKey: videoID) else { return }
+
+        await activity.end(nil, dismissalPolicy: .immediate)
+    }
+
     func observeTokenChanges(
         videoID: String,
         initialToken: String?
@@ -86,9 +93,12 @@ final class VideoStatusLiveActivityManager {
                 lastToken = token
 
                 do {
+                    guard let sessionToken = AppleAccountStore.savedSessionToken else { break }
+
                     try await WorkersAPI.post(
                         "video/live_activity_token",
-                        body: LiveActivityTokenRequest(id: videoID, token: token)
+                        body: LiveActivityTokenRequest(id: videoID, token: token),
+                        authorizationToken: sessionToken
                     )
                 } catch {
                     print("❌ Live Activity token update failed: \(error)")

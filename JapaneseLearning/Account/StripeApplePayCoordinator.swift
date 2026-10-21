@@ -99,7 +99,7 @@ struct StripeApplePayButton: UIViewRepresentable {
     let action: () -> Void
     func makeUIView(context: Context) -> PKPaymentButton {
         let button = PKPaymentButton(
-            paymentButtonType: .topUp,
+            paymentButtonType: .plain,
             paymentButtonStyle: .automatic
         )
         button.addTarget(context.coordinator, action: #selector(Coordinator.tap), for: .touchUpInside)

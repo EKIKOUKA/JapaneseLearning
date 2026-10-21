@@ -141,15 +141,15 @@ struct AppleAccountView: View {
                 Text(accountStore.accountCredits.formatted())
                     .font(.system(size: 40, weight: .bold, design: .rounded))
                     .monospacedDigit()
-                    .contentTransition(.numericText())
+                    .contentTransition(.numericText(value: Double(accountStore.accountCredits)))
                     .minimumScaleFactor(0.6)
                     .lineLimit(1)
-                
+                    .animation(.smooth(duration: 1.0), value: accountStore.accountCredits)
+
                 Text("クレジット")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
-            .animation(.smooth, value: accountStore.accountCredits)
 
             Text("AI 解説・追加の質問に利用できます。")
                 .font(.footnote)

@@ -87,6 +87,8 @@ class VideoStore {
         createCaptionByAi: Bool,
         liveActivityToken: String?
     ) async -> Bool {
+        guard let sessionToken = AppleAccountStore.savedSessionToken else { return false }
+
         do {
             try await WorkersAPI.post(
                 "add_video",
@@ -94,7 +96,8 @@ class VideoStore {
                     video: video,
                     createCaptionByAi: createCaptionByAi,
                     liveActivityToken: liveActivityToken
-                )
+                ),
+                authorizationToken: sessionToken
             )
 
             return true
@@ -147,6 +150,12 @@ class VideoStore {
 
     @MainActor
     func addVideo(_ video: VideoItem, thumbnailURL: URL, createCaptionByAi: Bool = true) {
+        guard AppleAccountStore.savedSessionToken != nil else {
+            print("動画を追加するには Apple でログインしてください。")
+
+            return
+        }
+
         Task(priority: .utility) {
             var thumbnailSaved = false
 
@@ -164,12 +173,17 @@ class VideoStore {
                 }
             }
 
-            _ = await self.syncAddedVideoToServer(
+            let liveActivityToken = await VideoStatusLiveActivityManager.shared.start(video: video)
+            let synced = await self.syncAddedVideoToServer(
                 video,
                 createCaptionByAi: createCaptionByAi,
-                liveActivityToken: nil
+                liveActivityToken: liveActivityToken
             )
-
+            if synced {
+                VideoStatusLiveActivityManager.shared.observeTokenChanges(videoID: video.id, initialToken: liveActivityToken)
+            } else {
+                await VideoStatusLiveActivityManager.shared.end(videoID: video.id)
+            }
         }
     }
 
