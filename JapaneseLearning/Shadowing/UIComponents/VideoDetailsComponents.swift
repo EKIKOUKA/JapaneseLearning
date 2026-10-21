@@ -112,7 +112,7 @@ struct VideoControlView: View {
 
             PlaybackRateSliderView(
                 rateValue: $playerVM.tempRate,
-                minValue: 0.70,
+                minValue: 0.50,
                 maxValue: 1.50,
                 step: 0.05
             ) { rate in
