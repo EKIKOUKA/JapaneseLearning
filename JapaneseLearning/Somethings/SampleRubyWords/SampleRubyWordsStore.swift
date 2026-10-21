@@ -42,7 +42,7 @@ class SampleRubyWordsStore {
     @MainActor
     func fetchAll() async {
         do {
-            SampleRubyWordsList = try await WorkersAPI.get("fetch_sample_ruby_words")
+            SampleRubyWordsList = try await WorkersAPI.get("fetch_sample_ruby_words", requiresAuthentication: true)
             withAnimation(.easeIn(duration: 0.2)) {
                 isReady = true
             }
@@ -57,7 +57,7 @@ class SampleRubyWordsStore {
         SampleRubyWordsList.append(addItem)
 
         do {
-            try await WorkersAPI.post("add_sample_ruby_words", body: addItem)
+            try await WorkersAPI.post("add_sample_ruby_words", body: addItem, requiresAuthentication: true)
         } catch {
             print("❌ Add failed:", error)
             SampleRubyWordsList.removeAll { $0.id == addItem.id }
@@ -72,7 +72,7 @@ class SampleRubyWordsStore {
         SampleRubyWordsList[index] = updatedItem
 
         do {
-            try await WorkersAPI.post("update_sample_ruby_words", body: updatedItem)
+            try await WorkersAPI.post("update_sample_ruby_words", body: updatedItem, requiresAuthentication: true)
         } catch {
             print("❌ Update failed:", error)
             SampleRubyWordsList[index] = original

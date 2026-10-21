@@ -67,7 +67,7 @@ class KanjiWordsStore {
     @MainActor
     func fetchAll() async {
         do {
-            KanjiWordsList = try await WorkersAPI.get("fetch_kanji_word")
+            KanjiWordsList = try await WorkersAPI.get("fetch_kanji_word", requiresAuthentication: true)
             withAnimation(.easeIn(duration: 0.2)) {
                 isReady = true
             }
@@ -82,7 +82,7 @@ class KanjiWordsStore {
         KanjiWordsList.append(addItem)
 
         do {
-            try await WorkersAPI.post("add_kanji_word", body: addItem)
+            try await WorkersAPI.post("add_kanji_word", body: addItem, requiresAuthentication: true)
         } catch {
             print("❌ Add failed:", error)
             KanjiWordsList.removeAll { $0.id == addItem.id }
@@ -96,7 +96,7 @@ class KanjiWordsStore {
         KanjiWordsList[index] = updatedItem
 
         do {
-            try await WorkersAPI.post("update_kanji_word", body: updatedItem)
+            try await WorkersAPI.post("update_kanji_word", body: updatedItem, requiresAuthentication: true)
         } catch {
             print("❌ Update failed:", error)
             KanjiWordsList[index] = original

@@ -60,11 +60,23 @@ enum WorkersAPI {
         throw WorkersAPIError.httpStatus(502, "通信が中断されました。同じリクエストで再確認してください。")
     }
 
+    private static func authorize(_ request: inout URLRequest, token: String?, required: Bool) async throws {
+        let resolvedToken: String?
+        if let token { resolvedToken = token }
+        else if required { resolvedToken = await MainActor.run { AppleAccountStore.savedSessionToken } }
+        else { resolvedToken = nil }
+        if required && (resolvedToken?.isEmpty ?? true) {
+            throw WorkersAPIError.httpStatus(401, "Apple でログインしてください。")
+        }
+        if let resolvedToken { request.setValue("Bearer \(resolvedToken)", forHTTPHeaderField: "Authorization") }
+    }
+
     // MARK: - GET
     static func get<T: Decodable>(
         _ path: String,
         queryItems: [URLQueryItem]? = nil,
-        authorizationToken: String? = nil
+        authorizationToken: String? = nil,
+        requiresAuthentication: Bool = false
     ) async throws -> T {
         var url = baseURL.appending(path: path)
         if let queryItems {
@@ -72,9 +84,7 @@ enum WorkersAPI {
         }
 
         var request = URLRequest(url: url)
-        if let authorizationToken {
-            request.setValue("Bearer \(authorizationToken)", forHTTPHeaderField: "Authorization")
-        }
+        try await authorize(&request, token: authorizationToken, required: requiresAuthentication)
         let (data, response) = try await URLSession.shared.data(for: request)
         try response.validateHTTPStatus(data)
 
@@ -85,16 +95,15 @@ enum WorkersAPI {
     static func post<T: Encodable>(
         _ path: String,
         body: T,
-        authorizationToken: String? = nil
+        authorizationToken: String? = nil,
+        requiresAuthentication: Bool = false
     ) async throws {
         let url = baseURL.appending(path: path)
 
         var request = URLRequest(url: url)
             .setMethod("POST")
             .setJSONBody(body)
-        if let authorizationToken {
-            request.setValue("Bearer \(authorizationToken)", forHTTPHeaderField: "Authorization")
-        }
+        try await authorize(&request, token: authorizationToken, required: requiresAuthentication)
 
         let (data, response) = try await URLSession.shared.data(for: request)
 
@@ -104,15 +113,14 @@ enum WorkersAPI {
     static func postForResponse<Response: Decodable, Body: Encodable>(
         _ path: String,
         body: Body,
-        authorizationToken: String? = nil
+        authorizationToken: String? = nil,
+        requiresAuthentication: Bool = false
     ) async throws -> Response {
         let url = baseURL.appending(path: path)
         var request = URLRequest(url: url)
             .setMethod("POST")
             .setJSONBody(body)
-        if let authorizationToken {
-            request.setValue("Bearer \(authorizationToken)", forHTTPHeaderField: "Authorization")
-        }
+        try await authorize(&request, token: authorizationToken, required: requiresAuthentication)
 
         let (data, response) = try await URLSession.shared.data(for: request)
         try response.validateHTTPStatus(data)
@@ -120,12 +128,18 @@ enum WorkersAPI {
     }
 
     // MARK: - POST (Raw Data)
-    static func postRaw(_ path: String, body: [String: Int]) async throws {
+    static func postRaw(
+        _ path: String,
+        body: [String: Int],
+        authorizationToken: String? = nil,
+        requiresAuthentication: Bool = false
+    ) async throws {
         let url = baseURL.appending(path: path)
 
-        let request = URLRequest(url: url)
+        var request = URLRequest(url: url)
             .setMethod("POST")
             .setRawJSONBody(body)
+        try await authorize(&request, token: authorizationToken, required: requiresAuthentication)
 
         let (data, response) = try await URLSession.shared.data(for: request)
 

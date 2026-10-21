@@ -24,7 +24,7 @@ class ElegantSentenceStore {
 
     func fetchAll() async {
         do {
-            ElegantSentenceList = try await WorkersAPI.get("fetch_elegant_sentence")
+            ElegantSentenceList = try await WorkersAPI.get("fetch_elegant_sentence", requiresAuthentication: true)
             withAnimation(.easeIn(duration: 0.2)) {
                 isReady = true
             }
@@ -39,7 +39,7 @@ class ElegantSentenceStore {
         ElegantSentenceList.append(addItem)
 
         do {
-            try await WorkersAPI.post("add_elegant_sentence", body: addItem)
+            try await WorkersAPI.post("add_elegant_sentence", body: addItem, requiresAuthentication: true)
         } catch {
             print("❌ Add failed:", error)
             ElegantSentenceList.removeAll { $0.id == addItem.id }
@@ -53,7 +53,7 @@ class ElegantSentenceStore {
         ElegantSentenceList[index] = updatedItem
 
         do {
-            try await WorkersAPI.post("update_elegant_sentence", body: updatedItem)
+            try await WorkersAPI.post("update_elegant_sentence", body: updatedItem, requiresAuthentication: true)
         } catch {
             print("❌ Update failed:", error)
             ElegantSentenceList[index] = original

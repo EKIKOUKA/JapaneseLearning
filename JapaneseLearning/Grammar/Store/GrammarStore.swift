@@ -29,7 +29,8 @@ class GrammarStore {
                         name: "level",
                         value: level
                     )
-                ]
+                ],
+                requiresAuthentication: true
             )
             withAnimation(.easeIn(duration: 0.2)) {
                 self.isReady = true
@@ -54,7 +55,8 @@ class GrammarStore {
         do {
             try await WorkersAPI.postRaw(
                 "grammars_toggle_important",
-                body: updatedItem
+                body: updatedItem,
+                requiresAuthentication: true
             )
         } catch {
             print("❌ Update failed:", error)
@@ -75,7 +77,8 @@ class GrammarStore {
         do {
             try await WorkersAPI.postRaw(
                 "grammars_toggle_marked",
-                body: updatedItem
+                body: updatedItem,
+                requiresAuthentication: true
             )
         } catch {
             print("❌ Update failed:", error)
@@ -87,7 +90,7 @@ class GrammarStore {
         grammars.append(addItem)
 
         do {
-            try await WorkersAPI.post("add_grammars", body: addItem)
+            try await WorkersAPI.post("add_grammars", body: addItem, requiresAuthentication: true)
         } catch {
             print("❌ Add failed:", error)
             grammars.removeAll { $0.id == addItem.id }
@@ -101,7 +104,7 @@ class GrammarStore {
         grammars[index] = updatedItem
 
         do {
-            try await WorkersAPI.post("update_grammars", body: updatedItem)
+            try await WorkersAPI.post("update_grammars", body: updatedItem, requiresAuthentication: true)
         } catch {
             print("❌ Update failed:", error)
             grammars[index] = original

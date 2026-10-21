@@ -42,7 +42,7 @@ class IdiomsStore {
     @MainActor
     func fetchAll() async {
         do {
-            IdiomsList = try await WorkersAPI.get("fetch_idioms")
+            IdiomsList = try await WorkersAPI.get("fetch_idioms", requiresAuthentication: true)
             withAnimation(.easeIn(duration: 0.2)) {
                 isReady = true
             }
@@ -57,7 +57,7 @@ class IdiomsStore {
         IdiomsList.append(addItem)
 
         do {
-            try await WorkersAPI.post("add_idioms", body: addItem)
+            try await WorkersAPI.post("add_idioms", body: addItem, requiresAuthentication: true)
         } catch {
             print("❌ Add failed:", error)
             IdiomsList.removeAll { $0.id == addItem.id }
@@ -72,7 +72,7 @@ class IdiomsStore {
         IdiomsList[index] = updatedItem
 
         do {
-            try await WorkersAPI.post("update_idioms", body: updatedItem)
+            try await WorkersAPI.post("update_idioms", body: updatedItem, requiresAuthentication: true)
         } catch {
             print("❌ Update failed:", error)
             IdiomsList[index] = original

@@ -42,7 +42,7 @@ class MemoryHardWordsStore {
     @MainActor
     func fetchAll() async {
         do {
-            MemoryHardWordsList = try await WorkersAPI.get("fetch_memory_hard_words")
+            MemoryHardWordsList = try await WorkersAPI.get("fetch_memory_hard_words", requiresAuthentication: true)
             withAnimation(.easeIn(duration: 0.2)) {
                 isReady = true
             }
@@ -57,7 +57,7 @@ class MemoryHardWordsStore {
         MemoryHardWordsList.append(addItem)
 
         do {
-            try await WorkersAPI.post("add_memory_hard_words", body: addItem)
+            try await WorkersAPI.post("add_memory_hard_words", body: addItem, requiresAuthentication: true)
         } catch {
             print("❌ Add failed:", error)
             MemoryHardWordsList.removeAll { $0.id == addItem.id }
@@ -71,7 +71,7 @@ class MemoryHardWordsStore {
         MemoryHardWordsList[index] = updatedItem
 
         do {
-            try await WorkersAPI.post("update_memory_hard_words", body: updatedItem)
+            try await WorkersAPI.post("update_memory_hard_words", body: updatedItem, requiresAuthentication: true)
         } catch {
             print("❌ Update failed:", error)
             MemoryHardWordsList[index] = original

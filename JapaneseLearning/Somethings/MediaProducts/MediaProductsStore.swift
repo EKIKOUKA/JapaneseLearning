@@ -19,7 +19,7 @@ class MediaProductsStore {
 
     func fetchAll() async {
         do {
-            MediaProductsList = try await WorkersAPI.get("fetch_video_products")
+            MediaProductsList = try await WorkersAPI.get("fetch_video_products", requiresAuthentication: true)
             withAnimation(.easeIn(duration: 0.15)) {
                 isReady = true
             }
@@ -34,7 +34,7 @@ class MediaProductsStore {
         MediaProductsList.append(addItem)
 
         do {
-            try await WorkersAPI.post("add_video_products", body: addItem)
+            try await WorkersAPI.post("add_video_products", body: addItem, requiresAuthentication: true)
         } catch {
             print("❌ Add failed:", error)
             MediaProductsList.removeAll { $0.id == addItem.id }
@@ -48,7 +48,7 @@ class MediaProductsStore {
         MediaProductsList[index] = updatedItem
 
         do {
-            try await WorkersAPI.post("update_video_products", body: updatedItem)
+            try await WorkersAPI.post("update_video_products", body: updatedItem, requiresAuthentication: true)
         } catch {
             print("❌ Update failed:", error)
             MediaProductsList[index] = original
