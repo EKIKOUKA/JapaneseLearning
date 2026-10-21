@@ -8,6 +8,7 @@
 import SwiftUI
 
 struct ContentView: View {
+    @Environment(AppleAccountStore.self) private var accountStore
     @Environment(VideoStore.self) private var videoStore
     @Environment(SettingsStore.self) private var settingsStore
     @Environment(AppNavigationStore.self) private var navigationStore
@@ -64,6 +65,10 @@ struct ContentView: View {
         .environment(\.transitionNamespace, transitionNamespace)
         .onAppear {
             playerVM.inject(videoStore: videoStore, settingsStore: settingsStore)
+        }
+        .onChange(of: accountStore.userID) {
+            playerVM.resetPlayer()
+            navigationStore.presentedVideo = nil
         }
         .onChange(of: scenePhase, initial: false) {
             Task {

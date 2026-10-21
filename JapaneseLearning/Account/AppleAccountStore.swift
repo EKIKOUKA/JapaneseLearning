@@ -116,7 +116,7 @@ final class AppleAccountStore {
     }
 
     func loadCreditProducts() async throws {
-        let catalog: CreditProductCatalog = try await WorkersAPI.get("credit_products")
+        let catalog: CreditProductCatalog = try await WorkersAPI.get("credit_products", requiresAuthentication: true)
         creditProducts = catalog.products
     }
 
