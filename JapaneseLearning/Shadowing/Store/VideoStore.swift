@@ -22,16 +22,29 @@ class VideoStore {
     var videoListVideos: [PlayListVideoItem] = []
     var videoListVideosIsReady: Bool = false
 
-    private let videoCacheKey: String = "cached_videos"
-    private let playlistCategoriesCacheKey: String = "cached_playlist_categories"
+    private var cacheOwnerID: String?
+    private var videoCacheKey: String { "cached_videos_v2.\(cacheOwnerID ?? "signed-out")" }
+    private var playlistCategoriesCacheKey: String { "cached_playlist_categories_v2.\(cacheOwnerID ?? "signed-out")" }
 
-    init() {
-        loadVideoCache() // Load local cache first
-        loadPlaylistCategoriesCache()
+    init() {}
 
-        Task { @MainActor in
-            await fetchVideos()
+    @MainActor
+    func accountChanged(to userID: String?) async {
+        if cacheOwnerID != nil && cacheOwnerID != userID {
+            UserDefaults.standard.removeObject(forKey: videoCacheKey)
+            UserDefaults.standard.removeObject(forKey: playlistCategoriesCacheKey)
         }
+        cacheOwnerID = userID
+        videos = []
+        videoList = []
+        videoListVideos = []
+        playlistCategories = []
+        videoSubtitleSkipWords = nil
+        QuickActionManager.shared.clearResumeVideo()
+        guard userID != nil else { return }
+        loadVideoCache()
+        loadPlaylistCategoriesCache()
+        await fetchVideos()
     }
 
     // MARK: - Local Cache (UserDefaults)
@@ -85,16 +98,19 @@ class VideoStore {
     private func syncAddedVideoToServer(
         _ video: VideoItem,
         createCaptionByAi: Bool,
-        liveActivityToken: String?
+        liveActivityToken: String?,
+        sessionToken: String
     ) async -> Bool {
         do {
             try await WorkersAPI.post(
-                "add_video",
+                "add_video_captions_only",
                 body: VideoItemAddRequest(
                     video: video,
                     createCaptionByAi: createCaptionByAi,
                     liveActivityToken: liveActivityToken
-                )
+                ),
+                authorizationToken: sessionToken,
+                requiresAuthentication: true
             )
 
             return true
@@ -107,16 +123,22 @@ class VideoStore {
     // MARK: - Video CRUD Operations (Server Sync with WorkersAPI)
     @MainActor
     func fetchVideos() async {
+        let owner = cacheOwnerID
+        guard owner != nil, let sessionToken = AppleAccountStore.savedSessionToken else { return }
         do {
-            let fetchedCategories: [PlaylistCategory] = try await WorkersAPI.get("fetch_playlist_categories")
+            let fetchedCategories: [PlaylistCategory] = try await WorkersAPI.get("fetch_playlist_categories", authorizationToken: sessionToken, requiresAuthentication: true)
+            guard cacheOwnerID == owner, !Task.isCancelled else { return }
             self.playlistCategories = fetchedCategories.sorted {
                 $0.sortOrder < $1.sortOrder
             }
             savePlaylistCategoriesCache()
 
-            self.videoSubtitleSkipWords = try await WorkersAPI.get("config/video_subtitle_skip_words")
+            let skipWords: VideoSubtitleSkipWords = try await WorkersAPI.get("config/video_subtitle_skip_words", authorizationToken: sessionToken, requiresAuthentication: true)
 
-            let freshVideos: [VideoItem] = try await WorkersAPI.get("fetch_videos")
+            guard cacheOwnerID == owner, !Task.isCancelled else { return }
+            self.videoSubtitleSkipWords = skipWords
+            let freshVideos: [VideoItem] = try await WorkersAPI.get("fetch_videos", authorizationToken: sessionToken, requiresAuthentication: true)
+            guard cacheOwnerID == owner, !Task.isCancelled else { return }
             withAnimation(.easeIn(duration: 0.5)) {
                 self.videos = freshVideos
             }
@@ -147,6 +169,8 @@ class VideoStore {
 
     @MainActor
     func addVideo(_ video: VideoItem, thumbnailURL: URL, createCaptionByAi: Bool = true) {
+        guard let sessionToken = AppleAccountStore.savedSessionToken else { return }
+        let owner = cacheOwnerID
         Task(priority: .utility) {
             var thumbnailSaved = false
 
@@ -158,25 +182,34 @@ class VideoStore {
                 print("❌ Thumbnail download failed: \(error)")
             }
 
+            guard self.cacheOwnerID == owner else { return }
             if thumbnailSaved {
                 await MainActor.run {
                     self.upsertVideoLocally(video)
                 }
             }
 
-            _ = await self.syncAddedVideoToServer(
+            let saved = await self.syncAddedVideoToServer(
                 video,
                 createCaptionByAi: createCaptionByAi,
-                liveActivityToken: nil
+                liveActivityToken: nil,
+                sessionToken: sessionToken
             )
-
+            guard self.cacheOwnerID == owner else { return }
+            if !saved {
+                self.videos.removeAll { $0.id == video.id }
+                self.saveVideoCache()
+                await self.fetchVideos()
+            }
         }
     }
 
     @MainActor
     func updateVideo(_ video: VideoItem) async {
+        let owner = cacheOwnerID
         do {
-            try await WorkersAPI.post("update_video", body: video)
+            try await WorkersAPI.post("update_video", body: video, requiresAuthentication: true)
+            guard cacheOwnerID == owner else { return }
             upsertVideoLocally(video, animated: false)
         } catch {
             print("❌ Update Error: \(error)")
@@ -187,7 +220,7 @@ class VideoStore {
     func updateVideoAspectRatio(_ video: VideoItem) {
         Task {
             do {
-                try await WorkersAPI.post("update_video_aspect_ratio", body: video)
+                try await WorkersAPI.post("update_video_aspect_ratio", body: video, requiresAuthentication: true)
                 print("✅ aspectRatio Update Success")
                 if let index = videos.firstIndex(where: { $0.id == video.id }) {
                     videos[index] = video
@@ -203,7 +236,7 @@ class VideoStore {
     @MainActor
     func deleteVideo(_ id: String) async {
         do {
-            try await WorkersAPI.post("delete_video", body: ["id": id])
+            try await WorkersAPI.post("delete_video", body: ["id": id], requiresAuthentication: true)
 
             if let index = videos.firstIndex(where: { $0.id == id }) {
                 videos.remove(at: index)
@@ -223,11 +256,16 @@ class VideoStore {
     // MARK: - Playlist Operations (Server Sync with WorkersAPI)
     @MainActor
     func fetchVideoPlaylist() async {
+        let owner = cacheOwnerID
+        guard owner != nil, let sessionToken = AppleAccountStore.savedSessionToken else { return }
         videoListIsReady = false
 
         do {
-            self.videoList = try await WorkersAPI.get("fetch_video_playlist")
+            let playlists: [PlaylistListItem] = try await WorkersAPI.get("fetch_video_playlist", authorizationToken: sessionToken, requiresAuthentication: true)
+            guard cacheOwnerID == owner, !Task.isCancelled else { return }
+            self.videoList = playlists
             try? await Task.sleep(for: .seconds(0.1))
+            guard cacheOwnerID == owner, !Task.isCancelled else { return }
             withAnimation(.easeIn(duration: 0.25)) {
                 videoListIsReady = true
             }
@@ -239,7 +277,7 @@ class VideoStore {
     @MainActor
     func addVideoPlaylist(_ video: PlaylistListItem) async {
         do {
-            try await WorkersAPI.post("add_video_playlist", body: video)
+            try await WorkersAPI.post("add_video_playlist", body: video, requiresAuthentication: true)
             await fetchVideoPlaylist()
             print("✅ Insert Success: \(video.id)")
         } catch {
@@ -250,7 +288,7 @@ class VideoStore {
     @MainActor
     func deleteVideoPlaylist(_ id: String) async {
         do {
-            try await WorkersAPI.post("delete_video_playlist", body: ["id": id])
+            try await WorkersAPI.post("delete_video_playlist", body: ["id": id], requiresAuthentication: true)
             await fetchVideoPlaylist()
         } catch {
             print("❌ Delete Error:", error)
@@ -281,7 +319,8 @@ class VideoStore {
                     name: "id",
                     value: videoID
                 )
-            ]
+            ],
+            requiresAuthentication: true
         )
 
         guard let videoURL = URL(string: video_decoded.url),
@@ -311,12 +350,16 @@ class VideoStore {
         videoTitle: String = "",
         categoryID: String? = nil
     ) async {
+        guard AppleAccountStore.savedSessionToken != nil else { return }
+        let owner = cacheOwnerID
         let title = videoTitle.isWhitespaceOrNewLine
             ? item.title.cleanedVideoTitle
             : videoTitle.trimmingCharacters(in: .whitespacesAndNewlines)
         let categoryID = resolvedCategoryID(categoryID: categoryID, playlistID: playlistID)
+        let recordID = UUID().uuidString
         let immediateVideo = VideoItem(
-            id: item.id,
+            id: recordID,
+            youtubeID: item.id,
             title: title,
             rate: playbackRate,
             playlistID: playlistID,
@@ -328,8 +371,10 @@ class VideoStore {
 
         let highQualityThumbURL = await YouTubeService.fetchBestThumbnailURL(for: item.id)
 
+        guard cacheOwnerID == owner else { return }
         let syncedVideo = VideoItem(
-            id: item.id,
+            id: recordID,
+            youtubeID: item.id,
             title: title,
             rate: playbackRate,
             playlistID: playlistID,
@@ -350,6 +395,8 @@ class VideoStore {
         videoTitle: String = "",
         categoryID: String? = nil
     ) async -> AddYouTubeResult {
+        guard AppleAccountStore.savedSessionToken != nil else { return .invalid }
+        let owner = cacheOwnerID
         let type = youtubeURLType(from: url)
 
         switch type {
@@ -357,14 +404,16 @@ class VideoStore {
                 guard let videoID = extractVideoID(from: url) else {
                     return .invalid
                 }
-                if videos.contains(where: { $0.id == videoID }) {
+                if videos.contains(where: { $0.youtubeID == videoID }) {
                     return .invalid
                 }
 
                 let resolvedCategoryID = resolvedCategoryID(categoryID: categoryID)
 
+                let recordID = UUID().uuidString
                 let immediateVideo = VideoItem(
-                    id: videoID,
+                    id: recordID,
+                    youtubeID: videoID,
                     title: videoID,
                     rate: playbackRate,
                     playlistID: nil,
@@ -381,8 +430,10 @@ class VideoStore {
                         : videoTitle.trimmingCharacters(in: .whitespacesAndNewlines)
                     let highQualityThumbURL = await YouTubeService.fetchBestThumbnailURL(for: videoID)
 
+                    guard cacheOwnerID == owner else { return }
                     let syncedVideo = VideoItem(
-                        id: videoID,
+                        id: recordID,
+                        youtubeID: videoID,
                         title: title,
                         rate: playbackRate,
                         playlistID: nil,
@@ -403,6 +454,7 @@ class VideoStore {
                 }
 
                 let immediatePlaylist = await fetchPlaylistMeta(playlistID: listID)
+                guard cacheOwnerID == owner else { return .invalid }
                 await addVideoPlaylist(immediatePlaylist)
 
                 Task {
@@ -518,7 +570,7 @@ class VideoStore {
     }
 
     func getExistingVideoIDs() -> Set<String> {
-        return Set(videos.map { $0.id })
+        return Set(videos.map { $0.youtubeID })
     }
 
     func getExistingVideoListIDs() -> Set<String> {
@@ -558,7 +610,7 @@ class VideoStore {
 
     // MARK: - Local Thumbnail Storage
     private static func thumbnailSourceURL(for video: VideoItem) async -> URL {
-        await YouTubeService.fetchBestThumbnailURL(for: video.id)
+        await YouTubeService.fetchBestThumbnailURL(for: video.youtubeID)
     }
     private static func cacheThumbnail(for video: VideoItem) async {
         guard LocalThumbnailStorage.existingFileURL(for: video.id) == nil else {

@@ -55,7 +55,7 @@ struct VideoDetailsView: View {
                     ZStack(alignment: .top) {
                         layout {
                             YouTubeVideoContentArea(
-                                videoID: videoID,
+                                videoID: video?.youtubeID ?? "",
                                 playerManager: playerVM,
                                 playerStatus: $youtubePlayerStatus,
                                 drawerOffset: $drawerOffset,

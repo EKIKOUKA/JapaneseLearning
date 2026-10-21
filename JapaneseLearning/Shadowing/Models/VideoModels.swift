@@ -119,6 +119,7 @@ enum VideoContentLanguage: String, Codable, CaseIterable {
 // リストアイテム構造
 struct VideoItem: Identifiable, Hashable, Codable {
     let id: String
+    let youtubeID: String
     let title: String
     var currentTime: Double? = nil
     var rate: Float = 1.0
@@ -130,6 +131,7 @@ struct VideoItem: Identifiable, Hashable, Codable {
 
     enum CodingKeys: String, CodingKey {
         case id
+        case youtubeID = "youtube_id"
         case title
         case currentTime = "current_time"
         case rate
@@ -167,6 +169,7 @@ struct PlaylistListItem: Identifiable, Hashable, Codable {
 
 struct VideoItemAddRequest: Codable {
     let id: String
+    let youtubeID: String
     let title: String
     let currentTime: Double?
     let rate: Float
@@ -179,6 +182,7 @@ struct VideoItemAddRequest: Codable {
 
     enum CodingKeys: String, CodingKey {
         case id
+        case youtubeID = "youtube_id"
         case title
         case currentTime = "current_time"
         case rate
@@ -192,6 +196,7 @@ struct VideoItemAddRequest: Codable {
 
     init(video: VideoItem, createCaptionByAi: Bool, liveActivityToken: String?) {
         self.id = video.id
+        self.youtubeID = video.youtubeID
         self.title = video.title
         self.currentTime = video.currentTime
         self.rate = video.rate

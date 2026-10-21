@@ -32,6 +32,9 @@ struct JapaneseLearningApp: App {
                 .environment(navigationStore)
                 .environment(videoStore)
                 .environment(appleAccountStore)
+                .task(id: appleAccountStore.userID) {
+                    await videoStore.accountChanged(to: appleAccountStore.userID)
+                }
                 .task(id: apnsTokenStore.token) {
                     await appleAccountStore.syncAPNsDeviceToken()
                 }
