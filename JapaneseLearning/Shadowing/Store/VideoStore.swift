@@ -101,6 +101,8 @@ class VideoStore {
         liveActivityToken: String?,
         sessionToken: String
     ) async -> Bool {
+        guard !sessionToken.isEmpty else { return false }
+
         do {
             try await WorkersAPI.post(
                 "add_video_captions_only",
@@ -170,6 +172,13 @@ class VideoStore {
     @MainActor
     func addVideo(_ video: VideoItem, thumbnailURL: URL, createCaptionByAi: Bool = true) {
         guard let sessionToken = AppleAccountStore.savedSessionToken else { return }
+
+        guard let sessionToken = AppleAccountStore.savedSessionToken else {
+            print("動画を追加するには Apple でログインしてください。")
+
+            return
+        }
+
         let owner = cacheOwnerID
         Task(priority: .utility) {
             var thumbnailSaved = false

@@ -59,6 +59,7 @@ struct AppSettingsView: View {
                 } label: {
                     LabeledContent("一日の練習目標時間", value: "\(accountStore.dailyPracticeGoalMinutes) 分")
                 }
+                .tint(.primary)
             }
             .tint(.primary)
         }

@@ -128,12 +128,18 @@ enum WorkersAPI {
     }
 
     // MARK: - POST (Raw Data)
-    static func postRaw(_ path: String, body: [String: Int]) async throws {
+    static func postRaw(
+        _ path: String,
+        body: [String: Int],
+        authorizationToken: String? = nil,
+        requiresAuthentication: Bool = false
+    ) async throws {
         let url = baseURL.appending(path: path)
 
-        let request = URLRequest(url: url)
+        var request = URLRequest(url: url)
             .setMethod("POST")
             .setRawJSONBody(body)
+        try await authorize(&request, token: authorizationToken, required: requiresAuthentication)
 
         let (data, response) = try await URLSession.shared.data(for: request)
 
