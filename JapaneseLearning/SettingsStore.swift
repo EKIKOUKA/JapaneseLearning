@@ -30,7 +30,7 @@ struct AppSettings: Codable {
     var useNativeVideoPlayer: Bool = true
     var videoSubtitleFontColor: Color.Resolved?
     var AIExplanationLanguage: String = "JP"
-    var AIProvider: String = "Claude"
+    var AIProvider: String = "Anthropic"
 
     // Somethings
     var showKanjiWordsDiffToShinaLangListCount: Bool = true

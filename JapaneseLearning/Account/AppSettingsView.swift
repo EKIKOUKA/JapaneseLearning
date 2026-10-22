@@ -23,7 +23,11 @@ struct AppSettingsView: View {
         (name: "🇺🇸 英語", code: "EN"),
         (name: "🇹🇼 台湾語", code: "TW")
     ]
-    private let AIProviderList = ["Claude", "GoogleAI", "OpenAI"]
+    private let AIProviderList: [(provider: String, model: String)] = [
+        (provider: "Anthropic", model: "claude-haiku-5.5"),
+        (provider: "GoogleAI", model: "gemini-2.5-flash-lite"),
+        (provider: "OpenAI", model: "gpt-6-luna")
+    ]
 
     var body: some View {
         @Bindable var settingsStoreBindable = settingsStore
@@ -38,9 +42,13 @@ struct AppSettingsView: View {
             }
 
             Section(header: Text("AIモデル"), footer: Text("字幕のAI解説に使用AIモデル")) {
-                Picker("AI解説に使用モデル", selection: $settingsStoreBindable.AIProvider) {
-                    ForEach(AIProviderList, id: \.self) {item in
-                        Text(item).tag(item)
+                Picker("AI解説に使用するモデル", selection: $settingsStoreBindable.AIProvider) {
+                    ForEach(AIProviderList, id: \.provider) {item in
+                        Button {} label: {
+                            Text(item.provider)
+                            Text(item.model)
+                        }
+                        .tag(item.provider)
                     }
                 }
             }
@@ -51,6 +59,7 @@ struct AppSettingsView: View {
                 } label: {
                     LabeledContent("一日の練習目標時間", value: "\(accountStore.dailyPracticeGoalMinutes) 分")
                 }
+                .tint(.primary)
             }
         }
         .navigationTitle("設定")
