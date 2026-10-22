@@ -25,7 +25,7 @@ struct AppSettingsView: View {
     ]
     private let AIProviderList: [(provider: String, model: String)] = [
         (provider: "Anthropic", model: "claude-haiku-5.5"),
-        (provider: "GoogleAI", model: "gemini-2.5-flash-lite"),
+        (provider: "Google", model: "gemini-2.5-flash-lite"),
         (provider: "OpenAI", model: "gpt-6-luna")
     ]
 
