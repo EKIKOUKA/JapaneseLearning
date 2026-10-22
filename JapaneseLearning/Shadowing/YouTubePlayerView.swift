@@ -225,7 +225,8 @@ struct YouTubePlayerView: UIViewRepresentable {
     func makeUIView(context: Context) -> WKWebView {
         let configuration = WKWebViewConfiguration()
         configuration.allowsInlineMediaPlayback = true
-        configuration.mediaTypesRequiringUserActionForPlayback = [.audio, .video]
+        // 再生操作は SwiftUI 側で受けるため、Web ページ内での追加タップを要求しない。
+        configuration.mediaTypesRequiringUserActionForPlayback = []
         configuration.defaultWebpagePreferences.allowsContentJavaScript = true
         configuration.userContentController.add(
             context.coordinator,
@@ -304,6 +305,10 @@ struct YouTubePlayerView: UIViewRepresentable {
               nativeHandler.postMessage({ type: type, value: String(value ?? '') });
             }
 
+            document.addEventListener('visibilitychange', function() {
+              send('visibility', document.visibilityState);
+            });
+
             const apiScript = document.createElement('script');
             apiScript.src = 'https://www.youtube.com/iframe_api';
             apiScript.onerror = function() { send('error', 'iframe_api_load_failed'); };
@@ -330,6 +335,7 @@ struct YouTubePlayerView: UIViewRepresentable {
                   },
                   onStateChange: function(event) { send('state', event.data); },
                   onPlaybackRateChange: function(event) { send('rate', event.data); },
+                  onAutoplayBlocked: function() { send('playbackBlocked', document.visibilityState); },
                   onError: function(event) { send('error', event.data); }
                 }
               });
@@ -357,11 +363,11 @@ struct YouTubePlayerView: UIViewRepresentable {
         }
 
         func play() {
-            evaluate("if (player && player.playVideo) { player.playVideo(); }")
+            evaluate("if (player && player.playVideo) { player.playVideo(); }", command: "play")
         }
 
         func pause() {
-            evaluate("if (player && player.pauseVideo) { player.pauseVideo(); }")
+            evaluate("if (player && player.pauseVideo) { player.pauseVideo(); }", command: "pause")
         }
 
         func seek(to seconds: Double) {
@@ -386,8 +392,30 @@ struct YouTubePlayerView: UIViewRepresentable {
             )
         }
 
-        private func evaluate(_ script: String) {
-            webView?.evaluateJavaScript(script)
+        private func evaluate(_ script: String, command: String = "update") {
+            guard let webView else {
+                #if DEBUG
+                print("[YouTube] command=\(command) webView=missing")
+                #endif
+                return
+            }
+            #if DEBUG
+            if command != "update" {
+                print("[YouTube] command=\(command) appState=\(UIApplication.shared.applicationState.rawValue)")
+            }
+            #endif
+            // IFrame API の戻り値を Swift に渡さず、変換可能な null で終える。
+            let commandScript = """
+            (function() {
+              \(script)
+              return null;
+            })();
+            """
+            webView.evaluateJavaScript(commandScript) { _, error in
+                if let error {
+                    print("[YouTube] JavaScript command=\(command) failed: \(error.localizedDescription)")
+                }
+            }
         }
 
         func userContentController(
@@ -401,6 +429,12 @@ struct YouTubePlayerView: UIViewRepresentable {
             }
 
             let value = body["value"] as? String ?? ""
+
+            #if DEBUG
+            if ["state", "error", "playbackBlocked", "visibility"].contains(type) {
+                print("[YouTube] event=\(type) value=\(value) appState=\(UIApplication.shared.applicationState.rawValue)")
+            }
+            #endif
 
             switch type {
                 case "ready":
@@ -429,6 +463,10 @@ struct YouTubePlayerView: UIViewRepresentable {
                     }
                 case "error":
                     playerStatus = Self.description(forError: value)
+                case "playbackBlocked":
+                    playerStatus = "YouTube の再生開始がブロックされました。"
+                case "visibility":
+                    break
                 default:
                     playerStatus = "YouTube message: \(type) \(value)"
             }
@@ -439,6 +477,12 @@ struct YouTubePlayerView: UIViewRepresentable {
             didFinish navigation: WKNavigation!
         ) {
             self.webView = webView
+        }
+
+        func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
+            playerStatus = "WebView が終了しました。動画を開き直してください。"
+            playerManager?.youtubePlayerDidChangeState(2)
+            print("[YouTube] Web content process terminated")
         }
 
         func webView(
