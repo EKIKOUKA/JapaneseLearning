@@ -33,7 +33,7 @@ struct AppSettingsView: View {
         @Bindable var settingsStoreBindable = settingsStore
 
         Form {
-            Section(header: Text("言語"), footer: Text("字幕のAI解説に表示する言語")) {
+            Section(footer: Text("字幕のAI解説に表示する言語")) {
                 Picker("AI解説に使用言語", selection: $settingsStoreBindable.AIExplanationLanguage) {
                     ForEach(aiLanguageList, id: \.code) {item in
                         Text(item.name).tag(item.code)
@@ -41,7 +41,7 @@ struct AppSettingsView: View {
                 }
             }
 
-            Section(header: Text("AIモデル"), footer: Text("字幕のAI解説に使用AIモデル")) {
+            Section(footer: Text("字幕のAI解説に使用AIモデル")) {
                 Picker("AI解説に使用するモデル", selection: $settingsStoreBindable.AIProvider) {
                     ForEach(AIProviderList, id: \.provider) {item in
                         Button {} label: {
@@ -53,7 +53,7 @@ struct AppSettingsView: View {
                 }
             }
 
-            Section(header: Text("学習目標"), footer: Text("学習記録と目標達成通知に使用します")) {
+            Section(footer: Text("学習記録と目標達成通知に使用します")) {
                 Button {
                     showDailyPracticeGoalSheet = true
                 } label: {

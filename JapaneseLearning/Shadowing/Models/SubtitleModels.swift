@@ -152,18 +152,6 @@ struct RubyWord: Codable, Equatable {
 
 
 // Subtitle
-enum VideoSubtitleLineWithAnimation: String, Codable, CaseIterable {
-    case natural
-    case easeInOut
-
-    var displayName: String {
-        switch self {
-            case .natural: return "ナチュラル"
-            case .easeInOut: return "スムーズ"
-        }
-    }
-}
-
 enum VideoSubtitleRubyFontStyle: String, Codable, CaseIterable {
     case system
     case HiraginoSans = "HiraginoSans-W6"

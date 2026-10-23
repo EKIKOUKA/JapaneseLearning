@@ -13,7 +13,6 @@ struct AppSettings: Codable {
 
     // Shadowing
     var showShadowingSubtitlesRuby: Bool = true
-    var videoSubtitleLineWithAnimation: VideoSubtitleLineWithAnimation = .natural
     var videoSubtitleFontSizeScale: Double = 1.0
     var videoSubtitleFontStyle: VideoSubtitleRubyFontStyle = .system
     var videoSubtitleDimInactiveLines: Bool = true

@@ -62,10 +62,14 @@ struct playResumeVideoView: View {
 }
 
 struct CustomToolbarHeader: View {
+    @Environment(SettingsStore.self) private var settingsStore
     let title: String
+    let playerVM: PlayerViewManager
     @Binding var showSettingSheet: Bool
 
     var body: some View {
+        @Bindable var settingsStoreBindable = settingsStore
+
         ZStack {
             Text(title)
                 .font(.headline)
@@ -77,8 +81,47 @@ struct CustomToolbarHeader: View {
             HStack {
                 Spacer()
 
-                Button {
-                    showSettingSheet = true
+                Menu {
+                    ControlGroup {
+                        Button {
+                            playerVM.requestScrollToCurrentLine()
+                        } label: {
+                            Label("再生中の字幕行へ", systemImage: "scope")
+                        }
+
+                        Button {
+                            playerVM.toggleSingleLineLoop()
+                        } label: {
+                            Label(
+                                "一文リピート",
+                                systemImage: playerVM.isLoopingSingleLine ? "repeat.1.circle.fill" : "repeat.1"
+                            )
+                        }
+                    }
+                    Divider()
+
+                    Button {
+                    } label: {
+                        Label("AIで字幕を再生成", systemImage: "sparkles")
+                        Text("クレジットを消費します")
+                    }
+
+                    Menu {
+                        Picker("字幕のフォント", selection: $settingsStoreBindable.videoSubtitleFontStyle) {
+                            ForEach(VideoSubtitleRubyFontStyle.allCases, id: \.self) { fontStyle in
+                                Text(fontStyle.displayName).tag(fontStyle)
+                            }
+                        }
+                    } label: {
+                        Label("字幕のフォント", systemImage: "character")
+                    }
+                    Divider()
+
+                    Button {
+                        showSettingSheet = true
+                    } label: {
+                        Label("シャドーイング設定", systemImage: "gearshape")
+                    }
                 } label: {
                     Image(systemName: "ellipsis")
                         .font(.title2)
@@ -86,7 +129,6 @@ struct CustomToolbarHeader: View {
                         .frame(width: 44, height: 44)
                         .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
             }
             .padding(.horizontal, 4)
         }
@@ -102,14 +144,6 @@ struct VideoControlView: View {
         @Bindable var playerVM = playerVM
 
         HStack {
-            Button {
-                playerVM.requestScrollToCurrentLine()
-            } label: {
-                Image(systemName: "scope")
-                    .foregroundColor(.accentColor)
-            }
-            .buttonStyle(.plain)
-
             PlaybackRateSliderView(
                 rateValue: $playerVM.tempRate,
                 minValue: 0.50,
@@ -118,16 +152,6 @@ struct VideoControlView: View {
             ) { rate in
                 playerVM.setRate(rate)
             }
-
-            Button(action: {
-                playerVM.toggleSingleLineLoop()
-            }) {
-                Image(systemName: "repeat")
-                    .foregroundColor(playerVM.isLoopingSingleLine ? .accentColor : .gray)
-                    .contentShape(Rectangle())
-                    .padding(.horizontal, 0)
-            }
-            .buttonStyle(.plain)
         }
     }
 }

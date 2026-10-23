@@ -104,6 +104,7 @@ struct VideoDetailsView: View {
         .safeAreaInset(edge: .top, spacing: 0) {
             CustomToolbarHeader(
                 title: video?.title.cleanedVideoTitle ?? "読み込み中...",
+                playerVM: playerVM,
                 showSettingSheet: $showSettingSheet
             )
         }
@@ -244,7 +245,6 @@ struct SubtitlesContentView: View {
         let fontStyle = settingsStore.videoSubtitleFontStyle
         let fontColor = settingsStore.videoSubtitleFontUIColor
         let blurInactiveLines = settingsStore.videoSubtitleDimInactiveLines
-        let lineAnimation = settingsStore.videoSubtitleLineWithAnimation
         let visibleCaptions = playerVM.visiableCaptions
         let visibleRows = visibleCaptions.map { VisibleCaptionRow(index: $0.0, line: $0.1) }
 
@@ -303,7 +303,7 @@ struct SubtitlesContentView: View {
                 return
             }
 
-            scroll(to: currentLineID, animation: lineAnimation)
+            scroll(to: currentLineID)
         }
         .task {
             if let currentLineID = playerVM.currentLineID {
@@ -321,7 +321,7 @@ struct SubtitlesContentView: View {
 
             isUserScrolling = false
             isScrollIdle = false
-            scroll(to: currentLineID, animation: lineAnimation)
+            scroll(to: currentLineID)
         }
         .onChange(of: playerVM.currentLineID) { _, new in
             guard playerVM.isPlaying,
@@ -330,19 +330,12 @@ struct SubtitlesContentView: View {
                 return
             }
 
-            scroll(to: newID, animation: lineAnimation)
+            scroll(to: newID)
         }
     }
 
-    private func scroll(
-        to lineID: String,
-        animation lineAnimation: VideoSubtitleLineWithAnimation
-    ) {
-        let animation: Animation = lineAnimation == .easeInOut
-            ? .easeInOut(duration: 0.5)
-            : .timingCurve(0.4, 0.0, 0.2, 1.0, duration: 0.5)
-
-        withAnimation(animation) {
+    private func scroll(to lineID: String) {
+        withAnimation(.timingCurve(0.4, 0.0, 0.2, 1.0, duration: 0.5)) {
             scrollPosition.scrollTo(id: lineID, anchor: .subtitleAnchor)
         }
     }
