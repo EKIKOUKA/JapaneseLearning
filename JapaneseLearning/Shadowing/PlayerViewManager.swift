@@ -84,7 +84,7 @@ final class PlayerViewManager {
     private var periodicTimeObserver: Any?
 
     // 練習タイマー
-    private var practiceStartedAt: Date?
+    var practiceStartedAt: Date?
 
     init() {
         playerNowPlaying = PlayerNowPlaying(playerManager: self)
@@ -149,7 +149,6 @@ final class PlayerViewManager {
             prepareVideo(playbackVideo)
         }
         syncCaptionToCurrentPlayback()
-        startPracticeTimingIfNeeded()
     }
 
     private func pauseActiveBackend() {
@@ -1092,7 +1091,7 @@ final class PlayerViewManager {
         practiceStartedAt = nil
 
         let elapsed = Date().timeIntervalSince(start)
-        guard elapsed > 150 else { return }
+        guard elapsed >= 30 else { return }
 
         await videoStore.reportPracticeSession(
             contentLanguage: videoItem.contentLanguage,

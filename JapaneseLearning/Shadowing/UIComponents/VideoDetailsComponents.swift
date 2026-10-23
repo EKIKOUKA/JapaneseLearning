@@ -84,6 +84,15 @@ struct CustomToolbarHeader: View {
                 Menu {
                     ControlGroup {
                         Button {
+                            playerVM.startPracticeTimingIfNeeded()
+                        } label: {
+                            Label("シャドーイング開始", systemImage: "livephoto.play")
+                        }
+                    }
+                    Divider()
+
+                    ControlGroup {
+                        Button {
                             playerVM.requestScrollToCurrentLine()
                         } label: {
                             Label("再生中の字幕行へ", systemImage: "scope")
