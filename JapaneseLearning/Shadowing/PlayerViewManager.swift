@@ -84,7 +84,7 @@ final class PlayerViewManager {
     private var periodicTimeObserver: Any?
 
     // 練習タイマー
-    private var practiceStartedAt: Date?
+    var practiceStartedAt: Date?
 
     init() {
         playerNowPlaying = PlayerNowPlaying(playerManager: self)
@@ -149,7 +149,6 @@ final class PlayerViewManager {
             prepareVideo(playbackVideo)
         }
         syncCaptionToCurrentPlayback()
-        startPracticeTimingIfNeeded()
     }
 
     private func pauseActiveBackend() {
