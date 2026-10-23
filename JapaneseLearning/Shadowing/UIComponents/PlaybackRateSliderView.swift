@@ -76,9 +76,5 @@ struct PlaybackRateSliderView: View {
                     }
                 }
         }
-        .padding(6)
-        .padding(.trailing, 0)
-        .background(Color.gray.opacity(0.1))
-        .cornerRadius(12)
     }
 }

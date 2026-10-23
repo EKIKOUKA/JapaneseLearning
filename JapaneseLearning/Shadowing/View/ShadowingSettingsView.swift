@@ -16,9 +16,18 @@ struct ShadowingSettingsSheetView: View {
 
         NavigationStack {
             Form {
-                if let player_vm = playerVM {
+                if let playerVM {
+                    @Bindable var playerVM = playerVM
+
                     Section(footer: Text("動画の再生をコントロールします")) {
-                        VideoControlView(playerVM: player_vm)
+                        PlaybackRateSliderView(
+                            rateValue: $playerVM.tempRate,
+                            minValue: 0.50,
+                            maxValue: 1.50,
+                            step: 0.05
+                        ) { rate in
+                            playerVM.setRate(rate)
+                        }
                     }
                 }
 
@@ -42,18 +51,12 @@ struct ShadowingSettingsSheetView: View {
                     }
                 }
 
-                Section(footer: Text("字幕のフォントを変更します")) {
-                    Picker("フォント", selection: $settingsStoreBindable.videoSubtitleFontStyle) {
-                        ForEach(VideoSubtitleRubyFontStyle.allCases, id: \.self) { fontStyle in
-                            Text(fontStyle.displayName).tag(fontStyle)
-                        }
-                    }
-                }
-
-                Section(footer: Text("スクロール時のアニメーションを変更します")) {
-                    Picker("アニメーション", selection: $settingsStoreBindable.videoSubtitleLineWithAnimation) {
-                        ForEach(VideoSubtitleLineWithAnimation.allCases, id: \.self) { animation in
-                            Text(animation.displayName).tag(animation)
+                if playerVM == nil {
+                    Section(footer: Text("字幕のフォントを変更します")) {
+                        Picker("フォント", selection: $settingsStoreBindable.videoSubtitleFontStyle) {
+                            ForEach(VideoSubtitleRubyFontStyle.allCases, id: \.self) { fontStyle in
+                                Text(fontStyle.displayName).tag(fontStyle)
+                            }
                         }
                     }
                 }
@@ -78,7 +81,7 @@ struct ShadowingSettingsSheetView: View {
                     }
                 }
             }
-            .contentMargins(.top, 0)
+            .contentMargins(.top, 10)
             .navigationTitle("シャドーイング設定")
             .navigationBarTitleDisplayMode(.inline)
         }
