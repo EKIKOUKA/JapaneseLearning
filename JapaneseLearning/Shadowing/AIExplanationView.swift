@@ -10,6 +10,7 @@ import SwiftUI
 struct AIExplanationView: View {
     @Environment(AppleAccountStore.self) private var accountStore
     @Environment(SettingsStore.self) private var settingsStore
+
     let question: AIExplanationQuestion
     @State private var turns: [AIExplanationTurn]
     @State private var isLoading = false
@@ -52,7 +53,7 @@ struct AIExplanationView: View {
                 }
             }
             .safeAreaInset(edge: .bottom, spacing: 0) {
-                if lastCompleted != nil {
+                if question.mode == .sentence, lastCompleted != nil {
                     VStack(alignment: .leading, spacing: 8) {
                         HStack(alignment: .bottom, spacing: 12) {
                             TextField("分からないところを質問する", text: $draft, axis: .vertical)
@@ -67,8 +68,11 @@ struct AIExplanationView: View {
                             .disabled(!canSend)
                         }
 
-                        Text(draft.count > 1000 ? "質問は 1,000 文字以内で入力してください。" : "送信ごとに 1 クレジット・残り \(accountStore.accountCredits)")
-                            .font(.caption).foregroundStyle(.secondary)
+                        Text(draft.count > 1000 ? "質問は 1,000 文字以内で入力してください。" : "送信ごとに 1 クレジット・残り \(accountStore.accountCredits.formatted())")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .contentTransition(.numericText())
+                            .animation(.smooth(duration: 0.5), value: accountStore.accountCredits)
                     }
                     .padding()
                     .background(.bar)
@@ -137,14 +141,17 @@ struct AIExplanationView: View {
 
     private func sendFollowUp() {
         guard canSend, let parent = lastCompleted else { return }
+        
         let followUp = AIExplanationQuestion(
             text: draft.trimmingCharacters(in: .whitespacesAndNewlines),
             mode: question.mode,
             parentRequestID: parent.id
         )
+        
         draft = ""
         isInputFocused = false
         turns.append(AIExplanationTurn(question: followUp))
+        
         let index = turns.count - 1
         Task { await explain(at: index) }
     }

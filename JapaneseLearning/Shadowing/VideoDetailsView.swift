@@ -9,6 +9,7 @@ import SwiftUI
 import AVKit
 
 struct VideoDetailsView: View {
+    @Environment(AppleAccountStore.self) private var accountStore
     @Environment(SettingsStore.self) private var settingsStore
     @Environment(VideoStore.self) private var videoStore
     @Environment(PlayerViewManager.self) private var playerVM
@@ -136,10 +137,13 @@ struct VideoDetailsView: View {
                 .presentationDragIndicator(.visible)
                 .navigationTransition(.crossFade)
         }
-        .sheet(item: $playerVM.activeAIQuestion) { question in
+        .sheet(item: $playerVM.activeAIQuestion, onDismiss: {
+            playerVM.playPlayer()
+        }) { question in
             AIExplanationView(question: question)
-                .presentationDetents([.large])
-                .presentationDragIndicator(.visible)
+                .environment(settingsStore)
+                .environment(accountStore)
+                .presentationDetents(question.mode == .sentence ? [.large] : [.medium])
         }
         .onDisappear {
             Task {

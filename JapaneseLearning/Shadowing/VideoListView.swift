@@ -80,7 +80,6 @@ struct VideoListView: View {
                         .padding(.bottom, 20)
                     }
                     .swipeActionsContainer_IfAvailable()
-//                    .swipeActionsContainer()
                     .contentMargins(.top, 56, for: .scrollIndicators)
                 }
             }
@@ -167,7 +166,6 @@ struct VideoListView: View {
             }
             .buttonStyle_glass_IfAvailable()
             .foregroundStyle(.white)
-            .controlSize(sizeClassIsRegular ? .large : .regular)
         }
     }
 

@@ -58,6 +58,10 @@ struct ContentView: View {
             ) {
                 navigationStore.presentedVideo = nil
             }
+            .environment(playerVM)
+            .environment(settingsStore)
+            .environment(videoStore)
+            .environment(accountStore)
             .presentationBackground(.clear)
             .navigationTransition_Zoom_IfAvailable(sourceID: destination.sourceID, in: transitionNamespace)
         }
