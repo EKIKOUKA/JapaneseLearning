@@ -174,7 +174,6 @@ struct VideoListView: View {
             }
             .buttonStyle(.glass)
             .foregroundStyle(.white)
-            .controlSize(sizeClassIsRegular ? .large : .regular)
         }
     }
 

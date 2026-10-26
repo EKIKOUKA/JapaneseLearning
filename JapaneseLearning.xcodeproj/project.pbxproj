@@ -7,6 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0EC468F1308C4AA10028D7BC /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 0EC468F0308C4AA10028D7BC /* Localizable.xcstrings */; };
+		0EC468F2308C4AA10028D7BC /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 0EC468F0308C4AA10028D7BC /* Localizable.xcstrings */; };
+		0EC468F3308C4AA10028D7BC /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 0EC468F0308C4AA10028D7BC /* Localizable.xcstrings */; };
 		0EDB25B92FE449FD0091E0BF /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0EDB25B82FE449FD0091E0BF /* WidgetKit.framework */; };
 		0EDB25BB2FE449FD0091E0BF /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0EDB25BA2FE449FD0091E0BF /* SwiftUI.framework */; };
 		0EDB25CC2FE449FF0091E0BF /* VideoStatusExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 0EDB25B72FE449FC0091E0BF /* VideoStatusExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
@@ -47,6 +50,7 @@
 
 /* Begin PBXFileReference section */
 		0E63A3F030052DCD0026C378 /* VideoStatusExtension */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = VideoStatusExtension; sourceTree = "<group>"; };
+		0EC468F0308C4AA10028D7BC /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		0EDB25B72FE449FC0091E0BF /* VideoStatusExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = VideoStatusExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		0EDB25B82FE449FD0091E0BF /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		0EDB25BA2FE449FD0091E0BF /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
@@ -156,6 +160,7 @@
 		7FF22E852ED7EC6600603529 = {
 			isa = PBXGroup;
 			children = (
+				0EC468F0308C4AA10028D7BC /* Localizable.xcstrings */,
 				0E63A3F030052DCD0026C378 /* VideoStatusExtension */,
 				7FF22E902ED7EC6600603529 /* JapaneseLearning */,
 				7F086B992F6ABDE600288521 /* README.md */,
@@ -266,6 +271,7 @@
 			knownRegions = (
 				Base,
 				ja,
+				en,
 			);
 			mainGroup = 7FF22E852ED7EC6600603529;
 			minimizedProjectReferenceProxies = 1;
@@ -289,6 +295,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				0EC468F3308C4AA10028D7BC /* Localizable.xcstrings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -296,6 +303,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				0EC468F2308C4AA10028D7BC /* Localizable.xcstrings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -303,6 +311,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				0EC468F1308C4AA10028D7BC /* Localizable.xcstrings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -537,6 +546,7 @@
 				SDKROOT = iphoneos;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 6.0;
 			};
@@ -597,6 +607,7 @@
 				SDKROOT = iphoneos;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 6.0;
 				VALIDATE_PRODUCT = YES;
 			};
@@ -643,7 +654,7 @@
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
-				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = YES;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
@@ -698,7 +709,7 @@
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
-				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = YES;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;

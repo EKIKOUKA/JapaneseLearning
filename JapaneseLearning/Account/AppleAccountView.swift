@@ -53,10 +53,6 @@ struct AppleAccountView: View {
                             showingDeleteConfirmation = true
                         }
                         .disabled(accountStore.isAccountOperationBlocked)
-                        
-                        if accountStore.isManagingAccount {
-                            ProgressView("処理中…")
-                        }
                     }
                 }
             }
@@ -65,7 +61,7 @@ struct AppleAccountView: View {
             .task {
                 await accountStore.refreshCredentialState()
             }
-            .confirmationDialog("アカウントを削除しますか？", isPresented: $showingDeleteConfirmation, titleVisibility: .visible) {
+            .alert("アカウントを削除しますか？", isPresented: $showingDeleteConfirmation) {
                 Button("アカウントを削除", role: .destructive) {
                     Task { await accountStore.deleteAccount() }
                 }
@@ -89,6 +85,19 @@ struct AppleAccountView: View {
                 Button("閉じる", role: .cancel) { accountStore.clearAccountNotice() }
             } message: {
                 Text(accountStore.accountNotice ?? "")
+            }
+        }
+        .disabled(accountStore.isManagingAccount)
+        .overlay {
+            if accountStore.isManagingAccount {
+                ZStack {
+                    Color.black.opacity(0.2)
+                        .ignoresSafeArea()
+                    
+                    ProgressLoadingView()
+                        .frame(minWidth: 180, minHeight: 160)
+                }
+                .accessibilityAddTraits(.isModal)
             }
         }
     }
@@ -123,19 +132,17 @@ struct AppleAccountView: View {
 
     private var accountSummary: some View {
         VStack(alignment: .leading, spacing: 18) {
-            HStack {
-                Text("クレジット残高")
-                    .font(.subheadline.weight(.medium))
-                    .foregroundStyle(.secondary)
-                Spacer()
-                
-                HStack(spacing: 3) {
-                    Image(systemName: "checkmark.circle.fill")
-                    Text("ログイン済み")
-                }
-                .font(.caption)
-                .foregroundStyle(.green)
+            HStack(spacing: 3) {
+                Image(systemName: "apple.logo")
+                Text("Apple")
+                Text("でログイン済み")
+                    .font(.caption)
+                    .foregroundStyle(.green)
             }
+
+            Text("クレジット残高")
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(.secondary)
 
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text(accountStore.accountCredits.formatted())
