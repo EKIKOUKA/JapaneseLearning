@@ -20,6 +20,8 @@ struct VideoListView: View {
     @State private var showPlayListSheet: Bool = false
     @State private var selectedVideo: VideoItem?
     @State private var selectedCategoryID: String?
+    @State private var showingDeleteAlert: Bool = false
+    @State private var videoToDelete: VideoItem?
 
     init(onSelectVideo: @escaping (String) -> Void = { _ in }) {
         self.onSelectVideo = onSelectVideo
@@ -71,24 +73,28 @@ struct VideoListView: View {
                 } else {
                     let columns = gridColumns(isLandscape: geo.size.width > geo.size.height)
 
-                    ScrollView {
-                        VStack {
-                            videoItemGrid(columns: columns)
+                    if #available(iOS 27.0, *) {
+                        ScrollView {
+                            VStack {
+                                videoItemGrid(columns: columns)
+                            }
+                            .animation(.easeInOut(duration: 0.35), value: selectedCategory?.id)
+                            .padding(.horizontal, 14)
+                            .padding(.bottom, 20)
                         }
-                        .animation(.easeInOut(duration: 0.35), value: selectedCategory?.id)
-                        .padding(.horizontal, 14)
-                        .padding(.bottom, 20)
-                    }
-                    .swipeActionsContainer()
-                    .reorderContainer(for: VideoItem.self) { difference in
-                        var reordered = filteredVideos
-                        reordered.apply(difference: difference)
-
-                        if let selectedCategory {
-                            store.reorderVideos(reordered, for: selectedCategory)
+                        .swipeActionsContainer()
+                        .contentMargins(.top, 56, for: .scrollIndicators)
+                    } else {
+                        ScrollView {
+                            VStack {
+                                videoItemGrid(columns: columns)
+                            }
+                            .animation(.easeInOut(duration: 0.35), value: selectedCategory?.id)
+                            .padding(.horizontal, 14)
+                            .padding(.bottom, 20)
                         }
+                        .contentMargins(.top, 56, for: .scrollIndicators)
                     }
-                    .contentMargins(.top, 56, for: .scrollIndicators)
                 }
             }
         }
@@ -99,7 +105,7 @@ struct VideoListView: View {
                 .padding(.vertical, 8)
                 .padding(.bottom, 4)
         }
-        .toolbarMinimizationBehavior(.onScrollDown, for: .navigationBar)
+        .toolbarMinimizeNavigationBarIfAvailable()
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
                 Button {
@@ -119,12 +125,12 @@ struct VideoListView: View {
             AddVideoSheetView { result in
                 selectedCategoryID = store.handleCategory(result)?.id
             }
-            .navigationTransition(.crossFade)
+            .navigationTransition_crossFade_ifAvailable()
         }
         .sheet(isPresented: $showSettingSheet) {
             ShadowingSettingsSheetView(playerVM: nil)
                 .presentationDetents([.medium, .large])
-                .navigationTransition(.crossFade)
+                .navigationTransition_crossFade_ifAvailable()
         }
     }
 
@@ -188,35 +194,71 @@ struct VideoListView: View {
                 .padding(.top, 200)
             } else {
                 ForEach(filteredVideos) { video in
-                    Button {
-                        onSelectVideo(video.id)
-                    } label: {
-                        videoListItemView(video)
-                    }
-                    .buttonStyle(.plain)
-                    .swipeActions {
-                        Button(role: .destructive) {
-                            withAnimation(.spring(duration: 0.35)) {
-                                store.videos.removeAll { $0.id == video.id }
-                            }
-
-                            Task {
-                                await MainActor.run {
-                                    playerVM.handleDeletedVideo(id: video.id)
-                                }
-                                await store.deleteVideo(video.id)
-                            }
-                        } label: {
-                            Image(systemName: "trash")
-                        }
-                    }
+                    videoCard(video)
                 }
-                .reorderable()
+                .reorderable_ifAvailable()
             }
         }
         .id(selectedCategory?.id)
         .transition(.opacity)
         .animation(.snappy(duration: 0.35), value: filteredVideoIDs)
+        .alert("動画を削除しますか？", isPresented: $showingDeleteAlert) {
+            Button("キャンセル", role: .cancel) {
+                videoToDelete = nil
+            }
+
+            Button("削除", role: .destructive) {
+                guard let video = videoToDelete else { return }
+                videoToDelete = nil
+
+                Task {
+                    await MainActor.run {
+                        playerVM.handleDeletedVideo(id: video.id)
+                    }
+                    await store.deleteVideo(video.id)
+                }
+            }
+        } message: {
+            if let video = videoToDelete {
+                Text(video.title.cleanedVideoTitle)
+            }
+            Text("動画を削除します。この操作は取り消せません。")
+        }
+    }
+
+    @ViewBuilder
+    private func videoCard(_ video: VideoItem) -> some View {
+        let card = Button {
+            onSelectVideo(video.id)
+        } label: {
+            videoListItemView(video)
+        }
+        .buttonStyle(.plain)
+
+        if #available(iOS 27.0, *) {
+            card.swipeActions {
+                Button(role: .destructive) {
+                    withAnimation(.spring(duration: 0.35)) {
+                        store.videos.removeAll { $0.id == video.id }
+                    }
+                    
+                    Task {
+                        playerVM.handleDeletedVideo(id: video.id)
+                        await store.deleteVideo(video.id)
+                    }
+                } label: {
+                    Image(systemName: "trash")
+                }
+            }
+        } else {
+            card.highPriorityGesture(
+                LongPressGesture(minimumDuration: 0.5)
+                    .onEnded { _ in
+                        videoToDelete = video
+                        showingDeleteAlert = true
+                    }
+            )
+        }
     }
 
     private func videoListItemView(_ video: VideoItem) -> some View {

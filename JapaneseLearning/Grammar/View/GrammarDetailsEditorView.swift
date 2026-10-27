@@ -66,7 +66,7 @@ struct GrammarDetailsEditorView: View {
                 .disabled(title.isWhitespaceOrNewLine || meaning.isWhitespaceOrNewLine || examples.isWhitespaceOrNewLine)
             }
         }
-        .toolbarMinimizationBehavior(.onScrollDown, for: .navigationBar)
+        .toolbarMinimizeNavigationBarIfAvailable()
     }
 
     private func saveChanges() {

@@ -60,7 +60,7 @@ struct GrammarDetailsView: View {
                 }
             }
         }
-        .toolbarMinimizationBehavior(.onScrollDown, for: .navigationBar)
+        .toolbarMinimizeNavigationBarIfAvailable()
         .task {
             isReady = false
 

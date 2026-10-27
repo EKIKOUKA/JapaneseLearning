@@ -54,7 +54,7 @@ struct MediaProductsListView: View {
                                                 .tag(category)
                                         }
                                     }
-                                    .pickerStyle(.tabs)
+                                    .pickerStyle_tabs_ifAvailable()
                                     .listRowInsets(EdgeInsets(
                                         top: 10,
                                         leading: 0,
@@ -128,11 +128,11 @@ struct MediaProductsListView: View {
                 }
             }
         }
-        .toolbarMinimizationBehavior(.onScrollDown, for: .navigationBar)
+        .toolbarMinimizeNavigationBarIfAvailable()
         .sheet(isPresented: $showSettingSheet) {
             SettingsSheetView(store: store)
                 .presentationDetents([.medium])
-                .navigationTransition(.crossFade)
+                .navigationTransition_crossFade_ifAvailable()
         }
         .navigationTitle("映像作品リスト")
         .task {

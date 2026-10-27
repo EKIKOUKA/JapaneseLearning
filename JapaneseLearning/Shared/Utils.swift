@@ -80,24 +80,43 @@ extension Character {
     }
 }
 
-extension Array {
-    mutating func apply<CollectionID: Hashable & Sendable>(
-        difference: ReorderDifference<Element.ID, CollectionID>
-    ) where Element: Identifiable, Element.ID: Sendable {
-        guard let sourceIndex = firstIndex(where: { $0.id == difference.sources[0] }) else { return }
-        let movedItem = remove(at: sourceIndex)
-
-        var destination: Int
-
-        switch difference.destination.position {
-            case let .before(value):
-                guard let index = firstIndex(where: { $0.id == value }) else { return }
-                destination = index
-            case .end:
-                destination = endIndex
+extension View {
+    @ViewBuilder
+    func toolbarMinimizeNavigationBarIfAvailable() -> some View {
+        if #available(iOS 27.0, *) {
+            self.toolbarMinimizationBehavior(.onScrollDown, for: .navigationBar)
+        } else {
+            self
         }
+    }
+    
+    @ViewBuilder
+    func navigationTransition_crossFade_ifAvailable() -> some View {
+        if #available(iOS 27.0, *) {
+            self.navigationTransition(.crossFade)
+        } else {
+            self
+        }
+    }
+    
+    @ViewBuilder
+    func pickerStyle_tabs_ifAvailable() -> some View {
+        if #available(iOS 27.0, *) {
+            self.pickerStyle(.tabs)
+        } else {
+            self
+        }
+    }
+}
 
-        insert(movedItem, at: destination)
+extension DynamicViewContent {
+    @ViewBuilder
+    func reorderable_ifAvailable() -> some View {
+        if #available(iOS 27.0, *) {
+            self.reorderable()
+        } else {
+            self
+        }
     }
 }
 

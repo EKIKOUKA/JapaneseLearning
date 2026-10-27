@@ -73,7 +73,7 @@ struct GrammarNaviView: View {
             GrammarSettingsView(store: store)
                 .presentationDetents(sizeClass_regular ? [.large] : [.height(490), .large])
                 .presentationDragIndicator(.visible)
-                .navigationTransition(.crossFade)
+                .navigationTransition_crossFade_ifAvailable()
         }
     }
 }

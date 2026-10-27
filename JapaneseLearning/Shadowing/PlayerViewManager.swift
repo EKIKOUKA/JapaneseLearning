@@ -1040,12 +1040,16 @@ final class PlayerViewManager {
 
     /// システムの非同期 API を使い、音声ルートの準備でメインスレッドをブロックしない。
     private func activateAudioSession(_ session: AVAudioSession) {
-        session.activate(options: []) { activated, error in
-            if let error {
-                print("オーディオセッションの有効化に失敗しました: \(error.localizedDescription)")
-            } else if !activated {
-                print("オーディオセッションを有効化できませんでした。")
+        if #available(iOS 27.0, *) {
+            session.activate(options: []) { activated, error in
+                if let error {
+                    print("オーディオセッションの有効化に失敗しました: \(error.localizedDescription)")
+                } else if !activated {
+                    print("オーディオセッションを有効化できませんでした。")
+                }
             }
+        } else {
+            // Fallback on earlier versions
         }
     }
 

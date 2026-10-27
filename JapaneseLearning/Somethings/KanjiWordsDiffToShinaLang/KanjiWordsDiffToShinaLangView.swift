@@ -109,11 +109,11 @@ struct KanjiWordsDiffToShinaLangView: View {
                 }
             }
         }
-        .toolbarMinimizationBehavior(.onScrollDown, for: .navigationBar)
+        .toolbarMinimizeNavigationBarIfAvailable()
         .sheet(isPresented: $showSettingSheet) {
             SettingsSheetView(store: store)
                 .presentationDetents([.medium])
-                .navigationTransition(.crossFade)
+                .navigationTransition_crossFade_ifAvailable()
         }
         .task {
             if store.KanjiWordsList.isEmpty {
