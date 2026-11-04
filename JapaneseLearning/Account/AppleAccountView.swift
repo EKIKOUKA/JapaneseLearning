@@ -56,6 +56,9 @@ struct AppleAccountView: View {
                     }
                 }
             }
+            .navigationDestination(isPresented: $navigationStore.showsAutomaticCharge) {
+                AutomaticChargeView()
+            }
             .navigationTitle("メニュー")
             .navigationBarTitleDisplayMode(.inline)
             .task {
