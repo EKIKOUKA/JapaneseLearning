@@ -7,6 +7,7 @@
 
 import SwiftUI
 import StoreKit
+import PassKit
 
 struct ChargeView: View {
     @Environment(AppleAccountStore.self) private var accountStore
@@ -85,6 +86,32 @@ struct ChargeView: View {
                     .padding(18)
                     .background(.background, in: RoundedRectangle(cornerRadius: 18))
                 }
+
+                NavigationLink {
+                    AutomaticChargeView()
+                } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: "arrow.trianglehead.2.clockwise.rotate.90")
+                            .font(.title2)
+                        
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("自動チャージ")
+                                .font(.headline)
+                            Text("毎月のチャージ・残高不足時の追加チャージ")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.tertiary)
+                    }
+                    .foregroundStyle(.primary)
+                    .padding(18)
+                    .background(.background, in: RoundedRectangle(cornerRadius: 18))
+                }
+                .buttonStyle(.plain)
             }
             .padding(20)
         }
@@ -146,14 +173,23 @@ struct ChargeView: View {
 
     private var ApplePayPayment: some View {
         VStack(alignment: .leading, spacing: 14) {
-            StripeApplePayButton {
-                guard let configuration = stripeConfiguration, stripeOption != nil else { return }
-                stripeCoordinator.start(configuration: configuration, credits: selectedCredits, accountStore: accountStore) {
-                    showPurchaseOutcome($0)
+            if let configuration = stripeConfiguration,
+                let request = StripeApplePayCoordinator.paymentRequest(configuration: configuration, credits: selectedCredits) {
+                ActionApplePayButton(.plain, request: request) { phase in
+                    stripeCoordinator.handle(
+                        phase,
+                        configuration: configuration,
+                        credits: selectedCredits,
+                        accountStore: accountStore
+                    ) {
+                        showPurchaseOutcome($0)
+                    }
                 }
+                .buttonSizing(.flexible)
+                .frame(maxWidth: .infinity)
+                .frame(height: 48)
+                .disabled(isLoadingStripeConfiguration || stripeOption == nil || !StripeApplePayCoordinator.isSupported || accountStore.isAccountOperationBlocked)
             }
-            .frame(height: 48)
-            .disabled(isLoadingStripeConfiguration || stripeOption == nil || !StripeApplePayCoordinator.isSupported || accountStore.isAccountOperationBlocked)
 
             if !isLoadingStripeConfiguration, stripeOption == nil {
                 Text(stripeSetupMessage ?? "この商品は利用できません")

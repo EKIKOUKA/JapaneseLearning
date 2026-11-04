@@ -7,111 +7,196 @@
 
 import PassKit
 @preconcurrency import StripeApplePay
+@preconcurrency import StripePayments
 import SwiftUI
 
-/// Apple Pay の表示と Stripe SDK の連携だけを担当する。残高はサーバー確認後に Store が更新する。
+/// Apple Pay の承認結果を Stripe に渡して決済を確定する。
 @MainActor
-final class StripeApplePayCoordinator: NSObject, ApplePayContextDelegate {
-    private var context: STPApplePayContext?
+final class StripeApplePayCoordinator {
+    static var isSupported: Bool { StripeAPI.deviceSupportsApplePay() }
     private var accountStore: AppleAccountStore?
+    private var configuration: StripeTestConfiguration?
     private var credits = 0
     private var requestID = UUID().uuidString
+    private var outcome: CreditPurchaseOutcome = .cancelled
     private var completion: ((CreditPurchaseOutcome) -> Void)?
+    private var pending = false
+    private var dismissed = false
 
-    static var isSupported: Bool { StripeAPI.deviceSupportsApplePay() }
+    static func paymentRequest(configuration: StripeTestConfiguration, credits: Int) -> PKPaymentRequest? {
+        guard let option = configuration.options.first(where: { $0.credits == credits }) else { return nil }
 
-    func start(configuration: StripeTestConfiguration, credits: Int, accountStore: AppleAccountStore,
-               completion: @escaping (CreditPurchaseOutcome) -> Void) {
-        guard let option = configuration.options.first(where: { $0.credits == credits }) else {
-            completion(.failed("Apple Pay を表示できません。"))
-            return
-        }
-        guard accountStore.beginStripeTestPurchase() else {
-            completion(.failed("ログイン状態と購入の処理状況を確認してください。"))
-            return
-        }
-        
-        self.accountStore = accountStore
-        self.credits = credits
-        self.requestID = UUID().uuidString
-        self.completion = completion
-        StripeAPI.defaultPublishableKey = configuration.publishableKey
-        
         let request = StripeAPI.paymentRequest(
             withMerchantIdentifier: configuration.merchantID,
             country: configuration.country,
             currency: configuration.currency
         )
-        
         request.paymentSummaryItems = [
-            PKPaymentSummaryItem(
-                label: "ことね-言語シャドーイング",
-                amount: NSDecimalNumber(value: option.amount)
-            )
+            PKPaymentSummaryItem(label: "ことね-言語シャドーイング",
+            amount: NSDecimalNumber(value: option.amount))
         ]
-        
-        guard let context = STPApplePayContext(paymentRequest: request, delegate: self) else {
-            finish(.failed("Apple Pay の設定と Wallet のカードを確認してください。"))
-            return
-        }
-        self.context = context
-        // ボタン操作の直後にシートを開く。非同期の注文作成は支払い方法が確定した後に行う。
-        context.presentApplePay()
+
+        return request
     }
 
-    func applePayContext(_ context: STPApplePayContext, didCreatePaymentMethod paymentMethod: StripeAPI.PaymentMethod,
-             paymentInformation: PKPayment) async throws -> String {
-        guard let accountStore else { throw URLError(.userAuthenticationRequired) }
-
-        return try await accountStore.createStripeTestIntent(credits: credits, requestID: requestID).clientSecret
-    }
-
-    func applePayContext(_ context: STPApplePayContext, didCompleteWith status: STPApplePayContext.PaymentStatus, error: Error?) {
-        switch status {
-            case .success:
-                Task {
-                    guard let accountStore else { return }
-                    
-                    do {
-                        let result = try await accountStore.reconcileStripeTestPayments()
-                        finish(.purchased(added: result.addedCredits, balance: result.creditBalance))
-                    } catch {
-                        finish(.failed("支払い結果の反映を確認できませんでした。次回この画面を開くと再確認します。"))
-                    }
+    func handle(_ phase: PayWithApplePayButtonPaymentAuthorizationPhase,
+                configuration: StripeTestConfiguration, credits: Int, accountStore: AppleAccountStore,
+                completion: @escaping (CreditPurchaseOutcome) -> Void) {
+        switch phase {
+            case .willAuthorize:
+                guard self.accountStore == nil, accountStore.beginStripeTestPurchase() else { return }
+                self.accountStore = accountStore
+                self.configuration = configuration
+                self.credits = credits
+                self.completion = completion
+                requestID = UUID().uuidString
+                outcome = .cancelled
+                dismissed = false
+            case .didAuthorize(let payment, let resultHandler):
+                guard let store = self.accountStore, let config = self.configuration, !pending else {
+                    resultHandler(PKPaymentAuthorizationResult(status: .failure, errors: nil))
+                    return
                 }
-            case .userCancellation: finish(.cancelled)
-            case .error: finish(.failed(error?.localizedDescription ?? "Apple Pay のテスト決済に失敗しました。"))
-            @unknown default: finish(.failed("支払い結果を確認できませんでした。"))
+                pending = true
+
+                Task {
+                    do {
+                        let client = STPAPIClient(publishableKey: config.publishableKey)
+                        let method: STPPaymentMethod = try await withCheckedThrowingContinuation { continuation in
+                            client.createPaymentMethod(with: payment) { method, error in
+                                if let method { continuation.resume(returning: method) }
+                                else { continuation.resume(throwing: error ?? URLError(.badServerResponse)) }
+                            }
+                        }
+                        
+                        let intent = try await store.createStripeTestIntent(credits: self.credits, requestID: requestID)
+                        let existing: STPPaymentIntent = try await withCheckedThrowingContinuation { continuation in
+                            client.retrievePaymentIntent(withClientSecret: intent.clientSecret) { intent, error in
+                                if let intent { continuation.resume(returning: intent) }
+                                else { continuation.resume(throwing: error ?? URLError(.badServerResponse)) }
+                            }
+                        }
+                        
+                        let confirmed: STPPaymentIntent
+                        if existing.status == .succeeded || existing.status == .requiresCapture {
+                            // 前回の応答だけが失われた場合も再請求しない。
+                            confirmed = existing
+                        } else {
+                            let params = STPPaymentIntentParams(clientSecret: intent.clientSecret)
+                            params.paymentMethodId = method.stripeId
+                            params.useStripeSDK = true
+                            confirmed = try await withCheckedThrowingContinuation { continuation in
+                                client.confirmPaymentIntent(with: params) { intent, error in
+                                    if let intent {
+                                        continuation.resume(returning: intent)
+                                    } else {
+                                        continuation.resume(throwing: error ?? URLError(.badServerResponse))
+                                    }
+                                }
+                            }
+                        }
+                        
+                        guard confirmed.status == .succeeded || confirmed.status == .requiresCapture else {
+                            throw URLError(.cannotParseResponse)
+                        }
+                        
+                        // 支払い成功と残高更新の失敗は分ける。再決済を促さない。
+                        do {
+                            let result = try await store.reconcileStripeTestPayments()
+                            outcome = .purchased(added: result.addedCredits, balance: result.creditBalance)
+                        } catch {
+                            outcome = .failed("支払い結果の反映を確認できませんでした。次回この画面を開くと再確認します。")
+                        }
+                        
+                        resultHandler(PKPaymentAuthorizationResult(status: .success, errors: nil))
+                    } catch {
+                        outcome = .failed(error.localizedDescription)
+                        resultHandler(PKPaymentAuthorizationResult(status: .failure, errors: [error]))
+                    }
+                    
+                    pending = false
+                    if dismissed { finish() }
+                }
+            case .didFinish:
+                dismissed = true
+                if !pending { finish() }
+            @unknown default: break
         }
     }
 
-    private func finish(_ outcome: CreditPurchaseOutcome) {
+    private func finish() {
+        let callback = completion
+        let result = outcome
         accountStore?.endStripeTestPurchase()
-        completion?(outcome)
-        completion = nil
-        context = nil
         accountStore = nil
+        configuration = nil
+        completion = nil
+        callback?(result)
     }
 }
 
-/// Apple の正式な支払いボタンを使い、通常のテキストボタンでロゴを再現しない。
-struct StripeApplePayButton: UIViewRepresentable {
-    let action: () -> Void
-    func makeUIView(context: Context) -> PKPaymentButton {
-        let button = PKPaymentButton(
-            paymentButtonType: .plain,
-            paymentButtonStyle: .automatic
-        )
-        button.addTarget(context.coordinator, action: #selector(Coordinator.tap), for: .touchUpInside)
+/// action 版を使用し、request 版でボタンの幅が固定される問題を回避する。
+struct ActionApplePayButton: View {
+    private let label: PayWithApplePayButtonLabel
+    private let request: PKPaymentRequest
+    private let onPhase: (PayWithApplePayButtonPaymentAuthorizationPhase) -> Void
+    @State private var presenter = ApplePaySheetPresenter()
 
-        return button
+    init(_ label: PayWithApplePayButtonLabel, request: PKPaymentRequest,
+         onPhase: @escaping (PayWithApplePayButtonPaymentAuthorizationPhase) -> Void) {
+        self.label = label
+        self.request = request
+        self.onPhase = onPhase
     }
-    
-    func updateUIView(_ uiView: PKPaymentButton, context: Context) { context.coordinator.action = action }
-    func makeCoordinator() -> Coordinator { Coordinator(action: action) }
-    final class Coordinator: NSObject {
-        var action: () -> Void
-        init(action: @escaping () -> Void) { self.action = action }
-        @objc func tap() { action() }
+
+    var body: some View {
+        PayWithApplePayButton(label) {
+            presenter.present(request: request, onPhase: onPhase)
+        }
+    }
+}
+
+@MainActor
+private final class ApplePaySheetPresenter: NSObject, PKPaymentAuthorizationControllerDelegate {
+    private var controller: PKPaymentAuthorizationController?
+    private var onPhase: ((PayWithApplePayButtonPaymentAuthorizationPhase) -> Void)?
+
+    func present(request: PKPaymentRequest, onPhase: @escaping (PayWithApplePayButtonPaymentAuthorizationPhase) -> Void) {
+        guard controller == nil else { return }
+        let controller = PKPaymentAuthorizationController(paymentRequest: request)
+        self.controller = controller
+        self.onPhase = onPhase
+        controller.delegate = self
+        onPhase(.willAuthorize)
+        controller.present { [weak self] presented in
+            guard !presented else { return }
+            Task { @MainActor [weak self] in self?.finish() }
+        }
+    }
+
+    func paymentAuthorizationController(
+        _ controller: PKPaymentAuthorizationController,
+        didAuthorizePayment payment: PKPayment,
+        handler completion: @escaping (PKPaymentAuthorizationResult) -> Void
+    ) {
+        guard let onPhase else {
+            completion(PKPaymentAuthorizationResult(status: .failure, errors: nil))
+            return
+        }
+        onPhase(.didAuthorize(payment: payment, resultHandler: completion))
+    }
+
+    func paymentAuthorizationControllerDidFinish(_ controller: PKPaymentAuthorizationController) {
+        controller.dismiss { [weak self] in
+            Task { @MainActor [weak self] in self?.finish() }
+        }
+    }
+
+    private func finish() {
+        let callback = onPhase
+        onPhase = nil
+        controller?.delegate = nil
+        controller = nil
+        callback?(.didFinish)
     }
 }

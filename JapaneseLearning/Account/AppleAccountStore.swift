@@ -140,6 +140,40 @@ final class AppleAccountStore {
         )
     }
 
+    func automaticChargeSettings() async throws -> AutomaticChargeSettingsResponse {
+        let initialRevision = balanceRevision
+        let initialSession = sessionToken
+        let response: AutomaticChargeSettingsResponse = try await automaticChargeAPI("settings", body: [String: String]())
+        
+        if sessionToken == initialSession, balanceRevision == initialRevision, let balance = response.creditBalance {
+            setCreditBalance(balance)
+        }
+        
+        return response
+    }
+
+    func prepareAutomaticCharge(_ request: AutomaticChargeRequest) async throws -> AutomaticChargeAuthorization {
+        try await automaticChargeAPI("prepare", body: request)
+    }
+
+    func completeAutomaticCharge(_ authorizationID: String) async throws -> AutomaticChargeSettingsResponse {
+        try await automaticChargeAPI("complete", body: ["authorizationID": authorizationID])
+    }
+
+    func disableAutomaticCharge(_ type: String) async throws -> AutomaticChargeSettingsResponse {
+        try await automaticChargeAPI("disable", body: ["type": type])
+    }
+
+    private func automaticChargeAPI<Body: Encodable, Result: Decodable>(_ path: String, body: Body) async throws -> Result {
+        guard let sessionToken, isSignedIn else { throw URLError(.userAuthenticationRequired) }
+        
+        return try await WorkersAPI.postForResponse(
+            "payments/stripe/auto/\(path)",
+            body: body,
+            authorizationToken: sessionToken
+        )
+    }
+
     func createStripeTestIntent(credits: Int, requestID: String) async throws -> StripeTestIntent {
         guard let sessionToken, isSignedIn else { throw URLError(.userAuthenticationRequired) }
         

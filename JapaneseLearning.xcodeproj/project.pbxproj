@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+        A10203040506070809101115 /* StripePayments in Frameworks */ = {isa = PBXBuildFile; productRef = A10203040506070809101116 /* StripePayments */; };
 		0EC468F1308C4AA10028D7BC /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 0EC468F0308C4AA10028D7BC /* Localizable.xcstrings */; };
 		0EC468F2308C4AA10028D7BC /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 0EC468F0308C4AA10028D7BC /* Localizable.xcstrings */; };
 		0EC468F3308C4AA10028D7BC /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 0EC468F0308C4AA10028D7BC /* Localizable.xcstrings */; };
@@ -134,6 +135,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A10203040506070809101112 /* StripeApplePay in Frameworks */,
+                A10203040506070809101115 /* StripePayments in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -238,6 +240,7 @@
 			name = JapaneseLearning;
 			packageProductDependencies = (
 				A10203040506070809101113 /* StripeApplePay */,
+                A10203040506070809101116 /* StripePayments */,
 			);
 			productName = JapaneseGrammar;
 			productReference = 7F4336D12F70600400783EE3 /* JapaneseLearning.app */;
@@ -777,6 +780,11 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+        A10203040506070809101116 /* StripePayments */ = {
+            isa = XCSwiftPackageProductDependency;
+            package = A10203040506070809101114;
+            productName = StripePayments;
+        };
 		A10203040506070809101113 /* StripeApplePay */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = A10203040506070809101114 /* XCRemoteSwiftPackageReference "stripe-ios-spm" */;
