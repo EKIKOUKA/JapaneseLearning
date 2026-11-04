@@ -10,10 +10,13 @@ import AuthenticationServices
 
 struct AppleAccountView: View {
     @Environment(AppleAccountStore.self) private var accountStore
+    @Environment(AppNavigationStore.self) private var navigationStore
     @State private var rawNonce = ""
     @State private var showingDeleteConfirmation = false
 
     var body: some View {
+        @Bindable var navigationStore = navigationStore
+
         NavigationStack {
             List {
                 Section {
@@ -44,7 +47,7 @@ struct AppleAccountView: View {
 
                 if accountStore.isSignedIn {
                     Section("アカウント管理") {
-                        Button("ログアウト", role: .destructive) {
+                        Button("ログアウト", role: .confirm) {
                             Task { await accountStore.signOut() }
                         }
                         .disabled(accountStore.isAccountOperationBlocked)

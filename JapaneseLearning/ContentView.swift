@@ -22,7 +22,7 @@ struct ContentView: View {
         TabView(selection: $nav.selectedTab) {
             VideoContentView()
                 .tabItem {
-                    Label("シャドーイング", systemImage: "shadow")
+                    Label("ホーム", systemImage: "house")
                 }
                 .tag(0)
 
@@ -99,6 +99,13 @@ struct ContentView: View {
             }
         }
         .onOpenURL { url in
+            if url.scheme == "japaneselearning", url.host == "auto-charge" {
+                navigationStore.selectedTab = 4
+                navigationStore.presentedVideo = nil
+                navigationStore.showsAutomaticCharge = true
+                return
+            }
+
             guard url.scheme == "japaneselearning",
                   url.host == "video",
                   let videoID = url.pathComponents.dropFirst().first,

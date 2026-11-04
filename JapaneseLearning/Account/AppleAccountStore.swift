@@ -409,6 +409,7 @@ final class AppleAccountStore {
             await retryUnfinishedCreditTransactions()
         } catch {
             guard self.sessionToken == sessionToken, !isManagingAccount else { return }
+
             if let apiError = error as? WorkersAPIError, apiError.statusCode == 401 {
                 clearLocalSession()
             }
@@ -446,6 +447,8 @@ final class AppleAccountStore {
             return
         }
 
+        signInError = nil
+        accountNotice = nil
         isManagingAccount = true
         defer { isManagingAccount = false }
 
@@ -459,8 +462,10 @@ final class AppleAccountStore {
             deleteLocalAccountData()
             signInError = nil
 
-            if response.requiresManualAppleRevocation == true {
+            if response.requiresManualAppleRevocation {
                 accountNotice = "アカウントを削除しました。Apple の連携情報が保存されていなかったため、iPhone の設定から「Apple でサインイン」の本アプリとの連携も解除してください。"
+            } else {
+                accountNotice = "アカウントを削除し、Apple との連携を解除しました。"
             }
         } catch {
             signInError = error.localizedDescription
@@ -547,6 +552,7 @@ final class AppleAccountStore {
     }
 
     func deleteLocalAccountData() {
+        if let userID { AchieveSystemStore.removeCachedSessions(for: userID) }
         clearLocalSession()
         accountCredits = 0
         UserDefaults.standard.removeObject(forKey: "cached_videos")

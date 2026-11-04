@@ -206,6 +206,8 @@ struct VideoContentArea: View {
                     Image(uiImage: image)
                         .resizable()
                         .scaledToFill()
+                        .frame(width: videoWidth, height: baseHeight)
+                        .clipped()
                         .opacity(drawerOffset >= maxDrawerOffset ? 0 : 1)
                 } else {
                     Color.black.opacity(0.1)

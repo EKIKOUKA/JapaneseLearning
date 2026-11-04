@@ -157,7 +157,7 @@ class VideoStore {
             saveVideoCache()
 
             Task(priority: .utility) {
-                await Self.cacheMissingThumbnails(for: freshVideos)
+                await cacheMissingThumbnails(for: freshVideos, owner: owner)
             }
         } catch {
             if !videos.isEmpty {
@@ -625,9 +625,9 @@ class VideoStore {
     private static func thumbnailSourceURL(for video: VideoItem) async -> URL {
         await YouTubeService.fetchBestThumbnailURL(for: video.youtubeID)
     }
-    private static func cacheThumbnail(for video: VideoItem) async {
+    private static func cacheThumbnail(for video: VideoItem) async -> Bool {
         guard AppGroupThumbnailStorage.existingFileURL(for: video.id) == nil else {
-            return
+            return true
         }
 
         // WebView 版のローカルキャッシュを共有領域へコピーし、再ダウンロードを避ける。
@@ -635,7 +635,7 @@ class VideoStore {
            let data = try? Data(contentsOf: localURL) {
             do {
                 try AppGroupThumbnailStorage.save(data, for: video.id)
-                return
+                return true
             } catch {
                 print("サムネイルの共有領域への移行に失敗しました: \(error)")
             }
@@ -646,16 +646,28 @@ class VideoStore {
         do {
             let data = try await WorkersAPI.getData(from: sourceURL)
             try AppGroupThumbnailStorage.save(data, for: video.id)
+            return true
         } catch {
             print("❌ Thumbnail download failed (\(video.id)): \(error)")
+            return false
         }
     }
-    private static func cacheMissingThumbnails(for videos: [VideoItem]) async {
-        await withTaskGroup(of: Void.self) { group in
-            for video in videos {
+    @MainActor
+    private func cacheMissingThumbnails(for fetchedVideos: [VideoItem], owner: String?) async {
+        await withTaskGroup(of: String?.self) { group in
+            for video in fetchedVideos where AppGroupThumbnailStorage.existingFileURL(for: video.id) == nil {
                 group.addTask {
-                    await Self.cacheThumbnail(for: video)
+                    await Self.cacheThumbnail(for: video) ? video.id : nil
                 }
+            }
+
+            for await videoID in group {
+                guard cacheOwnerID == owner, !Task.isCancelled else {
+                    group.cancelAll()
+                    return
+                }
+                guard let videoID, let index = videos.firstIndex(where: { $0.id == videoID }) else { continue }
+                videos[index].thumbnailRefreshID = UUID().uuidString
             }
         }
     }

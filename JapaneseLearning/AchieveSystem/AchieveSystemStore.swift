@@ -7,6 +7,7 @@
 
 import Observation
 import Foundation
+import CryptoKit
 
 @MainActor
 @Observable
@@ -24,6 +25,25 @@ class AchieveSystemStore {
         "achieve_system_practice_sessions_v2.\(AppleAccountStore.savedUserID ?? "signed-out")"
     }
     @ObservationIgnored private var cachedUserID: String?
+    @ObservationIgnored private var syncCursor: Int64?
+    @ObservationIgnored private var syncedAccountID: Int?
+
+    private var cacheURL: URL? {
+        guard let userID = cachedUserID else { return nil }
+        return Self.cacheURL(for: userID)
+    }
+
+    private static func cacheURL(for userID: String) -> URL? {
+        guard let directory = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first else { return nil }
+        let name = SHA256.hash(data: Data(userID.utf8)).map { String(format: "%02x", $0) }.joined()
+        return directory.appendingPathComponent("PracticeSessions", isDirectory: true)
+            .appendingPathComponent("\(name).json")
+    }
+
+    static func removeCachedSessions(for userID: String) {
+        if let url = cacheURL(for: userID) { try? FileManager.default.removeItem(at: url) }
+        UserDefaults.standard.removeObject(forKey: "achieve_system_practice_sessions_v2.\(userID)")
+    }
 
     private var loadToken: Int = 0
 
@@ -93,16 +113,50 @@ class AchieveSystemStore {
         loadToken += 1
         let token = loadToken
         isRefreshing = true
-        defer { isRefreshing = false }
+        defer { if token == loadToken { isRefreshing = false } }
 
         do {
-            let queryData = Self.makeQuery()
-            let rows: [PracticeTimingRow] = try await WorkersAPI.get(
-                queryData.path, queryItems: queryData.queryItems, authorizationToken: sessionToken
-            )
+            // キャッシュを表示したまま同期する。初回はサーバーの全履歴で置き換える。
+            var rows = syncCursor == nil ? [:] : Dictionary(rawSessions.map { ($0.id, $0) }, uniquingKeysWith: { _, last in last })
+            var cursor = syncCursor ?? 0
+            var accountID = syncedAccountID
+            var until: Int64?
+            var hasMore = true
+            while hasMore {
+                try Task.checkCancellation()
+                var query = [URLQueryItem(name: "cursor", value: String(cursor)), URLQueryItem(name: "limit", value: "500")]
+                if let accountID { query.append(URLQueryItem(name: "account_id", value: String(accountID))) }
+                if let until { query.append(URLQueryItem(name: "until", value: String(until))) }
+                let page: PracticeSessionSyncPage = try await WorkersAPI.get(
+                    "sync_practice_sessions", queryItems: query, authorizationToken: sessionToken
+                )
+                guard token == loadToken, sessionToken == AppleAccountStore.savedSessionToken else { return }
+                if page.reset { rows.removeAll() }
+                guard page.nextCursor >= 0, page.nextCursor <= page.until,
+                      !page.hasMore || page.nextCursor > (page.reset ? 0 : cursor) else {
+                    throw URLError(.cannotParseResponse)
+                }
+                
+                for change in page.changes {
+                    if change.deleted {
+                        rows.removeValue(forKey: change.id)
+                    } else if let row = change.session, row.id == change.id {
+                        rows[row.id] = row
+                    } else {
+                        throw URLError(.cannotParseResponse)
+                    }
+                }
+                
+                cursor = page.nextCursor
+                until = page.until
+                accountID = page.accountID
+                hasMore = page.hasMore
+            }
             guard token == loadToken, sessionToken == AppleAccountStore.savedSessionToken else { return }
 
-            rawSessions = rows.sorted { $0.started_at < $1.started_at }
+            rawSessions = rows.values.sorted { $0.started_at < $1.started_at }
+            syncCursor = cursor
+            syncedAccountID = accountID
             saveCache()
             rebuildChartWindow()
         } catch {
@@ -113,17 +167,38 @@ class AchieveSystemStore {
     private func loadCache() {
         cachedUserID = AppleAccountStore.savedUserID
         rawSessions = []
+        syncCursor = nil
+        syncedAccountID = nil
+        if let url = cacheURL, let data = try? Data(contentsOf: url),
+           let cache = try? JSONDecoder().decode(PracticeSessionCache.self, from: data) {
+            rawSessions = cache.rows.sorted { $0.started_at < $1.started_at }
+            syncCursor = cache.cursor
+            syncedAccountID = cache.accountID
+            return
+        }
+        // 既存の表示キャッシュは移行するが、初回同期は必ず全履歴を取得する。
         guard let data = UserDefaults.standard.data(forKey: cacheKey),
               let cachedRows = try? JSONDecoder().decode([PracticeTimingRow].self, from: data) else {
             return
         }
 
         rawSessions = cachedRows.sorted { $0.started_at < $1.started_at }
+        saveCache()
     }
 
     private func saveCache() {
-        guard let data = try? JSONEncoder().encode(rawSessions) else { return }
-        UserDefaults.standard.set(data, forKey: cacheKey)
+        guard let url = cacheURL else { return }
+
+        do {
+            let cache = PracticeSessionCache(rows: rawSessions, cursor: syncCursor, accountID: syncedAccountID)
+            let data = try JSONEncoder().encode(cache)
+            try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+            // 履歴と cursor を同時に保存し、途中終了で未取得の履歴を飛ばさない。
+            try data.write(to: url, options: .atomic)
+            UserDefaults.standard.removeObject(forKey: cacheKey)
+        } catch {
+            print("❌ Practice cache save failed: \(error)")
+        }
     }
 
     private func rebuildChartWindow() {
@@ -196,20 +271,6 @@ class AchieveSystemStore {
 
     static func totalMinutes(_ items: [PracticeTimingRow]) -> Double {
         Double(items.reduce(0) { $0 + $1.duration_seconds }) / 60.0
-    }
-
-    static func makeQuery() -> (path: String, queryItems: [URLQueryItem]) {
-        let start = Date(timeIntervalSince1970: 0)
-        let end = tokyoCalendar.startOfDay(for: Date())
-
-        return (
-            "fetch_practice_sessions",
-            [
-                URLQueryItem(name: "start_date", value: sqliteDateString(from: start)),
-                URLQueryItem(name: "end_date", value: sqliteDateString(from: end)),
-                URLQueryItem(name: "language", value: "")
-            ]
-        )
     }
 
     private static func sum(_ rows: [(date: Date, row: PracticeTimingRow)]) -> (ja: Int, en: Int) {
@@ -421,7 +482,8 @@ class AchieveSystemStore {
                 bounds = (startDate, endDate)
             case .year:
                 let start = startOfYear(for: end)
-                let yearEnd = tokyoCalendar.date(byAdding: .month, value: 11, to: start) ?? end
+                let nextYear = tokyoCalendar.date(byAdding: .year, value: 1, to: start) ?? end
+                let yearEnd = tokyoCalendar.date(byAdding: .day, value: -1, to: nextYear) ?? end
                 bounds = (start, yearEnd)
         }
 
@@ -576,6 +638,8 @@ class AchieveSystemStore {
         do {
             try await WorkersAPI.post("delete_practice_session", body: [ "id": id ], authorizationToken: sessionToken)
             guard sessionToken == AppleAccountStore.savedSessionToken else { return }
+            loadToken += 1
+            isRefreshing = false
             rawSessions.removeAll { $0.id == id }
             saveCache()
             rebuildChartWindow()

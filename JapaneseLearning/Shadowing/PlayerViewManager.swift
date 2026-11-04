@@ -881,7 +881,10 @@ final class PlayerViewManager {
         do {
             let session = AVAudioSession.sharedInstance()
             try session.setCategory(.playback, mode: .moviePlayback)
-            activateAudioSession(session)
+
+            if #available(iOS 27.0, *) {
+                activateAudioSession(session)
+            }
         } catch {
             print("YouTube audio session activation failed: \(error.localizedDescription)")
         }
@@ -1032,24 +1035,24 @@ final class PlayerViewManager {
                 mode: .spokenAudio,
                 options: []
             )
-            activateAudioSession(session)
+
+            if #available(iOS 27.0, *) {
+                activateAudioSession(session)
+            }
         } catch {
             print("Audio Session 設定失敗: \(error)")
         }
     }
 
     /// システムの非同期 API を使い、音声ルートの準備でメインスレッドをブロックしない。
+    @available(iOS 27.0, *)
     private func activateAudioSession(_ session: AVAudioSession) {
-        if #available(iOS 27.0, *) {
-            session.activate(options: []) { activated, error in
-                if let error {
-                    print("オーディオセッションの有効化に失敗しました: \(error.localizedDescription)")
-                } else if !activated {
-                    print("オーディオセッションを有効化できませんでした。")
-                }
+        session.activate(options: []) { activated, error in
+            if let error {
+                print("オーディオセッションの有効化に失敗しました: \(error.localizedDescription)")
+            } else if !activated {
+                print("オーディオセッションを有効化できませんでした。")
             }
-        } else {
-            // Fallback on earlier versions
         }
     }
 
