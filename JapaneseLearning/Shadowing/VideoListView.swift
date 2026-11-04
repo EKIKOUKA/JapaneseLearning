@@ -73,14 +73,9 @@ struct VideoListView: View {
                 } else {
                     let columns = gridColumns(isLandscape: geo.size.width > geo.size.height)
 
-                    if #available(iOS 27.0, *) {
-                        ScrollView {
-                            VStack {
-                                videoItemGrid(columns: columns)
-                            }
-                            .animation(.easeInOut(duration: 0.35), value: selectedCategory?.id)
-                            .padding(.horizontal, 14)
-                            .padding(.bottom, 20)
+                    ScrollView {
+                        VStack {
+                            videoItemGrid(columns: columns)
                         }
                         .animation(.easeInOut(duration: 0.35), value: selectedCategory?.id)
                         .padding(.horizontal, 14)

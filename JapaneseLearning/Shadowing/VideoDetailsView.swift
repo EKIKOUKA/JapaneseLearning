@@ -130,7 +130,7 @@ struct VideoDetailsView: View {
                 .ignoresSafeArea()
                 .presentationDetents(sizeClassRegular ? [.large] : [.medium, .large])
                 .presentationDragIndicator(sizeClassRegular ? .hidden : .visible)
-                .navigationTransition_crossFade_ifAvailable()
+                .navigationTransition_crossFade_IfAvailable()
         }
         .onChange(of: playerVM.activeLookUpWordIdentifiable?.id) { _, newID in
             guard newID != nil else { return }
@@ -140,7 +140,7 @@ struct VideoDetailsView: View {
             ShadowingSettingsSheetView(playerVM: playerVM)
                 .presentationDetents(sizeClassRegular ? [.large] : [.medium, .large])
                 .presentationDragIndicator(.visible)
-                .navigationTransition_crossFade_ifAvailable()
+                .navigationTransition_crossFade_IfAvailable()
         }
         .sheet(item: $playerVM.activeAIQuestion, onDismiss: {
             playerVM.playPlayer()
