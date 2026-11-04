@@ -28,7 +28,7 @@ struct ContentView: View {
 
             AchieveSystemView()
                 .tabItem {
-                    Label("　学習記録　", systemImage: "chart.bar.xaxis")
+                    Label("学習記録", systemImage: "chart.bar.xaxis")
                 }
                 .tag(1)
 

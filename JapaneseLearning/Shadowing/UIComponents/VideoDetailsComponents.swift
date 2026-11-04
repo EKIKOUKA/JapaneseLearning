@@ -228,10 +228,10 @@ struct VideoSubtitleFontSizeSliderView: View {
             Image(systemName: "textformat.size.larger")
                 .foregroundColor(.secondary)
                 .onTapGesture {
-                    if settingsStoreBindable.videoSubtitleFontSizeScale < 1.40 {
+                    if settingsStoreBindable.videoSubtitleFontSizeScale < 2.0 {
                         let newValue = min(
                             settingsStoreBindable.videoSubtitleFontSizeScale + 0.05,
-                            1.40
+                            2.0
                         )
                         settingsStoreBindable.videoSubtitleFontSizeScale = newValue
                         tempFontSize = newValue

@@ -20,7 +20,7 @@ struct YouTubeVideoContentArea: View {
     let isLandscape: Bool
 
     var body: some View {
-        let videoWidth = max(0, isLandscape ? containerWidth * 0.5 : containerWidth)
+        let videoWidth = max(0, containerWidth)
         let baseHeight = max(0, videoWidth / aspectRatio)
 
         VStack(spacing: 0) {
@@ -43,7 +43,7 @@ struct YouTubeVideoContentArea: View {
                 alignment: .bottom
             )
             .background(Color.black)
-            .clipped()
+            .clipShape(RoundedRectangle(cornerRadius: isLandscape ? 16 : 0, style: .continuous))
 
             if isLandscape {
                 Spacer()

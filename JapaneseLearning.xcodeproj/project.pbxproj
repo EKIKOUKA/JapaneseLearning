@@ -9,10 +9,6 @@
 /* Begin PBXBuildFile section */
 		0EC468F1308C4AA10028D7BC /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 0EC468F0308C4AA10028D7BC /* Localizable.xcstrings */; };
 		0EC468F2308C4AA10028D7BC /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 0EC468F0308C4AA10028D7BC /* Localizable.xcstrings */; };
-		0EC468F3308C4AA10028D7BC /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 0EC468F0308C4AA10028D7BC /* Localizable.xcstrings */; };
-		0EDB25B92FE449FD0091E0BF /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0EDB25B82FE449FD0091E0BF /* WidgetKit.framework */; };
-		0EDB25BB2FE449FD0091E0BF /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0EDB25BA2FE449FD0091E0BF /* SwiftUI.framework */; };
-		0EDB25CC2FE449FF0091E0BF /* VideoStatusExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 0EDB25B72FE449FC0091E0BF /* VideoStatusExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		0EEFE0292FEFD02500BFC25F /* UtilityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EEFE0282FEFD02500BFC25F /* UtilityTests.swift */; };
 		A10203040506070809101112 /* StripeApplePay in Frameworks */ = {isa = PBXBuildFile; productRef = A10203040506070809101113 /* StripeApplePay */; };
 /* End PBXBuildFile section */
@@ -30,7 +26,6 @@
 /* Begin PBXFileReference section */
 		0E63A3F030052DCD0026C378 /* VideoStatusExtension */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = VideoStatusExtension; sourceTree = "<group>"; };
 		0EC468F0308C4AA10028D7BC /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
-		0EDB25B72FE449FC0091E0BF /* VideoStatusExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = VideoStatusExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		0EDB25B82FE449FD0091E0BF /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		0EDB25BA2FE449FD0091E0BF /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		0EEFE0282FEFD02500BFC25F /* UtilityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UtilityTests.swift; sourceTree = "<group>"; };
@@ -200,14 +195,6 @@
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
-		0EDB25B52FE449FC0091E0BF /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				0EC468F3308C4AA10028D7BC /* Localizable.xcstrings in Resources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		0EFF47FA2F378D38008832D6 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -455,7 +442,7 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.7.2;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -507,7 +494,7 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.7.2;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",

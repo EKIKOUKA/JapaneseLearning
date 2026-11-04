@@ -78,7 +78,7 @@ struct AIExplanationView: View {
                     .background(.bar)
                 }
             }
-            .navigationTitle(question.mode == .word ? "単語の AI 解説" : "字幕の AI 解説")
+            .navigationTitle(question.mode == .word ? question.text : "字幕の AI 解説")
             .navigationBarTitleDisplayMode(.inline)
         }
         .interactiveDismissDisabled(isLoading)
@@ -94,9 +94,15 @@ struct AIExplanationView: View {
     private func turnView(_ turn: AIExplanationTurn, index: Int) -> some View {
         VStack(alignment: .leading, spacing: 16) {
             if index > 0 { Divider() }
-            Text(index == 0 ? "解説するテキスト" : "あなたの質問")
-                .font(.caption).foregroundStyle(.secondary)
-            Text(turn.question.text).font(.title3.bold()).textSelection(.enabled)
+
+            if question.mode == .sentence || index > 0 {
+                Text(index == 0 ? "解説するテキスト" : "あなたの質問")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Text(turn.question.text)
+                    .font(.title3.bold())
+                    .textSelection(.enabled)
+            }
 
             if !turn.streamingText.isEmpty || turn.response != nil {
                 Text(formattedAnswer(turn.response?.answer ?? turn.streamingText))

@@ -43,9 +43,14 @@ struct VideoDetailsView: View {
         GeometryReader { geo in
             let fullWidth = geo.size.width
             let isLandscape = geo.size.width > geo.size.height
-            let videoWidth = isLandscape ? fullWidth * 0.5 : fullWidth
+            let usesSideBySide = isLandscape
+            let videoLeadingInset: CGFloat = isLandscape ? 16 : 0
+            let videoContainerWidth = usesSideBySide
+                ? max(0, fullWidth * 0.5 - videoLeadingInset)
+                : fullWidth
+            let videoWidth = videoContainerWidth
             let currentVideoHeight = videoWidth / displayAspectRatio
-            let layout = isLandscape
+            let layout = usesSideBySide
                 ? AnyLayout(HStackLayout(spacing: 0))
                 : AnyLayout(VStackLayout(spacing: 0))
 
@@ -91,7 +96,7 @@ struct VideoDetailsView: View {
                             }
                         }
 
-                        if !isLandscape, drawerOffset >= currentVideoHeight {
+                        if !usesSideBySide, drawerOffset >= currentVideoHeight {
                             playResumeVideoView(
                                 drawerOffset: $drawerOffset,
                                 lastDragOffset: $lastDragOffset,
@@ -125,7 +130,7 @@ struct VideoDetailsView: View {
                 .ignoresSafeArea()
                 .presentationDetents(sizeClassRegular ? [.large] : [.medium, .large])
                 .presentationDragIndicator(sizeClassRegular ? .hidden : .visible)
-                .navigationTransition(.crossFade)
+                .navigationTransition_crossFade_ifAvailable()
         }
         .onChange(of: playerVM.activeLookUpWordIdentifiable?.id) { _, newID in
             guard newID != nil else { return }
@@ -135,7 +140,7 @@ struct VideoDetailsView: View {
             ShadowingSettingsSheetView(playerVM: playerVM)
                 .presentationDetents(sizeClassRegular ? [.large] : [.medium, .large])
                 .presentationDragIndicator(.visible)
-                .navigationTransition(.crossFade)
+                .navigationTransition_crossFade_ifAvailable()
         }
         .sheet(item: $playerVM.activeAIQuestion, onDismiss: {
             playerVM.playPlayer()
@@ -167,7 +172,7 @@ struct VideoContentArea: View {
     let isPlayerReady: Bool
 
     var body: some View {
-        let videoWidth = max(0, isLandscape ? containerWidth * 0.5 : containerWidth)
+        let videoWidth = max(0, containerWidth)
         let baseHeight = max(0, videoWidth / aspectRatio)
 
         VStack(spacing: 0) {
@@ -195,7 +200,7 @@ struct VideoContentArea: View {
                 height: isLandscape ? baseHeight : max(0, baseHeight - drawerOffset),
                 alignment: .bottom
             )
-            .clipped()
+            .clipShape(RoundedRectangle(cornerRadius: isLandscape ? 16 : 0, style: .continuous))
 
             if isLandscape {
                 Spacer()

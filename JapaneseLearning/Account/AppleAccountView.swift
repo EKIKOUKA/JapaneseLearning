@@ -56,7 +56,7 @@ struct AppleAccountView: View {
                     }
                 }
             }
-            .navigationTitle("アカウントとプライバシー")
+            .navigationTitle("メニュー")
             .navigationBarTitleDisplayMode(.inline)
             .task {
                 await accountStore.refreshCredentialState()
