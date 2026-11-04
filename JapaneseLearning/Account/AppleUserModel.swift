@@ -42,8 +42,7 @@ struct PracticeGoalSettings: Codable {
 }
 
 struct AppleAccountDeletionResponse: Decodable {
-    // 旧サーバーとの互換性を保つため、省略されている場合も読み込めるようにする。
-    let requiresManualAppleRevocation: Bool?
+    let requiresManualAppleRevocation: Bool
 }
 
 

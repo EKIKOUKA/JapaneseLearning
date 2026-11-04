@@ -10,7 +10,7 @@ import SwiftUI
 struct VideoListView: View {
     let onSelectVideo: (String) -> Void
 
-    @Environment(VideoStore.self) private var store
+    @Environment(VideoStore.self) private var videoStore
     @Environment(SettingsStore.self) private var settingsStore
     @Environment(PlayerViewManager.self) private var playerVM
     @Environment(\.transitionNamespace) private var transitionNamespace
@@ -29,16 +29,16 @@ struct VideoListView: View {
 
     private var filteredVideos: [VideoItem] {
         guard let selectedCategory else { return [] }
-        return store.videos.filter { store.belongsToCategory($0, category: selectedCategory) }
+        return videoStore.videos.filter { videoStore.belongsToCategory($0, category: selectedCategory) }
     }
 
     private var selectedCategory: PlaylistCategory? {
         if let selectedCategoryID,
-           let category = store.playlistCategories.first(where: { $0.id == selectedCategoryID }) {
+           let category = videoStore.playlistCategories.first(where: { $0.id == selectedCategoryID }) {
             return category
         }
 
-        return store.playlistCategories.first
+        return videoStore.playlistCategories.first
     }
 
     private var filteredVideoIDs: [String] {
@@ -64,7 +64,7 @@ struct VideoListView: View {
     var body: some View {
         Group {
             GeometryReader { geo in
-                if store.videos.isEmpty {
+                if videoStore.videos.isEmpty {
                     ContentUnavailableView(
                         "動画がありません",
                         systemImage: "video",
@@ -90,8 +90,9 @@ struct VideoListView: View {
                     .contentMargins(.top, 56, for: .scrollIndicators)
                 }
             }
+            .refreshable { await videoStore.fetchVideos() }
         }
-        .navigationTitle("シャドーイング")
+        .navigationTitle("ホーム")
         .navigationBarTitleDisplayMode(.inline)
         .safeAreaInset(edge: .top, spacing: 0) {
             categoryPicker
@@ -110,13 +111,13 @@ struct VideoListView: View {
                 Button {
                     showSettingSheet = true
                 } label: {
-                    Image(systemName: "gear")
+                    Image(systemName: "ellipsis")
                 }
             }
         }
         .sheet(isPresented: $showAddSheet) {
             AddVideoSheetView { result in
-                selectedCategoryID = store.handleCategory(result)?.id
+                selectedCategoryID = videoStore.handleCategory(result)?.id
             }
             .navigationTransition_crossFade_IfAvailable()
         }
@@ -130,7 +131,7 @@ struct VideoListView: View {
     private var categoryPicker: some View {
         ScrollView(.horizontal) {
             HStack(spacing: 10) {
-                ForEach(store.playlistCategories) { category in
+                ForEach(videoStore.playlistCategories) { category in
                     categoryButton(category)
                 }
             }
@@ -208,7 +209,7 @@ struct VideoListView: View {
                     await MainActor.run {
                         playerVM.handleDeletedVideo(id: video.id)
                     }
-                    await store.deleteVideo(video.id)
+                    await videoStore.deleteVideo(video.id)
                 }
             }
         } message: {
@@ -232,12 +233,12 @@ struct VideoListView: View {
             card.swipeActions {
                 Button(role: .destructive) {
                     withAnimation(.spring(duration: 0.35)) {
-                        store.videos.removeAll { $0.id == video.id }
+                        videoStore.videos.removeAll { $0.id == video.id }
                     }
                     
                     Task {
                         playerVM.handleDeletedVideo(id: video.id)
-                        await store.deleteVideo(video.id)
+                        await videoStore.deleteVideo(video.id)
                     }
                 } label: {
                     Image(systemName: "trash")
@@ -265,7 +266,6 @@ struct VideoListView: View {
                         Image(uiImage: uiImage)
                             .resizable()
                             .scaledToFill()
-                            .id(video.thumbnailRefreshID)
                     } else {
                         ZStack {
                             Color(.secondarySystemFill)

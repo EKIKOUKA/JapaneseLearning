@@ -157,7 +157,7 @@ class VideoStore {
             saveVideoCache()
 
             Task(priority: .utility) {
-                await Self.cacheMissingThumbnails(for: freshVideos)
+                await cacheMissingThumbnails(for: freshVideos, owner: owner)
             }
         } catch {
             if !videos.isEmpty {
@@ -633,14 +633,25 @@ class VideoStore {
             try LocalThumbnailStorage.save(data, for: video.id)
         } catch {
             print("❌ Thumbnail download failed (\(video.id)): \(error)")
+            return false
         }
     }
-    private static func cacheMissingThumbnails(for videos: [VideoItem]) async {
-        await withTaskGroup(of: Void.self) { group in
-            for video in videos {
+    @MainActor
+    private func cacheMissingThumbnails(for fetchedVideos: [VideoItem], owner: String?) async {
+        await withTaskGroup(of: String?.self) { group in
+            for video in fetchedVideos where AppGroupThumbnailStorage.existingFileURL(for: video.id) == nil {
                 group.addTask {
-                    await Self.cacheThumbnail(for: video)
+                    await Self.cacheThumbnail(for: video) ? video.id : nil
                 }
+            }
+
+            for await videoID in group {
+                guard cacheOwnerID == owner, !Task.isCancelled else {
+                    group.cancelAll()
+                    return
+                }
+                guard let videoID, let index = videos.firstIndex(where: { $0.id == videoID }) else { continue }
+                videos[index].thumbnailRefreshID = UUID().uuidString
             }
         }
     }

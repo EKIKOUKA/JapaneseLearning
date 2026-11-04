@@ -103,6 +103,28 @@ struct PracticeTimingRow: Codable, Identifiable, Hashable {
     let content_language: String?
 }
 
+struct PracticeSessionSyncPage: Decodable {
+    let accountID: Int
+    let changes: [PracticeSessionChange]
+    let nextCursor: Int64
+    let until: Int64
+    let hasMore: Bool
+    let reset: Bool
+}
+
+struct PracticeSessionChange: Decodable {
+    let version: Int64
+    let id: UUID
+    let deleted: Bool
+    let session: PracticeTimingRow?
+}
+
+struct PracticeSessionCache: Codable {
+    let rows: [PracticeTimingRow]
+    let cursor: Int64?
+    let accountID: Int?
+}
+
 struct PracticeChartPoint: Identifiable, Hashable {
     let date: Date
     let jaMinutes: Double

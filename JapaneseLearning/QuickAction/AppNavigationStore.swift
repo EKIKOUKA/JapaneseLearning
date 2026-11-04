@@ -22,6 +22,7 @@ final class AppNavigationStore {
     var selectedTab: Int = 0
     var videoTransitionSourceID: String?
     var presentedVideo: VideoSheetDestination?
+    var showsAutomaticCharge = false
 
     private init() {}
 

@@ -45,10 +45,6 @@ struct AchieveSystemRecord: View {
                     }
                     .swipeActions {
                         Button(role: .destructive) {
-                            withAnimation(.spring(duration: 0.35)) {
-                                store.rawSessions.removeAll { $0.id == item.id }
-                            }
-
                             Task {
                                 await store.deleteRawRecord(item.id)
                             }
@@ -58,6 +54,7 @@ struct AchieveSystemRecord: View {
                     }
                 }
             }
+            .animation(.spring(duration: 0.35), value: store.rawSessions)
         }
         .navigationTitle("記録")
         .toolbarMinimizationBehaviorIfAvailable()
