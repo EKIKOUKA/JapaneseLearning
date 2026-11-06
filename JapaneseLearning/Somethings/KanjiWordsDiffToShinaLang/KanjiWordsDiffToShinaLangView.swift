@@ -113,7 +113,7 @@ struct KanjiWordsDiffToShinaLangView: View {
         .sheet(isPresented: $showSettingSheet) {
             SettingsSheetView(store: store)
                 .presentationDetents([.medium])
-                .navigationTransition_crossFade_ifAvailable()
+                .navigationTransitionCrossFadeIfAvailable()
         }
         .task {
             if store.KanjiWordsList.isEmpty {

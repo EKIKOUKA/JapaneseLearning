@@ -73,28 +73,16 @@ struct VideoListView: View {
                 } else {
                     let columns = gridColumns(isLandscape: geo.size.width > geo.size.height)
 
-                    if #available(iOS 27.0, *) {
-                        ScrollView {
-                            VStack {
-                                videoItemGrid(columns: columns)
-                            }
-                            .animation(.easeInOut(duration: 0.35), value: selectedCategory?.id)
-                            .padding(.horizontal, 14)
-                            .padding(.bottom, 20)
+                    ScrollView {
+                        VStack {
+                            videoItemGrid(columns: columns)
                         }
-                        .swipeActionsContainer()
-                        .contentMargins(.top, 56, for: .scrollIndicators)
-                    } else {
-                        ScrollView {
-                            VStack {
-                                videoItemGrid(columns: columns)
-                            }
-                            .animation(.easeInOut(duration: 0.35), value: selectedCategory?.id)
-                            .padding(.horizontal, 14)
-                            .padding(.bottom, 20)
-                        }
-                        .contentMargins(.top, 56, for: .scrollIndicators)
+                        .animation(.easeInOut(duration: 0.35), value: selectedCategory?.id)
+                        .padding(.horizontal, 14)
+                        .padding(.bottom, 20)
                     }
+                    .swipeActionsContainerIfAvailable()
+                    .contentMargins(.top, 56, for: .scrollIndicators)
                 }
             }
             .refreshable { await videoStore.fetchVideos() }
@@ -126,12 +114,12 @@ struct VideoListView: View {
             AddVideoSheetView { result in
                 selectedCategoryID = videoStore.handleCategory(result)?.id
             }
-            .navigationTransition_crossFade_ifAvailable()
+            .navigationTransitionCrossFadeIfAvailable()
         }
         .sheet(isPresented: $showSettingSheet) {
             ShadowingSettingsSheetView(playerVM: nil)
                 .presentationDetents([.medium, .large])
-                .navigationTransition_crossFade_ifAvailable()
+                .navigationTransitionCrossFadeIfAvailable()
         }
     }
 
@@ -164,7 +152,7 @@ struct VideoListView: View {
             }
             .buttonStyle(.glass)
             .foregroundStyle(.black)
-            .background(.white.opacity(0.89), in: Capsule())
+            .background(.white, in: Capsule())
             .shadow(color: .black.opacity(0.12), radius: 6, y: 2)
         } else {
             Button {
@@ -197,7 +185,7 @@ struct VideoListView: View {
                 ForEach(filteredVideos) { video in
                     videoCard(video)
                 }
-                .reorderable_ifAvailable()
+                .reorderableIfAvailable()
             }
         }
         .id(selectedCategory?.id)
@@ -285,7 +273,7 @@ struct VideoListView: View {
                     id: "list-\(video.id)",
                     in: transitionNamespace!
                 )
-                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                 .shadow(radius: 1)
                 .contentShape(Rectangle())
 

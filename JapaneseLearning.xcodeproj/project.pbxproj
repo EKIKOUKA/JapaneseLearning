@@ -7,7 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-        A10203040506070809101115 /* StripePayments in Frameworks */ = {isa = PBXBuildFile; productRef = A10203040506070809101116 /* StripePayments */; };
 		0EC468F1308C4AA10028D7BC /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 0EC468F0308C4AA10028D7BC /* Localizable.xcstrings */; };
 		0EC468F2308C4AA10028D7BC /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 0EC468F0308C4AA10028D7BC /* Localizable.xcstrings */; };
 		0EC468F3308C4AA10028D7BC /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 0EC468F0308C4AA10028D7BC /* Localizable.xcstrings */; };
@@ -16,6 +15,7 @@
 		0EDB25CC2FE449FF0091E0BF /* VideoStatusExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 0EDB25B72FE449FC0091E0BF /* VideoStatusExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		0EEFE0292FEFD02500BFC25F /* UtilityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EEFE0282FEFD02500BFC25F /* UtilityTests.swift */; };
 		A10203040506070809101112 /* StripeApplePay in Frameworks */ = {isa = PBXBuildFile; productRef = A10203040506070809101113 /* StripeApplePay */; };
+		A10203040506070809101115 /* StripePayments in Frameworks */ = {isa = PBXBuildFile; productRef = A10203040506070809101116 /* StripePayments */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -135,7 +135,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A10203040506070809101112 /* StripeApplePay in Frameworks */,
-                A10203040506070809101115 /* StripePayments in Frameworks */,
+				A10203040506070809101115 /* StripePayments in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -240,7 +240,7 @@
 			name = JapaneseLearning;
 			packageProductDependencies = (
 				A10203040506070809101113 /* StripeApplePay */,
-                A10203040506070809101116 /* StripePayments */,
+				A10203040506070809101116 /* StripePayments */,
 			);
 			productName = JapaneseGrammar;
 			productReference = 7F4336D12F70600400783EE3 /* JapaneseLearning.app */;
@@ -776,19 +776,21 @@
 				maximumVersion = 89.6.4;
 				minimumVersion = 26.9.0;
 			};
+			traits = (
+			);
 		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-        A10203040506070809101116 /* StripePayments */ = {
-            isa = XCSwiftPackageProductDependency;
-            package = A10203040506070809101114;
-            productName = StripePayments;
-        };
 		A10203040506070809101113 /* StripeApplePay */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = A10203040506070809101114 /* XCRemoteSwiftPackageReference "stripe-ios-spm" */;
 			productName = StripeApplePay;
+		};
+		A10203040506070809101116 /* StripePayments */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A10203040506070809101114 /* XCRemoteSwiftPackageReference "stripe-ios-spm" */;
+			productName = StripePayments;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

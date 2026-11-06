@@ -42,6 +42,7 @@ struct MediaProductsListView: View {
                                         .tint(.blue)
                                     }
                                 }
+
                                 if filteredItems.isEmpty {
                                     Text("空っぽい")
                                         .foregroundStyle(.secondary)
@@ -54,7 +55,7 @@ struct MediaProductsListView: View {
                                                 .tag(category)
                                         }
                                     }
-                                    .pickerStyle_tabs_ifAvailable()
+                                    .pickerStyleTabsIfAvailable()
                                     .listRowInsets(EdgeInsets(
                                         top: 10,
                                         leading: 0,
@@ -132,7 +133,7 @@ struct MediaProductsListView: View {
         .sheet(isPresented: $showSettingSheet) {
             SettingsSheetView(store: store)
                 .presentationDetents([.medium])
-                .navigationTransition_crossFade_ifAvailable()
+                .navigationTransitionCrossFadeIfAvailable()
         }
         .navigationTitle("映像作品リスト")
         .task {

@@ -43,6 +43,7 @@
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "7FF22E8D2ED7EC6600603529"
             BuildableName = "JapaneseLearning.app"
+            BlueprintName = "JapaneseLearning"
             ReferencedContainer = "container:JapaneseLearning.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
@@ -58,6 +59,7 @@
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "7FF22E8D2ED7EC6600603529"
             BuildableName = "JapaneseLearning.app"
+            BlueprintName = "JapaneseLearning"
             ReferencedContainer = "container:JapaneseLearning.xcodeproj">
          </BuildableReference>
       </MacroExpansion>

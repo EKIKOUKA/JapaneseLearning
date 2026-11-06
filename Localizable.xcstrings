@@ -225,17 +225,6 @@
     "サンドボックス・実際の請求は発生しません" : {
 
     },
-    "シャドーイング" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Shadowing"
-          }
-        }
-      }
-    },
     "シャドーイング設定" : {
 
     },

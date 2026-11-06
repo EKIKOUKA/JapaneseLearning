@@ -91,7 +91,7 @@ extension View {
     }
     
     @ViewBuilder
-    func navigationTransition_crossFade_ifAvailable() -> some View {
+    func navigationTransitionCrossFadeIfAvailable() -> some View {
         if #available(iOS 27.0, *) {
             self.navigationTransition(.crossFade)
         } else {
@@ -100,7 +100,16 @@ extension View {
     }
     
     @ViewBuilder
-    func pickerStyle_tabs_ifAvailable() -> some View {
+    func swipeActionsContainerIfAvailable() -> some View {
+        if #available(iOS 27.0, *) {
+            self.swipeActionsContainer()
+        } else {
+            self
+        }
+    }
+    
+    @ViewBuilder
+    func pickerStyleTabsIfAvailable() -> some View {
         if #available(iOS 27.0, *) {
             self.pickerStyle(.tabs)
         } else {
@@ -111,7 +120,7 @@ extension View {
 
 extension DynamicViewContent {
     @ViewBuilder
-    func reorderable_ifAvailable() -> some View {
+    func reorderableIfAvailable() -> some View {
         if #available(iOS 27.0, *) {
             self.reorderable()
         } else {
