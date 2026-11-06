@@ -151,7 +151,10 @@ struct ActionApplePayButton: View {
 
     var body: some View {
         PayWithApplePayButton(label) {
-            presenter.present(request: request, onPhase: onPhase)
+            presenter.present()
+        }
+        .onChange(of: ObjectIdentifier(request), initial: true) {
+            presenter.update(request: request, onPhase: onPhase)
         }
     }
 }
@@ -159,10 +162,17 @@ struct ActionApplePayButton: View {
 @MainActor
 private final class ApplePaySheetPresenter: NSObject, PKPaymentAuthorizationControllerDelegate {
     private var controller: PKPaymentAuthorizationController?
+    private var request: PKPaymentRequest?
+    private var authorizationHandler: ((PayWithApplePayButtonPaymentAuthorizationPhase) -> Void)?
     private var onPhase: ((PayWithApplePayButtonPaymentAuthorizationPhase) -> Void)?
 
-    func present(request: PKPaymentRequest, onPhase: @escaping (PayWithApplePayButtonPaymentAuthorizationPhase) -> Void) {
-        guard controller == nil else { return }
+    func update(request: PKPaymentRequest, onPhase: @escaping (PayWithApplePayButtonPaymentAuthorizationPhase) -> Void) {
+        self.request = request
+        authorizationHandler = onPhase
+    }
+
+    func present() {
+        guard controller == nil, let request, let onPhase = authorizationHandler else { return }
         let controller = PKPaymentAuthorizationController(paymentRequest: request)
         self.controller = controller
         self.onPhase = onPhase
