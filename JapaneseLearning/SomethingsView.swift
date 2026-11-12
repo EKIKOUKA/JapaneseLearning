@@ -1,5 +1,5 @@
 //
-//  SomethingsView.swift
+//  LibraryView.swift
 //  JapaneseLearning
 //
 //  Created by 宇都宮　誠 on 2025/11/27.
@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-struct SomethingsView: View {
+struct LibraryView: View {
     @State private var settingsStore = SettingsStore()
     @Environment(\.horizontalSizeClass) private var sizeClass
 
@@ -36,7 +36,7 @@ struct SomethingsView: View {
             .padding()
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .padding(.top, 90)
-            .navigationTitle("その他")
+            .navigationTitle("日本語ライブラリ")
         }
     }
 

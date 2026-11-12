@@ -32,9 +32,9 @@ struct ContentView: View {
                 }
                 .tag(1)
 
-            SomethingsView()
+            LibraryView()
                 .tabItem {
-                    Label("その他", systemImage: "books.vertical")
+                    Label("ライブラリ", systemImage: "books.vertical")
                 }
                 .tag(2)
 
