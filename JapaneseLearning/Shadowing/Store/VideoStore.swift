@@ -686,8 +686,8 @@ class VideoStore {
             id: UUID().uuidString,
             contentLanguage: contentLanguage,
             practiceDate: practiceDate,
-            startedAt: sqliteDateTimeString(from: startedAt),
-            endedAt: sqliteDateTimeString(from: endedAt),
+            startedAt: sqliteUTCDateTimeString(from: startedAt),
+            endedAt: sqliteUTCDateTimeString(from: endedAt),
             durationSeconds: durationSeconds
         )
 

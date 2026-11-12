@@ -139,7 +139,7 @@ func currentTimeFormatted(_ time: Int) -> String {
 }
 
 
-func sqliteDateTimeString(from date: Date) -> String {
+func sqliteDateTimeInJST(from date: Date) -> String {
     let dateFormatter = DateFormatter()
     dateFormatter.calendar = Calendar(identifier: .gregorian)
     dateFormatter.locale = Locale(identifier: "en_US_POSIX")
@@ -147,6 +147,35 @@ func sqliteDateTimeString(from date: Date) -> String {
     dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
     return dateFormatter.string(from: date)
 }
+
+func sqliteUTCDateTimeString(from date: Date) -> String {
+    let dateFormatter = DateFormatter()
+    dateFormatter.calendar = Calendar(identifier: .gregorian)
+    dateFormatter.locale = Locale(identifier: "en_US_POSIX")
+    dateFormatter.timeZone = TimeZone(secondsFromGMT: 0)
+    dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+    return dateFormatter.string(from: date)
+}
+
+// API の日時は ISO 8601 またはタイムゾーン表記のない UTC の SQLite 形式で届く。
+func serverDateTimeInJST(_ value: String) -> String {
+    let iso = ISO8601DateFormatter()
+    iso.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+    let fractionalDate = iso.date(from: value)
+    iso.formatOptions = [.withInternetDateTime]
+
+    let utc = DateFormatter()
+    utc.calendar = Calendar(identifier: .gregorian)
+    utc.locale = Locale(identifier: "en_US_POSIX")
+    utc.timeZone = TimeZone(secondsFromGMT: 0)
+    utc.dateFormat = "yyyy-MM-dd HH:mm:ss"
+    guard let date = fractionalDate ?? iso.date(from: value) ?? utc.date(from: value) else {
+        return value
+    }
+
+    return sqliteDateTimeInJST(from: date)
+}
+
 func sqliteDateString(from date: Date) -> String {
     let dateFormatter = DateFormatter()
     dateFormatter.calendar = Calendar(identifier: .gregorian)
@@ -157,11 +186,11 @@ func sqliteDateString(from date: Date) -> String {
 }
 
 enum PracticeDateFormat {
-    static func sqliteDateTime(from string: String) -> Date? {
+    static func utcDateTime(from string: String) -> Date? {
         let dateFormatter = DateFormatter()
         dateFormatter.calendar = Calendar(identifier: .gregorian)
         dateFormatter.locale = Locale(identifier: "en_US_POSIX")
-        dateFormatter.timeZone = TimeZone(identifier: "Asia/Tokyo")
+        dateFormatter.timeZone = TimeZone(secondsFromGMT: 0)
         dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
         return dateFormatter.date(from: string)
     }
