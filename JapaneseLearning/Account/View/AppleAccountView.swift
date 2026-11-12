@@ -27,15 +27,18 @@ struct AppleAccountView: View {
                     }
                 }
 
-                Section("チャージ") {
-                    NavigationLink("クレジットを購入") {
+                Section("クレジット") {
+                    NavigationLink("クレジットをチャージ") {
                         ChargeView()
                     }
-                }
 
-                Section("アプリ設定") {
-                    NavigationLink("アプリ設定") {
-                        AppSettingsView()
+                    if accountStore.isSignedIn {
+                        NavigationLink("クレジットの利用履歴") {
+                            CreditUsageHistoryView()
+                        }
+                        NavigationLink("クレジットのチャージ履歴") {
+                            CreditChargeHistoryView()
+                        }
                     }
                 }
 
@@ -64,6 +67,16 @@ struct AppleAccountView: View {
             }
             .navigationTitle("メニュー")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    NavigationLink {
+                        AppSettingsView()
+                    } label: {
+                        Image(systemName: "gear")
+                    }
+                    .accessibilityLabel("アプリ設定")
+                }
+            }
             .task {
                 await accountStore.refreshCredentialState()
             }
@@ -71,7 +84,7 @@ struct AppleAccountView: View {
                 Button("アカウントを削除", role: .destructive) {
                     Task { await accountStore.deleteAccount() }
                 }
-                
+
                 Button("キャンセル", role: .cancel) {}
             } message: {
                 Text("本アプリのアカウントとクレジット残高を削除し、Apple との連携を解除します。この操作は取り消せません。")
@@ -99,7 +112,7 @@ struct AppleAccountView: View {
                 ZStack {
                     Color.black.opacity(0.2)
                         .ignoresSafeArea()
-                    
+
                     ProgressLoadingView()
                         .frame(minWidth: 180, minHeight: 160)
                 }
