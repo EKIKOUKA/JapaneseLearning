@@ -70,8 +70,8 @@ struct GrammarNaviView: View {
             }
         }
         .sheet(isPresented: $showSettingSheet) {
-            GrammarSettingsView(store: store)
-                .presentationDetents(sizeClass_regular ? [.large] : [.height(490), .large])
+            GrammarSettingsView()
+                .presentationDetents(sizeClass_regular ? [.large] : [.height(490)])
                 .presentationDragIndicator(.visible)
                 .navigationTransitionCrossFadeIfAvailable()
         }

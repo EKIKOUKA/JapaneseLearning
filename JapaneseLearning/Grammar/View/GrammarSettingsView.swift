@@ -9,68 +9,6 @@ import SwiftUI
 
 struct GrammarSettingsView: View {
     @Environment(SettingsStore.self) private var settingsStore
-    @State var store: GrammarStore
-
-    let isoCountries: [(code: String, name: String)] = {
-        let overrides: [String: String] = [
-            "TW": "台湾（🇹🇼中華民国）",
-            "CN": "中国（支那、西朝鮮）",
-            "JP": "大日本帝国"
-        ]
-
-        return Locale.Region.isoRegions.compactMap { region in
-            let code = region.identifier
-            guard code.count == 2 else { return nil }
-            let name = overrides[code] ?? Locale.current.localizedString(forRegionCode: code)
-            if let name = name {
-                return (code: code, name: name)
-            }
-            return nil
-        }
-    } ()
-
-
-    @State var storageBytes: Int64 = 0
-
-    func folderSize(at url: URL) -> Int64 {
-        let fileManager = FileManager.default
-        guard let enumerator = fileManager.enumerator(
-            at: url,
-            includingPropertiesForKeys: [.fileSizeKey],
-            options: [],
-            errorHandler: nil
-        ) else { return 0 }
-
-        var total: Int64 = 0
-
-        for case let fileURL as URL in enumerator {
-            if let size = try? fileURL.resourceValues(forKeys: [.fileSizeKey]).fileSize {
-                total += Int64(size)
-            }
-        }
-
-        return total
-    }
-
-    func getAppStorageSize() -> Int64 {
-        let homeURL = URL(fileURLWithPath: NSHomeDirectory(), isDirectory: true)
-        return folderSize(at: homeURL)
-    }
-
-    func formattedStorageSize(_ bytes: Int64) -> String {
-        if bytes <= 0 {
-            return "0 KB"
-        }
-
-        let kb = Double(bytes) / 1024
-        let mb = kb / 1024
-
-        if mb >= 1 {
-            return String(format: "%.1f MB", mb)
-        } else {
-            return String(format: "%.0f KB", kb)
-        }
-    }
 
     var body: some View {
         @Bindable var settingsStoreBindable = settingsStore
@@ -127,59 +65,9 @@ struct GrammarSettingsView: View {
                         }
                     }
                 }
-
-                Section(header: Text("ストレージ"), footer: Text("キャッシュを削除すると、一時的に保存されたデータが削除されます。")) {
-                    HStack {
-                        Text("使用容量")
-                        Spacer()
-                        Text(formattedStorageSize(storageBytes))
-                            .foregroundStyle(.secondary)
-                            .contentTransition(.numericText())
-                            .animation(.smooth(duration: 0.5), value: storageBytes)
-                    }
-
-                    Button {
-                        Task {
-                            await clearAppCache()
-                            storageBytes = getAppStorageSize()
-                        }
-                    } label: {
-                        Text("キャッシュを削除")
-                    }
-                }
-
-                Section(header: Text("国籍")) {
-                    Picker("国籍", selection: $settingsStoreBindable.Nationality) {
-                        ForEach(isoCountries, id: \.code) { country in
-                            Text(country.name).tag(country.code)
-                        }
-                    }
-                }
             }
             .navigationTitle("日本語勉学に設定")
             .navigationBarTitleDisplayMode(.inline)
-            .onAppear {
-                storageBytes = getAppStorageSize()
-            }
-        }
-    }
-
-    func clearAppCache() async {
-        // URLSession cache
-        URLCache.shared.removeAllCachedResponses()
-
-        let fileManager = FileManager.default
-
-        if let cachesURL = fileManager.urls(for: .cachesDirectory, in: .userDomainMask).first {
-            try? fileManager.removeItem(at: cachesURL)
-            try? fileManager.createDirectory(at: cachesURL, withIntermediateDirectories: true)
-        }
-
-        let tmpURL = fileManager.temporaryDirectory
-        if let files = try? fileManager.contentsOfDirectory(at: tmpURL, includingPropertiesForKeys: nil) {
-            for file in files {
-                try? fileManager.removeItem(at: file)
-            }
         }
     }
 }

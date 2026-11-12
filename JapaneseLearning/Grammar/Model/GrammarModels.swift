@@ -55,7 +55,7 @@ struct GrammarItem: Codable, Identifiable {
     @BoolFromInt
     var isMarked: Bool
 
-    enum CodingKeys: String, CodingKey {
+    private enum CodingKeys: String, CodingKey {
         case id
         case title
         case level
