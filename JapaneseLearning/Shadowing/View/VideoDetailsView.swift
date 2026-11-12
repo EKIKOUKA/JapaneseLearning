@@ -127,6 +127,7 @@ struct VideoDetailsView: View {
         .safeAreaInset(edge: .top, spacing: 0) {
             CustomToolbarHeader(
                 title: video?.title.cleanedVideoTitle ?? "読み込み中...",
+                video: video,
                 playerVM: playerVM,
                 showSettingSheet: $showSettingSheet
             )

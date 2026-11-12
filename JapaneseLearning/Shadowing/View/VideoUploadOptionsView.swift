@@ -10,19 +10,18 @@ import SwiftUI
 struct VideoUploadOptionsView: View {
     @Environment(VideoStore.self) private var store
     @State private var selectedLanguage: VideoContentLanguage = .ja
-    @State private var createCaptionByAi: Bool = false
     @State private var playbackRate: Float = 1.0
     @State private var videoTitle: String
     @State private var selectedCategoryID: String
     let showTitleField: Bool
 
-    let onConfirm: (VideoContentLanguage, Bool, Float, String, String) -> Void
+    let onConfirm: (VideoContentLanguage, Float, String, String) -> Void
 
     init(
         initialVideoTitle: String = "",
         initialCategoryID: String = "listening",
         showTitleField: Bool = true,
-        onConfirm: @escaping (VideoContentLanguage, Bool, Float, String, String) -> Void
+        onConfirm: @escaping (VideoContentLanguage, Float, String, String) -> Void
     ) {
         _videoTitle = State(initialValue: initialVideoTitle)
         _selectedCategoryID = State(initialValue: initialCategoryID)
@@ -62,11 +61,7 @@ struct VideoUploadOptionsView: View {
                     }
                 }
             }
-            Section(footer: Text("人工字幕が無い場合、AIを使って字幕を生成します")) {
-                Toggle(isOn: $createCaptionByAi) {
-                    Text("AIを使って字幕を生成します")
-                }
-            }
+
         }
         .scrollDismissesKeyboard(.immediately)
         .navigationTitle("動画のアップロード設定")
@@ -74,14 +69,7 @@ struct VideoUploadOptionsView: View {
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
                 Button {
-                    onConfirm(
-                        selectedLanguage,
-                        createCaptionByAi,
-                        playbackRate,
-                        videoTitle,
-                        selectedCategoryID
-                    )
-                    UINotificationFeedbackGenerator().notificationOccurred(.success)
+                    onConfirm(selectedLanguage, playbackRate, videoTitle, selectedCategoryID)
                 } label: {
                     Image(systemName: "checkmark")
                 }

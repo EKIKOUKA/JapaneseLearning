@@ -34,8 +34,9 @@ struct PlayListVideoSelectView: View {
                                 initialVideoTitle: selectedVideos.count == 1 ? selectedVideos[0].title.cleanedVideoTitle : "",
                                 initialCategoryID: store.resolvedCategoryID(playlistID: playlistID),
                                 showTitleField: selectedVideos.count == 1
-                            ) { language, createCaptionByAi, playbackRate, videoTitle, categoryID in
+                            ) { language, playbackRate, videoTitle, categoryID in
                                 guard !selectedVideos.isEmpty else { return }
+
                                 let resolvedCategoryID = store.resolvedCategoryID(
                                     categoryID: categoryID,
                                     playlistID: playlistID
@@ -47,7 +48,6 @@ struct PlayListVideoSelectView: View {
                                             video,
                                             playlistID: playlistID,
                                             contentLanguage: language,
-                                            createCaptionByAi: createCaptionByAi,
                                             playbackRate: playbackRate,
                                             videoTitle: videoTitle,
                                             categoryID: resolvedCategoryID

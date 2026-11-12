@@ -13,6 +13,8 @@ import Foundation
 class VideoStore {
     var videos: [VideoItem] = []
     var isLoading: Bool = false
+    var uploadError: String?
+    private var pendingVideoIDs: Set<String> = []
     var playlistCategories: [PlaylistCategory] = []
 
     var videoSubtitleSkipWords: VideoSubtitleSkipWords?
@@ -36,6 +38,7 @@ class VideoStore {
         }
         cacheOwnerID = userID
         videos = []
+        pendingVideoIDs = []
         videoList = []
         videoListVideos = []
         playlistCategories = []
@@ -97,18 +100,17 @@ class VideoStore {
 
     private func syncAddedVideoToServer(
         _ video: VideoItem,
-        createCaptionByAi: Bool,
         liveActivityToken: String?,
         sessionToken: String
     ) async -> Bool {
         guard !sessionToken.isEmpty else { return false }
 
         do {
+            // 字幕と動画はバックエンドの自宅ダウンロードノードで取得する。
             try await WorkersAPI.post(
                 "add_video",
                 body: VideoItemAddRequest(
                     video: video,
-                    createCaptionByAi: createCaptionByAi,
                     liveActivityToken: liveActivityToken
                 ),
                 authorizationToken: sessionToken,
@@ -117,6 +119,7 @@ class VideoStore {
 
             return true
         } catch {
+            await MainActor.run { self.uploadError = error.localizedDescription }
             print("❌ Save add Error: \(error)")
             return false
         }
@@ -141,12 +144,14 @@ class VideoStore {
             self.videoSubtitleSkipWords = skipWords
             let freshVideos: [VideoItem] = try await WorkersAPI.get("fetch_videos", authorizationToken: sessionToken, requiresAuthentication: true)
             guard cacheOwnerID == owner, !Task.isCancelled else { return }
+            let freshIDs = Set(freshVideos.map(\.id))
+            let localImports = self.videos.filter { self.pendingVideoIDs.contains($0.id) && !freshIDs.contains($0.id) }
             withAnimation(.easeIn(duration: 0.5)) {
-                self.videos = freshVideos
+                self.videos = freshVideos + localImports
             }
 
             AppGroupThumbnailStorage.removeOrphanedThumbnails(
-                keeping: Set(freshVideos.map(\.id))
+                keeping: Set(self.videos.map(\.id))
             )
 
             if let currentResumeVideoID = QuickActionManager.shared.currentResumeVideoID(),
@@ -170,13 +175,16 @@ class VideoStore {
     }
 
     @MainActor
-    func addVideo(_ video: VideoItem, thumbnailURL: URL, createCaptionByAi: Bool = true) {
+    func addVideo(_ video: VideoItem, thumbnailURL: URL) {
         guard let sessionToken = AppleAccountStore.savedSessionToken else {
             print("動画を追加するには Apple でログインしてください。")
 
             return
         }
         let owner = cacheOwnerID
+        // API への登録中も、選択した動画を一覧から消さない。
+        pendingVideoIDs.insert(video.id)
+        upsertVideoLocally(video)
         Task(priority: .utility) {
             var thumbnailSaved = false
 
@@ -191,14 +199,15 @@ class VideoStore {
             guard self.cacheOwnerID == owner else { return }
             if thumbnailSaved {
                 await MainActor.run {
-                    self.upsertVideoLocally(video)
+                    var updated = video
+                    updated.thumbnailRefreshID = UUID().uuidString
+                    self.upsertVideoLocally(updated)
                 }
             }
 
             let liveActivityToken = await VideoStatusLiveActivityManager.shared.start(video: video)
             let synced = await self.syncAddedVideoToServer(
                 video,
-                createCaptionByAi: createCaptionByAi,
                 liveActivityToken: liveActivityToken,
                 sessionToken: sessionToken
             )
@@ -207,12 +216,13 @@ class VideoStore {
                 return
             }
             if synced {
+                self.pendingVideoIDs.remove(video.id)
                 VideoStatusLiveActivityManager.shared.observeTokenChanges(videoID: video.id, initialToken: liveActivityToken)
             } else {
                 await VideoStatusLiveActivityManager.shared.end(videoID: video.id)
+                self.pendingVideoIDs.remove(video.id)
                 self.videos.removeAll { $0.id == video.id }
                 self.saveVideoCache()
-                await self.fetchVideos()
             }
         }
     }
@@ -267,6 +277,12 @@ class VideoStore {
     }
 
     // MARK: - Playlist Operations (Server Sync with WorkersAPI)
+    @MainActor
+    func channelInfo(for uploadsID: String) -> ChannelInfo? {
+        guard let data = UserDefaults.standard.data(forKey: "youtube.channel.\(uploadsID)") else { return nil }
+        return try? JSONDecoder().decode(ChannelInfo.self, from: data)
+    }
+
     @MainActor
     func fetchVideoPlaylist() async {
         let owner = cacheOwnerID
@@ -348,8 +364,7 @@ class VideoStore {
     }
 
     func fetchCaptions(from url: URL) async throws -> [CaptionLine] {
-        let (captionData, _) = try await URLSession.shared.data(from: url)
-        return try JSONDecoder().decode([CaptionLine].self, from: captionData)
+        try await WorkersAPI.getExternalJSON(from: url, failureMessage: "字幕を読み込めませんでした。")
     }
 
     // MARK: - Business Logic: Adding Videos with High Quality Thumbnails
@@ -358,7 +373,6 @@ class VideoStore {
         _ item: PlayListVideoItem,
         playlistID: String,
         contentLanguage: VideoContentLanguage,
-        createCaptionByAi: Bool = true,
         playbackRate: Float,
         videoTitle: String = "",
         categoryID: String? = nil
@@ -395,7 +409,7 @@ class VideoStore {
             aspectRatio: -1,
             contentLanguage: contentLanguage
         )
-        addVideo(syncedVideo, thumbnailURL: highQualityThumbURL, createCaptionByAi: createCaptionByAi)
+        addVideo(syncedVideo, thumbnailURL: highQualityThumbURL)
     }
 
     /// 2. リンクから直接追加
@@ -403,7 +417,6 @@ class VideoStore {
     func handleYouTubeURL(
         _ url: String,
         contentLanguage: VideoContentLanguage,
-        createCaptionByAi: Bool = true,
         playbackRate: Float = 1.0,
         videoTitle: String = "",
         categoryID: String? = nil
@@ -454,14 +467,27 @@ class VideoStore {
                         aspectRatio: -1,
                         contentLanguage: contentLanguage
                     )
-                    addVideo(syncedVideo, thumbnailURL: highQualityThumbURL, createCaptionByAi: createCaptionByAi)
+                    addVideo(syncedVideo, thumbnailURL: highQualityThumbURL)
                 }
 
                 return .addedVideo(immediateVideo)
-            case .playlist:
-                guard let listID = extractPlaylistID(from: url) else {
-                    return .invalid
+            case .playlist, .channel:
+                let listID: String
+                if type == .channel {
+                    do {
+                        let channel = try await YouTubeService.fetchChannel(channelURL: url)
+                        listID = channel.uploadsID
+                        if let data = try? JSONEncoder().encode(channel) {
+                            UserDefaults.standard.set(data, forKey: "youtube.channel.\(listID)")
+                        }
+                    } catch {
+                        return .invalid
+                    }
+                } else {
+                    guard let id = extractPlaylistID(from: url) else { return .invalid }
+                    listID = id
                 }
+                guard cacheOwnerID == owner, !Task.isCancelled else { return .invalid }
                 if videoList.contains(where: { $0.id == listID }) {
                     return .invalid
                 }

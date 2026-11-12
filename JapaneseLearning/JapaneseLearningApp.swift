@@ -33,10 +33,14 @@ struct JapaneseLearningApp: App {
                 .environment(videoStore)
                 .environment(appleAccountStore)
                 .task(id: appleAccountStore.userID) {
-                    await videoStore.accountChanged(to: appleAccountStore.userID)
+                    await WorkersAPI.$reportsErrors.withValue(false) {
+                        await videoStore.accountChanged(to: appleAccountStore.userID)
+                    }
                 }
                 .task(id: apnsTokenStore.token) {
-                    await appleAccountStore.syncAPNsDeviceToken()
+                    await WorkersAPI.$reportsErrors.withValue(false) {
+                        await appleAccountStore.syncAPNsDeviceToken()
+                    }
                 }
         }
     }

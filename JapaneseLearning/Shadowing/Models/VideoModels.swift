@@ -89,6 +89,7 @@ struct YouTubeVideoSnippet: Decodable {
 }
 
 struct PlaylistListResponse: Decodable {
+    let nextPageToken: String?
     let items: [PlayListMetaItem]
 }
 struct PlayListMetaItem: Decodable {
@@ -121,6 +122,7 @@ struct VideoItem: Identifiable, Hashable, Codable {
     let id: String
     let youtubeID: String
     let title: String
+    var durationSeconds: Double? = nil
     var currentTime: Double? = nil
     var rate: Float = 1.0
     var playlistID: String?
@@ -133,6 +135,7 @@ struct VideoItem: Identifiable, Hashable, Codable {
         case id
         case youtubeID = "youtube_id"
         case title
+        case durationSeconds = "duration_seconds"
         case currentTime = "current_time"
         case rate
         case playlistID = "playlist_id"
@@ -145,6 +148,7 @@ struct VideoItem: Identifiable, Hashable, Codable {
 enum YouTubeURLType {
     case single
     case playlist
+    case channel
     case unknown
 }
 enum AddYouTubeResult {
@@ -167,6 +171,15 @@ struct PlaylistListItem: Identifiable, Hashable, Codable {
     let thumbnailURL: URL?
 }
 
+struct ChannelInfo: Codable {
+    let id: String
+    let uploadsID: String
+    let title: String
+    let handle: String?
+    let avatar: URL?
+    let videoCount: Int?
+}
+
 struct VideoItemAddRequest: Codable {
     let id: String
     let youtubeID: String
@@ -177,7 +190,6 @@ struct VideoItemAddRequest: Codable {
     let categoryID: String
     let aspectRatio: CGFloat
     let contentLanguage: VideoContentLanguage
-    let createCaptionByAi: Bool
     let liveActivityToken: String?
 
     enum CodingKeys: String, CodingKey {
@@ -190,11 +202,10 @@ struct VideoItemAddRequest: Codable {
         case categoryID = "category_id"
         case aspectRatio = "aspect_ratio"
         case contentLanguage = "content_language"
-        case createCaptionByAi = "create_caption_by_ai"
         case liveActivityToken = "live_activity_token"
     }
 
-    init(video: VideoItem, createCaptionByAi: Bool, liveActivityToken: String?) {
+    init(video: VideoItem, liveActivityToken: String?) {
         self.id = video.id
         self.youtubeID = video.youtubeID
         self.title = video.title
@@ -204,7 +215,6 @@ struct VideoItemAddRequest: Codable {
         self.categoryID = video.categoryID
         self.aspectRatio = video.aspectRatio
         self.contentLanguage = video.contentLanguage
-        self.createCaptionByAi = createCaptionByAi
         self.liveActivityToken = liveActivityToken
     }
 }

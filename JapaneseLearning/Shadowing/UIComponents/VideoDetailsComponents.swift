@@ -63,9 +63,13 @@ struct playResumeVideoView: View {
 
 struct CustomToolbarHeader: View {
     @Environment(SettingsStore.self) private var settingsStore
+    @Environment(VideoStore.self) private var videoStore
     let title: String
+    let video: VideoItem?
     let playerVM: PlayerViewManager
     @Binding var showSettingSheet: Bool
+
+    @State private var showVideoAI = false
 
     var body: some View {
         @Bindable var settingsStoreBindable = settingsStore
@@ -110,10 +114,12 @@ struct CustomToolbarHeader: View {
                     Divider()
 
                     Button {
+                        showVideoAI = true
                     } label: {
                         Label("AIで字幕を再生成", systemImage: "sparkles")
                         Text("クレジットを消費します")
                     }
+                    .disabled(video == nil)
 
                     Menu {
                         Picker("字幕のフォント", selection: $settingsStoreBindable.videoSubtitleFontStyle) {
@@ -143,6 +149,19 @@ struct CustomToolbarHeader: View {
         }
         .frame(height: 54)
         .background(Color.clear)
+        .sheet(isPresented: $showVideoAI) {
+            if let video {
+                VideoAISheet(video: video) {
+                    do {
+                        let sources = try await videoStore.fetchVideoSources(video.id)
+                        let captions = try await videoStore.fetchCaptions(from: sources.captionsUrl)
+                        playerVM.loadCaptions(videoID: video.id, captions: captions)
+                    } catch {
+                        print("字幕の再読み込みに失敗しました: \(error)")
+                    }
+                }
+            }
+        }
     }
 }
 

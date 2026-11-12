@@ -22,14 +22,10 @@ struct VideoListView: View {
     @State private var selectedCategoryID: String?
     @State private var showingDeleteAlert: Bool = false
     @State private var videoToDelete: VideoItem?
+    @State private var categoryScrollPosition = ScrollPosition(idType: String.self)
 
     init(onSelectVideo: @escaping (String) -> Void = { _ in }) {
         self.onSelectVideo = onSelectVideo
-    }
-
-    private var filteredVideos: [VideoItem] {
-        guard let selectedCategory else { return [] }
-        return videoStore.videos.filter { videoStore.belongsToCategory($0, category: selectedCategory) }
     }
 
     private var selectedCategory: PlaylistCategory? {
@@ -41,8 +37,8 @@ struct VideoListView: View {
         return videoStore.playlistCategories.first
     }
 
-    private var filteredVideoIDs: [String] {
-        filteredVideos.map(\.id)
+    private var selectedCategoryIndex: Int? {
+        videoStore.playlistCategories.firstIndex { $0.id == selectedCategory?.id }
     }
 
     private var sizeClassIsRegular: Bool {
@@ -73,26 +69,79 @@ struct VideoListView: View {
                 } else {
                     let columns = gridColumns(isLandscape: geo.size.width > geo.size.height)
 
+                    let category = selectedCategory
+                    let videos = category.map { category in
+                        videoStore.videos.filter { videoStore.belongsToCategory($0, category: category) }
+                    } ?? []
+
                     ScrollView {
-                        VStack {
-                            videoItemGrid(columns: columns)
-                        }
-                        .animation(.easeInOut(duration: 0.35), value: selectedCategory?.id)
-                        .padding(.horizontal, 14)
-                        .padding(.bottom, 20)
+                        videoItemGrid(columns: columns, videos: videos)
+                            .id(category?.id)
+                            .transition(.opacity)
+                            .padding(.horizontal, 14)
+                            .padding(.top, 10)
+                            .padding(.bottom, 20)
                     }
                     .swipeActionsContainerIfAvailable()
-                    .contentMargins(.top, 56, for: .scrollIndicators)
+                    .contentMargins(.top, 60, for: .scrollIndicators)
+                    .simultaneousGesture(
+                        DragGesture(minimumDistance: 20)
+                            .onEnded { value in
+                                let horizontal = value.translation.width
+                                guard abs(horizontal) >= 40,
+                                      abs(horizontal) > abs(value.translation.height) * 1.5,
+                                      let current = selectedCategoryIndex
+                                else { return }
+
+                                let categories = videoStore.playlistCategories
+                                let next = current + (horizontal < 0 ? 1 : -1)
+                                guard categories.indices.contains(next) else { return }
+
+                                withAnimation(.snappy) {
+                                    selectedCategoryID = categories[next].id
+                                }
+                            },
+                        including: settingsStore.videoCategorySwipeEnabled ? .all : .subviews
+                    )
                 }
             }
             .refreshable { await videoStore.fetchVideos() }
+        }
+        .alert("動画を追加できませんでした", isPresented: Binding(
+            get: { videoStore.uploadError != nil },
+            set: { if !$0 { videoStore.uploadError = nil } }
+        )) {
+            Button("OK") { videoStore.uploadError = nil }
+        } message: {
+            Text(videoStore.uploadError ?? "")
+        }
+        .alert("動画を削除しますか？", isPresented: $showingDeleteAlert) {
+            Button("キャンセル", role: .cancel) {
+                videoToDelete = nil
+            }
+
+            Button("削除", role: .destructive) {
+                guard let video = videoToDelete else { return }
+                videoToDelete = nil
+
+                Task {
+                    await MainActor.run {
+                        playerVM.handleDeletedVideo(id: video.id)
+                    }
+                    await videoStore.deleteVideo(video.id)
+                }
+            }
+        } message: {
+            if let video = videoToDelete {
+                Text(video.title.cleanedVideoTitle)
+            }
+            Text("動画を削除します。この操作は取り消せません。")
         }
         .navigationTitle("ホーム")
         .navigationBarTitleDisplayMode(.inline)
         .safeAreaInset(edge: .top, spacing: 0) {
             categoryPicker
-                .padding(.vertical, 8)
-                .padding(.bottom, 4)
+                .padding(.vertical, 4)
         }
         .toolbarMinimizeNavigationBarIfAvailable()
         .toolbar {
@@ -128,12 +177,22 @@ struct VideoListView: View {
             HStack(spacing: 10) {
                 ForEach(videoStore.playlistCategories) { category in
                     categoryButton(category)
+                        .id(category.id)
                 }
             }
             .padding(.horizontal, 14)
         }
+        .scrollPosition($categoryScrollPosition, anchor: .center)
         .scrollIndicators(.hidden)
         .scrollClipDisabled()
+        .onChange(of: selectedCategory?.id) { _, id in
+            guard let id else { return }
+            
+            withAnimation(.snappy) {
+                categoryScrollPosition.scrollTo(id: id, anchor: .center)
+            }
+            UISelectionFeedbackGenerator().selectionChanged()
+        }
     }
 
     @ViewBuilder
@@ -172,9 +231,9 @@ struct VideoListView: View {
         }
     }
 
-    private func videoItemGrid(columns: [GridItem]) -> some View {
+    private func videoItemGrid(columns: [GridItem], videos: [VideoItem]) -> some View {
         LazyVGrid(columns: columns, spacing: 24) {
-            if filteredVideos.isEmpty {
+            if videos.isEmpty {
                 ContentUnavailableView(
                     "動画がありません",
                     systemImage: "video",
@@ -182,37 +241,13 @@ struct VideoListView: View {
                 )
                 .padding(.top, 200)
             } else {
-                ForEach(filteredVideos) { video in
+                ForEach(videos) { video in
                     videoCard(video)
                 }
                 .reorderableIfAvailable()
             }
         }
-        .id(selectedCategory?.id)
-        .transition(.opacity)
-        .animation(.snappy(duration: 0.35), value: filteredVideoIDs)
-        .alert("動画を削除しますか？", isPresented: $showingDeleteAlert) {
-            Button("キャンセル", role: .cancel) {
-                videoToDelete = nil
-            }
-
-            Button("削除", role: .destructive) {
-                guard let video = videoToDelete else { return }
-                videoToDelete = nil
-
-                Task {
-                    await MainActor.run {
-                        playerVM.handleDeletedVideo(id: video.id)
-                    }
-                    await videoStore.deleteVideo(video.id)
-                }
-            }
-        } message: {
-            if let video = videoToDelete {
-                Text(video.title.cleanedVideoTitle)
-            }
-            Text("動画を削除します。この操作は取り消せません。")
-        }
+        .animation(.snappy(duration: 0.35), value: videos.map(\.id))
     }
 
     @ViewBuilder
@@ -240,13 +275,24 @@ struct VideoListView: View {
                 }
             }
         } else {
-            card.highPriorityGesture(
-                LongPressGesture(minimumDuration: 0.5)
-                    .onEnded { _ in
-                        videoToDelete = video
-                        showingDeleteAlert = true
-                    }
-            )
+            videoListItemView(video)
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    onSelectVideo(video.id)
+                }
+                .onLongPressGesture(minimumDuration: 0.15) {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    videoToDelete = video
+                    showingDeleteAlert = true
+                }
+                .accessibilityAddTraits(.isButton)
+                .accessibilityAction {
+                    onSelectVideo(video.id)
+                }
+                .accessibilityAction(named: Text("削除")) {
+                    videoToDelete = video
+                    showingDeleteAlert = true
+                }
         }
     }
 
