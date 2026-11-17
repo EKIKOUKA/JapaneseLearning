@@ -19,6 +19,4 @@ enum Config {
     }()
 
     static var YouTubeDataAPIKey: String = shared?["YouTubeDataAPIKey"] as? String ?? ""
-    static var CloudflareWorkersURL: String = shared?["CloudflareWorkersURL"] as? String ?? ""
-    static var CloudflareR2URL: String = shared?["CloudflareR2URL"] as? String ?? ""
 }

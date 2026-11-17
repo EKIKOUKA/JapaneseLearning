@@ -9,6 +9,7 @@ import SwiftUI
 import AVFoundation
 
 struct VideoMiniPlayerView: View {
+    @GestureState private var reachedOpenThreshold = false
     @Environment(AppNavigationStore.self) private var navigationStore
     @Environment(PlayerViewManager.self) private var playerVM
     @Environment(\.tabViewBottomAccessoryPlacement) private var placement
@@ -65,20 +66,30 @@ struct VideoMiniPlayerView: View {
             }
             .simultaneousGesture(
                 DragGesture(minimumDistance: 12)
-                    .onEnded { value in
-                        guard value.translation.height < -32,
+                    .updating($reachedOpenThreshold) { value, state, _ in
+                        guard value.translation.height < -30,
                               abs(value.translation.height) > abs(value.translation.width) else {
                             return
                         }
 
-                        presentVideo(video.id)
+                        state = true
                     }
             )
+            .onChange(of: reachedOpenThreshold) { _, newValue in
+                if newValue {
+                    presentVideo(video.id)
+                }
+            }
         }
     }
 
     private func presentVideo(_ videoID: String) {
-        navigationStore.videoTransitionSourceID = "mini-\(videoID)"
-        navigationStore.quickActionTarget = .resumeVideo(id: videoID)
+        let sourceID = "mini-\(videoID)"
+        navigationStore.videoTransitionSourceID = sourceID
+        navigationStore.presentedVideo = VideoSheetDestination(
+            id: videoID,
+            sourceID: sourceID,
+            dismissesToMiniPlayer: true
+        )
     }
 }

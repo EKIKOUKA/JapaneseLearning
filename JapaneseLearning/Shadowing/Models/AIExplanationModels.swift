@@ -23,7 +23,7 @@ struct AIExplanationQuestion: Identifiable {
 struct AIExplanationRequest: Encodable {
     let question: String
     let mode: AIExplanationMode
-    let request_id: String
+    let id: String
     var parent_request_id: String? = nil
     var language: String? = nil
     var provider: String? = nil

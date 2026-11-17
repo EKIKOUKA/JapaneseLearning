@@ -66,7 +66,7 @@ struct GrammarSettingsView: View {
                     }
                 }
             }
-            .navigationTitle("日本語勉学に設定")
+            .navigationTitle("文法の表示設定")
             .navigationBarTitleDisplayMode(.inline)
         }
     }

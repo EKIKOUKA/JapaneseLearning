@@ -16,7 +16,7 @@ struct AchieveSystemRecord: View {
                 ForEach(store.rawSessions.reversed(), id: \.id) { item in
                     VStack(alignment: .leading, spacing: 10) {
                         HStack(alignment: .top) {
-                            Text(item.started_at)
+                            Text(serverDateTimeInJST(item.started_at))
                                 .font(.system(size: 15, weight: .semibold, design: .rounded))
                                 .foregroundStyle(.primary)
                             Spacer()

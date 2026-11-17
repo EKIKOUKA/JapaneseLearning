@@ -20,6 +20,7 @@ struct AppSettings: Codable {
     var Nationality: String = "JP"
 
     // Shadowing
+    var videoCategorySwipeEnabled: Bool = true
     var showShadowingSubtitlesRuby: Bool = true
     var videoSubtitleFontSizeScale: Double = 1.0
     var videoSubtitleFontStyle: VideoSubtitleRubyFontStyle = .system

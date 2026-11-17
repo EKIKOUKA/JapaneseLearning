@@ -44,58 +44,111 @@ struct AutomaticChargeDetailView: View {
                 }
             } else if let configuration {
                 if kind == .monthly {
-                    Section {
-                        statusView("monthly")
-                        amountPicker("毎月の金額", selection: $monthlyAmount, configuration: configuration)
+                    Section("現在の設定") {
+                        LabeledContent("状態", value: setting("monthly")?.statusText ?? "未設定")
+                        
+                        if let saved = setting("monthly"), saved.status == "active" {
+                            LabeledContent("毎月の金額", value: "¥\(saved.amount.formatted())")
+                            LabeledContent("チャージ日", value: "毎月 \(saved.billingDay ?? 1) 日")
+                        }
+                        
+                        if let error = setting("monthly")?.lastError {
+                            Text(error).font(.footnote).foregroundStyle(.red)
+                        }
+                    }
 
+                    Section("チャージ条件") {
+                        amountPicker("毎月の金額", selection: $monthlyAmount, configuration: configuration)
                         Picker("チャージ日", selection: $billingDay) {
                             ForEach(1...28, id: \.self) {
                                 Text("毎月 \($0) 日").tag($0)
                             }
                         }
+                        
+                        if let option = configuration.options.first(where: { $0.amount == monthlyAmount }) {
+                            LabeledContent("1 回で追加されるクレジット", value: option.credits.formatted())
+                        }
+                    }
 
-                        creditDescription(amount: monthlyAmount, configuration: configuration)
+                    Section {
                         authorizationButton(type: "monthly", configuration: configuration)
-                        stopButton("monthly")
                     } footer: {
-                        Text("次の指定日から毎月チャージします。今日のチャージは行いません。変更には再承認が必要です。")
+                        Text("次の指定日から毎月チャージします。承認当日のチャージは行いません。変更には再承認が必要です。")
+                    }
+
+                    if let saved = setting("monthly"), saved.status != "disabled" {
+                        Section {
+                            stopButton("monthly")
+                        }
                     }
                 }
 
                 if kind == .lowBalance {
+                    Section("現在の設定") {
+                        LabeledContent("状態", value: setting("low_balance")?.statusText ?? "未設定")
+                        
+                        if let saved = setting("low_balance"), saved.status == "active" {
+                            LabeledContent("開始残高", value: "\((saved.thresholdCredits ?? 0).formatted()) クレジット未満")
+                            LabeledContent("1 回の金額", value: "¥\(saved.amount.formatted())")
+                            LabeledContent("月額上限", value: "¥\((saved.monthlyLimitAmount ?? 0).formatted())")
+                        }
+                        
+                        if let error = setting("low_balance")?.lastError {
+                            Text(error).font(.footnote).foregroundStyle(.red)
+                        }
+                    }
+
                     Section {
-                        statusView("low_balance")
-                        LabeledContent("追加する残高の目安") {
-                            TextField("100", text: $thresholdText)
-                                .keyboardType(.numberPad)
-                                .multilineTextAlignment(.trailing)
-                                .frame(maxWidth: 90)
-                            Text("クレジット未満").foregroundStyle(.secondary)
+                        LabeledContent("開始残高") {
+                            HStack(spacing: 6) {
+                                TextField("100", text: $thresholdText)
+                                    .keyboardType(.numberPad)
+                                    .multilineTextAlignment(.trailing)
+                                    .frame(minWidth: 48, idealWidth: 64, maxWidth: 78)
+                                    .accessibilityLabel("開始残高")
+                                Text("クレジット未満").foregroundStyle(.secondary)
+                            }
                         }
 
-                        amountPicker("1 回の金額", selection: $reloadAmount, configuration: configuration, range: 50...20000)
-                        creditDescription(amount: reloadAmount, configuration: configuration)
+                        amountPicker("1 回の金額", selection: $reloadAmount, configuration: configuration, range: 50...30000)
+                        if let option = configuration.options.first(where: { $0.amount == reloadAmount }) {
+                            LabeledContent("1 回で追加されるクレジット", value: option.credits.formatted())
+                        }
 
-                        LabeledContent("追加チャージの月額上限") {
-                            TextField("1000", text: $monthlyLimitText)
-                                .keyboardType(.numberPad)
-                                .multilineTextAlignment(.trailing)
-                                .frame(maxWidth: 100)
-                            Text("円").foregroundStyle(.secondary)
+                        LabeledContent("月額上限") {
+                            HStack(spacing: 6) {
+                                TextField("1000", text: $monthlyLimitText)
+                                    .keyboardType(.numberPad)
+                                    .multilineTextAlignment(.trailing)
+                                    .frame(maxWidth: 90)
+                                    .accessibilityLabel("月額上限")
+                                Text("円").foregroundStyle(.secondary)
+                            }
                         }
 
                         if !validReload {
-                            Text("残高の目安は 50〜20,000 クレジット、月額上限は 50〜20,000 円の整数で入力してください。月額上限は 1 回の金額以上にしてください。")
+                            Text("開始残高と月額上限は 50〜30,000 の整数で入力し、月額上限は 1 回の金額以上にしてください。")
                                 .font(.footnote).foregroundStyle(.red)
                         }
-                        authorizationButton(type: "low_balance", configuration: configuration)
-                        stopButton("low_balance")
+                    } header: {
+                        Text("チャージ条件")
                     } footer: {
-                        Text("現在の総残高が目安を下回ると追加します。月額上限は日本時間の月単位で、手動・毎月のチャージは含みません。承認直後も残高が少ない場合は追加します。")
+                        Text("総残高が開始残高を下回るとチャージします。月額上限は日本時間の暦月ごとに適用され、手動・毎月のチャージは含みません。")
+                    }
+
+                    Section {
+                        authorizationButton(type: "low_balance", configuration: configuration)
+                    } footer: {
+                        Text("承認直後に総残高が開始残高を下回っている場合もチャージします。")
+                    }
+
+                    if let saved = setting("low_balance"), saved.status != "disabled" {
+                        Section {
+                            stopButton("low_balance")
+                        }
                     }
                 }
             }
-
 
             if let errorMessage {
                 Section {
@@ -150,27 +203,8 @@ struct AutomaticChargeDetailView: View {
     private var validReload: Bool {
         guard let threshold, let monthlyLimit else { return false }
 
-        return (50...20000).contains(threshold) && (50...20000).contains(monthlyLimit)
-            && (50...20000).contains(reloadAmount) && monthlyLimit >= reloadAmount
-    }
-
-    @ViewBuilder private func statusView(_ type: String) -> some View {
-        if let saved = setting(type) {
-            LabeledContent("保存済みの設定", value: saved.statusText)
-
-            if saved.status == "active" {
-                Text(type == "monthly"
-                     ? "毎月 \(saved.billingDay ?? 1) 日・¥\(saved.amount.formatted())"
-                     : "\((saved.thresholdCredits ?? 0).formatted()) クレジット未満・1 回 ¥\(saved.amount.formatted())・月 ¥\((saved.monthlyLimitAmount ?? 0).formatted()) まで")
-                    .font(.footnote).foregroundStyle(.secondary)
-            }
-
-            if let error = saved.lastError {
-                Text(error).font(.footnote).foregroundStyle(.red)
-            }
-        } else {
-            LabeledContent("状態", value: "未設定")
-        }
+        return (50...30000).contains(threshold) && (50...30000).contains(monthlyLimit)
+            && (50...30000).contains(reloadAmount) && monthlyLimit >= reloadAmount
     }
 
     private func authorizationButton(type: String, configuration: StripeTestConfiguration) -> some View {
@@ -234,18 +268,11 @@ struct AutomaticChargeDetailView: View {
         }
     }
 
-    private func amountPicker(_ title: String, selection: Binding<Int>, configuration: StripeTestConfiguration, range: ClosedRange<Int> = 1...20000) -> some View {
+    private func amountPicker(_ title: String, selection: Binding<Int>, configuration: StripeTestConfiguration, range: ClosedRange<Int> = 1...30000) -> some View {
         Picker(title, selection: selection) {
             ForEach(Array(Set(configuration.options.map(\.amount))).filter { range.contains($0) }.sorted(), id: \.self) { amount in
                 Text(amount.formatted(.currency(code: "JPY").precision(.fractionLength(0)))).tag(amount)
             }
-        }
-    }
-
-    @ViewBuilder private func creditDescription(amount: Int, configuration: StripeTestConfiguration) -> some View {
-        if let option = configuration.options.first(where: { $0.amount == amount }) {
-            Text("現在は \(option.credits.formatted()) クレジットを受け取れます")
-                .font(.footnote).foregroundStyle(.secondary)
         }
     }
 
@@ -291,8 +318,8 @@ struct AutomaticChargeDetailView: View {
             configuration = config
             settings = response.settings
             onSettingsLoaded(settings)
-            let amounts = Array(Set(config.options.map(\.amount))).filter { (1...20000).contains($0) }.sorted()
-            let reloadAmounts = amounts.filter { (50...20000).contains($0) }
+            let amounts = Array(Set(config.options.map(\.amount))).filter { (1...30000).contains($0) }.sorted()
+            let reloadAmounts = amounts.filter { (50...30000).contains($0) }
             monthlyAmount = setting("monthly")?.amount ?? amounts.first ?? 0
             reloadAmount = setting("low_balance")?.amount ?? reloadAmounts.first ?? 0
 

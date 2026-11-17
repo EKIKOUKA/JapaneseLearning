@@ -133,7 +133,6 @@ struct MediaProductsListView: View {
         .sheet(isPresented: $showSettingSheet) {
             SettingsSheetView(store: store)
                 .presentationDetents([.medium])
-                .navigationTransitionCrossFadeIfAvailable()
         }
         .navigationTitle("映像作品リスト")
         .task {

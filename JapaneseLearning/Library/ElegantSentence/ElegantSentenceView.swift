@@ -78,7 +78,6 @@ struct ElegantSentenceView: View {
         .sheet(isPresented: $showSettingSheet) {
             SettingsSheetView(store: store)
                 .presentationDetents([.medium])
-                .navigationTransitionCrossFadeIfAvailable()
         }
         .task {
             if store.ElegantSentenceList.isEmpty {

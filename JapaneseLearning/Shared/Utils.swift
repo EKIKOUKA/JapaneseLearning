@@ -89,16 +89,7 @@ extension View {
             self
         }
     }
-    
-    @ViewBuilder
-    func navigationTransitionCrossFadeIfAvailable() -> some View {
-        if #available(iOS 27.0, *) {
-            self.navigationTransition(.crossFade)
-        } else {
-            self
-        }
-    }
-    
+
     @ViewBuilder
     func swipeActionsContainerIfAvailable() -> some View {
         if #available(iOS 27.0, *) {

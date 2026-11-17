@@ -72,8 +72,6 @@ struct GrammarNaviView: View {
         .sheet(isPresented: $showSettingSheet) {
             GrammarSettingsView()
                 .presentationDetents(sizeClass_regular ? [.large] : [.height(490)])
-                .presentationDragIndicator(.visible)
-                .navigationTransitionCrossFadeIfAvailable()
         }
     }
 }

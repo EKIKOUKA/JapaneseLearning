@@ -23,6 +23,8 @@ struct VideoListView: View {
     @State private var showingDeleteAlert: Bool = false
     @State private var videoToDelete: VideoItem?
     @State private var categoryScrollPosition = ScrollPosition(idType: String.self)
+    @State private var deleteToast: DeleteToastState?
+    @State private var deleteToastID = UUID()
 
     init(onSelectVideo: @escaping (String) -> Void = { _ in }) {
         self.onSelectVideo = onSelectVideo
@@ -124,18 +126,19 @@ struct VideoListView: View {
                 guard let video = videoToDelete else { return }
                 videoToDelete = nil
 
-                Task {
-                    await MainActor.run {
-                        playerVM.handleDeletedVideo(id: video.id)
-                    }
-                    await videoStore.deleteVideo(video.id)
-                }
+                performDelete(video)
             }
         } message: {
             if let video = videoToDelete {
                 Text(video.title.cleanedVideoTitle)
             }
             Text("動画を削除します。この操作は取り消せません。")
+        }
+        .overlay {
+            if let deleteToast {
+                deleteToastView(deleteToast)
+                    .transition(.scale(scale: 0.8).combined(with: .opacity))
+            }
         }
         .navigationTitle("ホーム")
         .navigationBarTitleDisplayMode(.inline)
@@ -163,13 +166,76 @@ struct VideoListView: View {
             AddVideoSheetView { result in
                 selectedCategoryID = videoStore.handleCategory(result)?.id
             }
-            .navigationTransitionCrossFadeIfAvailable()
         }
         .sheet(isPresented: $showSettingSheet) {
             ShadowingSettingsSheetView(playerVM: nil)
                 .presentationDetents([.medium, .large])
-                .navigationTransitionCrossFadeIfAvailable()
         }
+    }
+
+    /// 動画を削除し、読み込み中 → 完了 のポップアップを表示して1秒後に消す
+    private func performDelete(_ video: VideoItem) {
+        // 連続で削除した場合、最後の削除だけがポップアップを制御する
+        let toastID = UUID()
+        deleteToastID = toastID
+
+        withAnimation(.spring(duration: 0.3)) {
+            deleteToast = .deleting
+        }
+
+        Task {
+            playerVM.handleDeletedVideo(id: video.id)
+            let succeeded = await videoStore.deleteVideo(video.id)
+
+            guard deleteToastID == toastID else { return }
+            withAnimation(.spring(duration: 0.3)) {
+                deleteToast = succeeded ? .done : .failed
+            }
+            UINotificationFeedbackGenerator().notificationOccurred(succeeded ? .success : .error)
+
+            try? await Task.sleep(for: .seconds(1))
+
+            guard deleteToastID == toastID else { return }
+            withAnimation(.easeOut(duration: 0.25)) {
+                deleteToast = nil
+            }
+        }
+    }
+
+    private func deleteToastView(_ state: DeleteToastState) -> some View {
+        VStack(spacing: 12) {
+            Group {
+                switch state {
+                    case .deleting:
+                        ProgressView()
+                            .controlSize(.large)
+                    case .done:
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 34, weight: .semibold))
+                            .transition(.symbolEffect(.drawOn))
+                    case .failed:
+                        Image(systemName: "xmark")
+                            .font(.system(size: 34, weight: .semibold))
+                }
+            }
+            .frame(height: 40)
+
+            Group {
+                switch state {
+                    case .deleting: Text("削除中…")
+                    case .done: Text("削除完了")
+                    case .failed: Text("削除できませんでした")
+                }
+            }
+            .font(.subheadline.weight(.semibold))
+            .multilineTextAlignment(.center)
+        }
+        .foregroundStyle(.secondary)
+        .padding(20)
+        .frame(minWidth: 150, minHeight: 150)
+        .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .allowsHitTesting(false)
+        .accessibilityElement(children: .combine)
     }
 
     private var categoryPicker: some View {
@@ -259,17 +325,14 @@ struct VideoListView: View {
         }
         .buttonStyle(.plain)
 
-        if #available(iOS 27.0, *) {
+        if #available(iOS 27.0, *), !settingsStore.videoCategorySwipeEnabled {
             card.swipeActions {
                 Button(role: .destructive) {
                     withAnimation(.spring(duration: 0.35)) {
                         videoStore.videos.removeAll { $0.id == video.id }
                     }
                     
-                    Task {
-                        playerVM.handleDeletedVideo(id: video.id)
-                        await videoStore.deleteVideo(video.id)
-                    }
+                    performDelete(video)
                 } label: {
                     Image(systemName: "trash")
                 }

@@ -16,10 +16,16 @@ struct ShadowingSettingsSheetView: View {
 
         NavigationStack {
             Form {
+                if #available(iOS 27.0, *), playerVM == nil {
+                    Section(footer: Text("オンにすると、動画一覧を左右にスワイプして分類を切り替えます。動画は長押しで削除できます。")) {
+                        Toggle("スワイプで分類を切り替える", isOn: $settingsStoreBindable.videoCategorySwipeEnabled)
+                    }
+                }
+
                 if let playerVM {
                     @Bindable var playerVM = playerVM
 
-                    Section(footer: Text("動画の再生をコントロールします")) {
+                    Section(footer: Text("動画の再生をコントロールします。")) {
                         PlaybackRateSliderView(
                             rateValue: $playerVM.tempRate,
                             minValue: 0.50,
@@ -31,7 +37,7 @@ struct ShadowingSettingsSheetView: View {
                     }
                 }
 
-                Section(footer: Text("字幕のサイズを調整します")) {
+                Section(footer: Text("字幕のサイズを調整します。")) {
                     VideoSubtitleFontSizeSliderView()
                 }
 
@@ -45,14 +51,12 @@ struct ShadowingSettingsSheetView: View {
                     ColorPicker("字幕の色", selection: settingsStore.videoSubtitleFontColorBinding, supportsOpacity: true)
                 }
 
-                Section(footer: Text("再生中の行を強調し、他の字幕を控えめに表示します")) {
-                    Toggle(isOn: $settingsStoreBindable.videoSubtitleDimInactiveLines) {
-                        Text("再生中の字幕を強調表示")
-                    }
+                Section(footer: Text("再生中の行を強調し、他の字幕を控えめに表示します。")) {
+                    Toggle("再生中の字幕を強調表示", isOn: $settingsStoreBindable.videoSubtitleDimInactiveLines)
                 }
 
                 if playerVM == nil {
-                    Section(footer: Text("字幕のフォントを変更します")) {
+                    Section(footer: Text("字幕のフォントを変更します。")) {
                         Picker("フォント", selection: $settingsStoreBindable.videoSubtitleFontStyle) {
                             ForEach(VideoSubtitleRubyFontStyle.allCases, id: \.self) { fontStyle in
                                 Text(fontStyle.displayName).tag(fontStyle)
@@ -61,10 +65,8 @@ struct ShadowingSettingsSheetView: View {
                     }
                 }
 
-                Section(footer: Text("単語の上に発音（ルビ）を表示します")) {
-                    Toggle(isOn: $settingsStoreBindable.showShadowingSubtitlesRuby) {
-                        Text("発音を表示")
-                    }
+                Section(footer: Text("単語の上に発音（ルビ）を表示します。")) {
+                    Toggle("発音を表示", isOn: $settingsStoreBindable.showShadowingSubtitlesRuby)
                 }
 
                 if playerVM == nil {
@@ -75,14 +77,12 @@ struct ShadowingSettingsSheetView: View {
                 
                 if (settingsStoreBindable.useNativeVideoPlayer) {
                     Section(footer: Text("ビデオのピクチャ・イン・ピクチャ（PiP）を許可します。")) {
-                        Toggle(isOn: $settingsStoreBindable.videoAllowsPictureInPicturePlayback) {
-                            Text("ピクチャ・イン・ピクチャ")
-                        }
+                        Toggle("ピクチャ・イン・ピクチャ", isOn: $settingsStoreBindable.videoAllowsPictureInPicturePlayback)
                     }
                 }
             }
             .contentMargins(.top, 10)
-            .navigationTitle("シャドーイング設定")
+            .navigationTitle("動画の設定")
             .navigationBarTitleDisplayMode(.inline)
         }
     }

@@ -106,14 +106,21 @@ struct PlayListContentDetails: Decodable {
     let itemCount: Int
 }
 
+/// 削除時に表示するポップアップの状態
+enum DeleteToastState: Equatable {
+    case deleting
+    case done
+    case failed
+}
+
 enum VideoContentLanguage: String, Codable, CaseIterable {
     case ja
     case en
 
     var displayName: String {
         switch self {
-            case .ja: return "日本語"
-            case .en: return "英語"
+            case .ja: return "🇯🇵 日本語"
+            case .en: return "🇺🇸 英語"
         }
     }
 }

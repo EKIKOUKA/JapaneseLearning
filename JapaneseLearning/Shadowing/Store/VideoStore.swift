@@ -185,6 +185,7 @@ class VideoStore {
         // API への登録中も、選択した動画を一覧から消さない。
         pendingVideoIDs.insert(video.id)
         upsertVideoLocally(video)
+
         Task(priority: .utility) {
             var thumbnailSaved = false
 
@@ -257,7 +258,9 @@ class VideoStore {
     }
 
     @MainActor
-    func deleteVideo(_ id: String) async {
+    /// 動画を削除する。成功した場合は `true` を返す。
+    @discardableResult
+    func deleteVideo(_ id: String) async -> Bool {
         do {
             try await WorkersAPI.post("delete_video", body: ["id": id], requiresAuthentication: true)
 
@@ -271,8 +274,11 @@ class VideoStore {
             }
 
             AppGroupThumbnailStorage.remove(for: id)
+            
+            return true
         } catch {
             print("❌ 刪除エラー:", error)
+            return false
         }
     }
 
