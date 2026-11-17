@@ -140,7 +140,7 @@ struct YouTubeService {
     }
 
     private static func r2CoverURL(for videoID: String) -> URL {
-        URL(string: Config.CloudflareR2URL)!
+        URL(string: "https://video.shadowing.makoto.lol")!
             .appendingPathComponent(videoID)
             .appendingPathComponent("cover.jpg")
     }

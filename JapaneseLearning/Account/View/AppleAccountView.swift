@@ -50,6 +50,10 @@ struct AppleAccountView: View {
 
                 if accountStore.isSignedIn {
                     Section("アカウント管理") {
+                        NavigationLink("ログイン中の端末") {
+                            LoginSessionsView()
+                        }
+                        
                         Button("ログアウト", role: .confirm) {
                             Task { await accountStore.signOut() }
                         }

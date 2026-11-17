@@ -26,7 +26,7 @@ struct VideoAIQuote: Decodable, Identifiable {
     let expires_at: Double
 }
 struct VideoAIJob: Decodable {
-    let request_id: String
+    let id: String
     let mode: String
     let status: String
     let credits_requested: Int

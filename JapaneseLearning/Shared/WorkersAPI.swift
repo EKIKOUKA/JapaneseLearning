@@ -48,7 +48,7 @@ enum WorkersAPI {
         presenter.present(alert, animated: true)
     }
 
-    private static let baseURL = URL(string: Config.CloudflareWorkersURL)!
+    private static let baseURL = URL(string: "https://japanese-learning.makoto.lol/shadowing")!
 
     @MainActor
     static func streamAIExplanation(
@@ -105,6 +105,11 @@ enum WorkersAPI {
 
     /// 明示されたトークンを優先し、認証が必要な場合は保存済みのセッションを使う。
     private static func authorize(_ request: inout URLRequest, token: String?, required: Bool) async throws {
+        #if DEBUG
+        request.setValue("sandbox", forHTTPHeaderField: "X-APNs-Environment")
+        #else
+        request.setValue("production", forHTTPHeaderField: "X-APNs-Environment")
+        #endif
         let resolvedToken: String?
 
         if let token {

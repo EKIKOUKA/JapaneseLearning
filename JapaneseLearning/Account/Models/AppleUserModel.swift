@@ -20,10 +20,21 @@ struct CreditProductCatalog: Decodable {
     let products: [CreditProduct]
 }
 
+struct LoginSession: Decodable, Identifiable {
+    let id: String
+    let deviceName: String?
+    let clientID: String?
+    let appVersion: String?
+    let lastSeenAt: String?
+    let isCurrent: Int
+}
+
 struct AppleLoginRequest: Encodable {
     let identityToken: String
     let authorizationCode: String
     let hashedNonce: String
+    var deviceID: String? = nil
+    var deviceName: String? = nil
 }
 
 struct AppleLoginResponse: Decodable {

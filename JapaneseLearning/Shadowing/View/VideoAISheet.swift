@@ -19,7 +19,6 @@ struct VideoAISheet: View {
     @State private var showConfirm = false
     @Environment(SettingsStore.self) private var settingsStore
     @Environment(\.dismiss) private var dismiss
-    @Environment(AppleAccountStore.self) private var accountStore
 
     var body: some View {
         NavigationStack {
@@ -31,7 +30,9 @@ struct VideoAISheet: View {
                             ProgressView(value: job.progress, total: 100)
                             Text("\(Int(job.progress))%")
                         }
-                        if let message = job.error { Text(message).foregroundStyle(.red) }
+                        if let message = job.error {
+                            Text(message).foregroundStyle(.red)
+                        }
                     }
                 }
 
@@ -40,8 +41,11 @@ struct VideoAISheet: View {
                         Text(VideoAIMode.segmentation.title).tag(VideoAIMode.segmentation)
                         Text(VideoAIMode.transcription.title).tag(VideoAIMode.transcription)
                     }
+                    
                     Button("料金を確認") {
-                        Task { await fetchQuote() }
+                        Task {
+                            await fetchQuote()
+                        }
                     }
                     .disabled(busy || job?.status == "pending")
                 } footer: {
@@ -52,13 +56,16 @@ struct VideoAISheet: View {
                     Section("字幕のバージョン") {
                         ForEach(versions.versions) { version in
                             Button {
-                                Task { await select(version) }
+                                Task {
+                                    await select(version)
+                                }
                             } label: {
                                 HStack {
                                     VStack(alignment: .leading) {
                                         Text(version.title)
                                         Text(serverDateTimeInJST(version.created_at))
-                                            .font(.caption).foregroundStyle(.secondary)
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
                                     }
                                     Spacer()
                                     if versions.active_version == version.id { Image(systemName: "checkmark") }
@@ -69,7 +76,9 @@ struct VideoAISheet: View {
                     }
                 }
 
-                if let error { Text(error).foregroundStyle(.red) }
+                if let error {
+                    Text(error).foregroundStyle(.red)
+                }
             }
             .navigationTitle("字幕の生成・切り替え")
             .navigationBarTitleDisplayMode(.inline)
@@ -98,6 +107,7 @@ struct VideoAISheet: View {
                     } catch {
                         break
                     }
+                    
                     await WorkersAPI.$reportsErrors.withValue(false) { await refresh() }
                 }
             }
@@ -105,13 +115,20 @@ struct VideoAISheet: View {
     }
 
     private func fetchQuote() async {
-        busy = true; error = nil
+        busy = true;
+        error = nil
         defer { busy = false }
 
         do {
             var body = ["youtube_id": video.youtubeID, "mode": mode.rawValue]
-            if mode == .segmentation { body["provider"] = settingsStore.AIProvider }
-            quote = try await WorkersAPI.postForResponse("video_ai/quote", body: body, requiresAuthentication: true)
+            if mode == .segmentation {
+                body["provider"] = settingsStore.AIProvider
+            }
+            quote = try await WorkersAPI.postForResponse(
+                "video_ai/quote",
+                body: body,
+                requiresAuthentication: true
+            )
             showConfirm = true
         } catch {
             self.error = error.localizedDescription
@@ -138,22 +155,52 @@ struct VideoAISheet: View {
 
     private func refresh() async {
         do {
-            let status: VideoAIStatus = try await WorkersAPI.get("video_ai/status", queryItems:[URLQueryItem(name:"video_id",value:video.id)], requiresAuthentication:true)
+            let status: VideoAIStatus = try await WorkersAPI.get(
+                "video_ai/status",
+                queryItems: [
+                    URLQueryItem(
+                        name: "video_id",
+                        value: video.id
+                    )
+                ],
+                requiresAuthentication: true
+            )
+            
             let becameComplete = job?.status == "pending" && status.job?.status == "completed"
             job = status.job
-            versions = try await WorkersAPI.get("video_ai/versions", queryItems:[URLQueryItem(name:"video_id",value:video.id)], requiresAuthentication:true)
-            if becameComplete { await onCaptionsChanged(); await accountStore.refreshCredentialState() }
+            versions = try await WorkersAPI.get(
+                "video_ai/versions",
+                queryItems: [
+                    URLQueryItem(
+                        name: "video_id",
+                        value: video.id
+                    )
+                ],
+                requiresAuthentication: true
+            )
+            
+            if becameComplete {
+                await onCaptionsChanged()
+            }
         } catch {
             self.error = error.localizedDescription
         }
     }
 
     private func select(_ version: CaptionVersion) async {
-        busy = true; error = nil
+        busy = true;
+        error = nil
         defer { busy = false }
 
         do {
-            try await WorkersAPI.post("video_ai/select_version", body:["video_id":video.id,"version_id":version.id], requiresAuthentication:true)
+            try await WorkersAPI.post(
+                "video_ai/select_version",
+                body: [
+                    "video_id": video.id,
+                    "version_id": version.id
+                ],
+                requiresAuthentication: true
+            )
             await onCaptionsChanged()
             await refresh()
         } catch {
