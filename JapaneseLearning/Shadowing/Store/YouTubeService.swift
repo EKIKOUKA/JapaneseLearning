@@ -8,7 +8,6 @@
 import Foundation
 
 struct YouTubeService {
-    private static let apiKey = Config.YouTubeDataAPIKey
 
     // MARK: - YouTube URL 構造解析ツール
     static func youtubeURLType(from url: String) -> YouTubeURLType {
@@ -21,6 +20,7 @@ struct YouTubeService {
         if queryItems.contains(where: { $0.name == "list" }) {
             return .playlist
         }
+        
         return channelFilter(from: url) == nil ? .unknown : .channel
     }
 
@@ -29,6 +29,7 @@ struct YouTubeService {
            let items = comp.queryItems {
             return items.first(where: { $0.name == "v" })?.value
         }
+        
         return nil
     }
 
@@ -42,6 +43,7 @@ struct YouTubeService {
         if let list = components.queryItems?.first(where: { $0.name == "list" })?.value {
             return list
         }
+        
         return nil
     }
 
@@ -66,17 +68,8 @@ struct YouTubeService {
 
     static func fetchChannel(channelURL: String) async throws -> ChannelInfo {
         guard let filter = channelFilter(from: channelURL) else { throw URLError(.badURL) }
-        var components = URLComponents(string: "https://www.googleapis.com/youtube/v3/channels")!
-        components.queryItems = [
-            .init(name: "part", value: "contentDetails,snippet,statistics"),
-            .init(name: "fields", value: "items(id,contentDetails/relatedPlaylists/uploads,snippet(title,customUrl,thumbnails/default/url),statistics/videoCount)"),
-            .init(name: "key", value: apiKey),
-            filter
-        ]
-
-        let result: UploadsPlaylistResponse = try await WorkersAPI.getExternalJSON(
-            from: components.url!,
-            failureMessage: "YouTube チャンネルの動画一覧を取得できませんでした。"
+        let result: UploadsPlaylistResponse = try await WorkersAPI.get(
+            "youtube/channels", queryItems: [filter], requiresAuthentication: true
         )
 
         return result.channel
@@ -91,7 +84,6 @@ struct YouTubeService {
             let contentDetails: ContentDetails
             let id: String
             let snippet: Snippet
-            let statistics: Statistics?
 
             struct Snippet: Decodable {
                 struct Thumbnail: Decodable { let url: URL }
@@ -100,7 +92,6 @@ struct YouTubeService {
                 let thumbnails: [String: Thumbnail]?
             }
 
-            struct Statistics: Decodable { let videoCount: String? }
         }
 
         let channel: ChannelInfo
@@ -111,20 +102,20 @@ struct YouTubeService {
             guard let item = items.first, !item.contentDetails.relatedPlaylists.uploads.isEmpty else {
                 throw URLError(.resourceUnavailable)
             }
+            
             channel = ChannelInfo(
                 id: item.id,
                 uploadsID: item.contentDetails.relatedPlaylists.uploads,
                 title: item.snippet.title,
                 handle: item.snippet.customUrl.flatMap { $0.hasPrefix("@") ? $0 : nil },
-                avatar: item.snippet.thumbnails?["default"]?.url,
-                videoCount: item.statistics?.videoCount.flatMap { Int($0) }
+                avatar: item.snippet.thumbnails?["default"]?.url
             )
         }
 
         private enum CodingKeys: String, CodingKey { case items }
     }
 
-    // MARK: - YouTube API 直接通信メソッド
+    // MARK: - 動画情報
     /// YouTube 埋め込み API からタイトルを取得
     static func fetchTitle(_ videoId: String) async -> String {
         let url = URL(string: "https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=\(videoId)&format=json")!
@@ -148,26 +139,9 @@ struct YouTubeService {
     static func fetchBestThumbnailURL(for videoID: String) async -> URL {
         let fallbackURL = r2CoverURL(for: videoID)
 
-        let urlString = "https://www.googleapis.com/youtube/v3/videos" +
-            "?part=snippet" +
-            "&id=\(videoID)" +
-            "&key=\(apiKey)"
-
-        guard let url = URL(string: urlString) else {
-            return fallbackURL
-        }
-
         do {
-            let (data, response) = try await URLSession.shared.data(from: url)
-
-            guard let httpResponse = response as? HTTPURLResponse,
-                  (200..<300).contains(httpResponse.statusCode) else {
-                return fallbackURL
-            }
-
-            let decoded = try JSONDecoder().decode(
-                YouTubeVideoResponse.self,
-                from: data
+            let decoded: YouTubeVideoResponse = try await WorkersAPI.get(
+                "youtube/videos", queryItems: [.init(name: "id", value: videoID)], requiresAuthentication: true
             )
 
             guard let thumbnails = decoded.items.first?.snippet.thumbnails else {
@@ -182,23 +156,17 @@ struct YouTubeService {
 
     /// 再生リスト内の動画ページを取得
     static func fetchPlaylistPage(playlistID: String, pageToken: String?) async throws -> PlaylistResponse {
-        var comp = URLComponents(string: "https://www.googleapis.com/youtube/v3/playlistItems")!
-        comp.queryItems = [
-            .init(name: "part", value: "snippet"),
-            .init(name: "maxResults", value: "100"),
-            .init(name: "playlistId", value: playlistID),
-            .init(name: "fields", value: "nextPageToken,items(snippet(title,resourceId/videoId,thumbnails(maxres/url,standard/url,high/url,medium/url)))"),
-            .init(name: "key", value: apiKey)
-        ]
-
-        if let token = pageToken {
-            comp.queryItems?.append(.init(name: "pageToken", value: token))
+        var query: [URLQueryItem] = [.init(name: "playlistId", value: playlistID)]
+        if let pageToken {
+            query.append(
+                .init(
+                    name: "pageToken",
+                    value: pageToken
+                )
+            )
         }
-
-        return try await WorkersAPI.getExternalJSON(
-            from: comp.url!,
-            failureMessage: "YouTube の再生リストを取得できませんでした。"
-        )
+        
+        return try await WorkersAPI.get("youtube/playlistItems", queryItems: query, requiresAuthentication: true)
     }
 
     /// 再生リストのメタ情報（タイトルや著者）を取得
@@ -211,22 +179,16 @@ struct YouTubeService {
     }
 
     private static func fetchPlaylists(filter: URLQueryItem, pageToken: String? = nil) async throws -> PlaylistListResponse {
-        var comp = URLComponents(string: "https://www.googleapis.com/youtube/v3/playlists")!
-        comp.queryItems = [
-            .init(name: "part", value: "snippet,contentDetails"),
-            filter,
-            .init(name: "maxResults", value: "50"),
-            .init(name: "fields", value: "nextPageToken,items(id,snippet(title,channelTitle,thumbnails(maxres/url,standard/url,high/url,medium/url)),contentDetails(itemCount))"),
-            .init(name: "key", value: apiKey)
-        ]
-
+        var query = [filter]
         if let pageToken {
-            comp.queryItems?.append(.init(name: "pageToken", value: pageToken))
+            query.append(
+                .init(
+                    name: "pageToken",
+                    value: pageToken
+                )
+            )
         }
-
-        return try await WorkersAPI.getExternalJSON(
-            from: comp.url!,
-            failureMessage: "YouTube の再生リストを取得できませんでした。"
-        )
+        
+        return try await WorkersAPI.get("youtube/playlists", queryItems: query, requiresAuthentication: true)
     }
 }

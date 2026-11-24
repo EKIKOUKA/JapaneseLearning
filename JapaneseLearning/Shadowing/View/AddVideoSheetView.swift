@@ -29,10 +29,8 @@ struct AddVideoSheetView: View {
     }
 
     private func channelRow(_ list: PlaylistListItem) -> some View {
-        let channel = store.channelInfo(for: list.id)
-        let channelID = channel?.id ?? "UC" + String(list.id.dropFirst(2))
         return HStack(spacing: 12) {
-            AsyncImage(url: channel?.avatar) { image in
+            AsyncImage(url: list.thumbnailURL) { image in
                 image.resizable().scaledToFill()
             } placeholder: {
                 Image(systemName: "person.crop.circle.fill")
@@ -43,13 +41,11 @@ struct AddVideoSheetView: View {
             .clipShape(Circle())
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(channel?.title ?? (list.author.isEmpty ? list.title : list.author))
+                Text(list.title)
                     .font(.headline)
-                Text(channel?.handle ?? channelID)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                if let count = channel?.videoCount {
-                    Text("公開動画 \(count.formatted()) 本")
+                
+                if let handle = list.author, handle.hasPrefix("@") {
+                    Text(handle)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -67,9 +63,7 @@ struct AddVideoSheetView: View {
 
                 ForEach([true, false], id: \.self) { isChannel in
                     let lists = store.videoList.filter { list in
-                        let uploads = store.channelInfo(for: list.id) != nil
-                            || (list.id.hasPrefix("UU") && list.id.count == 24)
-                        return uploads == isChannel
+                        return (list.type == .channel) == isChannel
                     }
 
                     if !lists.isEmpty {
@@ -78,11 +72,8 @@ struct AddVideoSheetView: View {
                                 NavigationLink {
                                     if isChannel {
                                         ChannelVideoBrowser(
-                                            channelID: store.channelInfo(for: videoList.id)?.id
-                                                ?? "UC" + String(videoList.id.dropFirst(2)),
-                                            uploadsID: videoList.id,
-                                            title: store.channelInfo(for: videoList.id)?.title
-                                                ?? (videoList.author.isEmpty ? videoList.title : videoList.author),
+                                            channelID: videoList.id,
+                                            title: videoList.title,
                                             header: { channelRow(videoList) },
                                             videos: videoSelector
                                         )
@@ -211,10 +202,12 @@ struct PlaylistListRow: View {
             .cornerRadius(8)
 
             VStack(alignment: .leading) {
-                Text(videoList.author)
-                    .font(.caption)
                 Text(videoList.title)
                     .lineLimit(2)
+                
+                if let author = videoList.author, !author.isEmpty {
+                    Text(author).font(.caption)
+                }
             }
         }
         .contentShape(Rectangle())
@@ -223,7 +216,6 @@ struct PlaylistListRow: View {
 
 private struct ChannelVideoBrowser<Header: View, Videos: View>: View {
     let channelID: String
-    let uploadsID: String
     let title: String
     @ViewBuilder let header: () -> Header
     let videos: (String, String) -> Videos
@@ -248,7 +240,7 @@ private struct ChannelVideoBrowser<Header: View, Videos: View>: View {
 
             if showPlaylists {
                 List {
-                    if hasLoaded && playlists.isEmpty {
+                    if hasLoaded && playlists.isEmpty && nextPageToken == nil {
                         Text("公開されている再生リストはありません")
                             .foregroundStyle(.secondary)
                     }
@@ -280,15 +272,19 @@ private struct ChannelVideoBrowser<Header: View, Videos: View>: View {
                         ProgressView()
                     } else if !hasLoaded || nextPageToken != nil {
                         Button(hasLoaded ? "もっと見る" : "再生リストを読み込む") {
-                            Task { await loadPage() }
+                            Task {
+                                await loadPage()
+                            }
                         }
                     }
                 }
                 .task {
-                    if !hasLoaded { await loadPage() }
+                    if !hasLoaded {
+                        await loadPage()
+                    }
                 }
             } else {
-                videos(uploadsID, title)
+                videos(channelID, title)
             }
         }
         .navigationTitle(title)

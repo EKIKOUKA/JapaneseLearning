@@ -23,12 +23,15 @@ class VideoStore {
 
     var videoListVideos: [PlayListVideoItem] = []
     var videoListVideosIsReady: Bool = false
+    var playlistPageIsLoading = false
+    var playlistHasMore = false
+    private var playlistPageToken: String?
+    private var loadingPlaylistID: String?
+    private var playlistLoadID = UUID()
 
     private var cacheOwnerID: String?
-    private var videoCacheKey: String { "cached_videos_v2.\(cacheOwnerID ?? "signed-out")" }
-    private var playlistCategoriesCacheKey: String { "cached_playlist_categories_v2.\(cacheOwnerID ?? "signed-out")" }
-
-    init() {}
+    private var videoCacheKey: String { "cached_videos.\(cacheOwnerID ?? "signed-out")" }
+    private var playlistCategoriesCacheKey: String { "cached_playlist_categories.\(cacheOwnerID ?? "signed-out")" }
 
     @MainActor
     func accountChanged(to userID: String?) async {
@@ -36,6 +39,11 @@ class VideoStore {
             UserDefaults.standard.removeObject(forKey: videoCacheKey)
             UserDefaults.standard.removeObject(forKey: playlistCategoriesCacheKey)
         }
+        playlistLoadID = UUID()
+        loadingPlaylistID = nil
+        playlistPageToken = nil
+        playlistHasMore = false
+        playlistPageIsLoading = false
         cacheOwnerID = userID
         videos = []
         pendingVideoIDs = []
@@ -284,12 +292,6 @@ class VideoStore {
 
     // MARK: - Playlist Operations (Server Sync with WorkersAPI)
     @MainActor
-    func channelInfo(for uploadsID: String) -> ChannelInfo? {
-        guard let data = UserDefaults.standard.data(forKey: "youtube.channel.\(uploadsID)") else { return nil }
-        return try? JSONDecoder().decode(ChannelInfo.self, from: data)
-    }
-
-    @MainActor
     func fetchVideoPlaylist() async {
         let owner = cacheOwnerID
         guard owner != nil, let sessionToken = AppleAccountStore.savedSessionToken else { return }
@@ -478,27 +480,20 @@ class VideoStore {
 
                 return .addedVideo(immediateVideo)
             case .playlist, .channel:
-                let listID: String
+                let immediatePlaylist: PlaylistListItem
                 if type == .channel {
                     do {
                         let channel = try await YouTubeService.fetchChannel(channelURL: url)
-                        listID = channel.uploadsID
-                        if let data = try? JSONEncoder().encode(channel) {
-                            UserDefaults.standard.set(data, forKey: "youtube.channel.\(listID)")
-                        }
-                    } catch {
-                        return .invalid
-                    }
+                        immediatePlaylist = PlaylistListItem(type: .channel, id: channel.id,
+                            title: channel.title, author: channel.handle, thumbnailURL: channel.avatar)
+                    } catch { return .invalid }
                 } else {
                     guard let id = extractPlaylistID(from: url) else { return .invalid }
-                    listID = id
+                    immediatePlaylist = await fetchPlaylistMeta(playlistID: id)
                 }
-                guard cacheOwnerID == owner, !Task.isCancelled else { return .invalid }
-                if videoList.contains(where: { $0.id == listID }) {
-                    return .invalid
-                }
+                guard cacheOwnerID == owner, !Task.isCancelled,
+                      !videoList.contains(where: { $0.id == immediatePlaylist.id }) else { return .invalid }
 
-                let immediatePlaylist = await fetchPlaylistMeta(playlistID: listID)
                 guard cacheOwnerID == owner else { return .invalid }
                 await addVideoPlaylist(immediatePlaylist)
 
@@ -513,17 +508,41 @@ class VideoStore {
     }
 
     // MARK: - Progressive UI Loading: YouTube Playlist Selection View
-    func fetchPlaylistVideos(playlistID: String) async {
-        videoListVideos.removeAll()
-        videoListVideosIsReady = false
-
-        var nextPageToken: String? = nil
+    func fetchPlaylistVideos(playlistID: String, loadMore: Bool = false) async {
+        if loadMore && (playlistPageIsLoading || !playlistHasMore || loadingPlaylistID != playlistID) { return }
+        if !loadMore {
+            if loadingPlaylistID == playlistID && playlistPageIsLoading { return }
+            playlistLoadID = UUID()
+            loadingPlaylistID = playlistID
+            playlistPageToken = nil
+            playlistHasMore = false
+        }
+        
+        let loadID = playlistLoadID
+        playlistPageIsLoading = true
+        defer {
+            if playlistLoadID == loadID {
+                playlistPageIsLoading = false;
+                videoListVideosIsReady = true
+            }
+        }
+        
+        if !loadMore {
+            videoListVideos.removeAll()
+            videoListVideosIsReady = false
+        }
+        let nextPageToken = playlistPageToken
 
         do {
-            repeat {
+            do {
                 // YouTubeService から対象ページの全情報を取得
-                let response = try await YouTubeService.fetchPlaylistPage(playlistID: playlistID, pageToken: nextPageToken)
+                let resolvedPlaylistID: String
+                if videoList.contains(where: { $0.id == playlistID && $0.type == .channel }) {
+                    resolvedPlaylistID = try await YouTubeService.fetchChannel(channelURL: "https://www.youtube.com/channel/\(playlistID)").uploadsID
+                } else { resolvedPlaylistID = playlistID }
+                let response = try await YouTubeService.fetchPlaylistPage(playlistID: resolvedPlaylistID, pageToken: nextPageToken)
 
+                guard loadID == playlistLoadID, !Task.isCancelled else { return }
                 let pageVideos = response.items.compactMap { item -> PlayListVideoItem? in
                     guard let id = item.snippet.resourceId.videoId else { return nil }
 
@@ -561,8 +580,9 @@ class VideoStore {
                     }
                 }
 
-                nextPageToken = response.nextPageToken
-            } while nextPageToken != nil
+                playlistPageToken = response.nextPageToken
+                playlistHasMore = response.nextPageToken != nil
+            }
         } catch {
             print("❌ fetchPlaylistVideos error:", error)
         }
@@ -590,7 +610,6 @@ class VideoStore {
                 thumbnailURL: thumbURL
             )
         } catch {
-            print("❌ fetchPlaylistMeta error:", error)
             return PlaylistListItem(
                 id: playlistID,
                 title: "Unknown Playlist",
@@ -678,6 +697,7 @@ class VideoStore {
         do {
             let data = try await WorkersAPI.getData(from: sourceURL)
             try AppGroupThumbnailStorage.save(data, for: video.id)
+            
             return true
         } catch {
             print("❌ Thumbnail download failed (\(video.id)): \(error)")
@@ -714,6 +734,7 @@ class VideoStore {
         durationSeconds: Int
     ) async {
         guard let sessionToken = AppleAccountStore.savedSessionToken else { return }
+        
         let payload = PracticeSessionPayload(
             id: UUID().uuidString,
             contentLanguage: contentLanguage,

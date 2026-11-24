@@ -172,19 +172,28 @@ struct PlayListVideoItem: Identifiable, Hashable {
 
 //　再生リスト
 struct PlaylistListItem: Identifiable, Hashable, Codable {
+    var type: YouTubeSourceType = .playlist
     let id: String
     let title: String
-    let author: String
+    let author: String?
     let thumbnailURL: URL?
+    
+    enum CodingKeys: String, CodingKey {
+        case id, title, author, type
+        case thumbnailURL = "thumbnail_url"
+    }
 }
 
-struct ChannelInfo: Codable {
+enum YouTubeSourceType: String, Codable { 
+    case channel, playlist 
+}
+
+struct ChannelInfo {
     let id: String
     let uploadsID: String
     let title: String
     let handle: String?
     let avatar: URL?
-    let videoCount: Int?
 }
 
 struct VideoItemAddRequest: Codable {

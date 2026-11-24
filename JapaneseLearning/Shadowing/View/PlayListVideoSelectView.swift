@@ -21,9 +21,39 @@ struct PlayListVideoSelectView: View {
     var body: some View {
         NavigationStack {
             ScrollViewReader { proxy in
-                List(store.videoListVideos) { video in
-                    playlistRow(video)
-                        .id(video.id)
+                List {
+                    if !addedVideos.isEmpty {
+                        Section("追加済みの動画") {
+                            ForEach(addedVideos) {
+                                video in playlistRow(video)
+                            }
+                        }
+                    }
+                    
+                    Section("動画") {
+                        ForEach(store.videoListVideos) { video in
+                            playlistRow(video)
+                                .id(video.id)
+                                .onAppear {
+                                    guard store.videoListVideos.suffix(5).contains(where: { $0.id == video.id }) else { return }
+                                    
+                                    Task {
+                                        await store.fetchPlaylistVideos(playlistID: playlistID, loadMore: true)
+                                    }
+                                }
+                        }
+                        
+                        if store.playlistPageIsLoading && store.videoListVideosIsReady {
+                            HStack {
+                                Spacer()
+                                ProgressView()
+                                Spacer()
+                            }
+                            .padding(.vertical, 8)
+                            .listRowSeparator(.hidden)
+                            .listRowBackground(Color.clear)
+                        }
+                    }
                 }
                 .navigationTitle(listTitle)
                 .toolbar {
@@ -64,13 +94,13 @@ struct PlayListVideoSelectView: View {
                         .disabled(selectedVideoIDs.isEmpty)
                     }
                 }
-                .opacity(store.videoListVideosIsReady ? 1 : 0)
-                .animation(.easeIn(duration: 0.2), value: store.videoListVideosIsReady)
+                .overlay {
+                    if !store.videoListVideosIsReady && addedVideos.isEmpty {
+                        ProgressLoadingView()
+                    }
+                }
                 .task {
                     await store.fetchPlaylistVideos(playlistID: playlistID)
-                }
-                .task(id: store.videoListVideos.count) {
-                    await scrollToFirstExistingItem(using: proxy)
                 }
             }
         }
@@ -115,17 +145,11 @@ struct PlayListVideoSelectView: View {
         }
     }
 
-    private func scrollToFirstExistingItem(using proxy: ScrollViewProxy) async {
-        guard let firstItem = store.videoListVideos.first(where: {
-            existingVideoListIDs.contains($0.id)
-        }) else {
-            return
+    private var addedVideos: [PlayListVideoItem] {
+        store.videos.filter { $0.playlistID == playlistID }.map {
+            PlayListVideoItem(id: $0.youtubeID, title: $0.title,
+                thumbnailURL: URL(string: "https://i.ytimg.com/vi/\($0.youtubeID)/mqdefault.jpg"))
         }
-
-        try? await Task.sleep(for: .seconds(0.1))
-        guard !Task.isCancelled else { return }
-
-        proxy.scrollTo(firstItem.id, anchor: .center)
     }
 
     private func toggle(_ id: String) {
