@@ -143,6 +143,10 @@ struct VideoDetailsView: View {
             guard let video else { return }
             playerVM.startVideo(video)
         }
+        .onChange(of: playerVM.activeLookUpWordIdentifiable?.id) { _, newID in
+            guard newID != nil else { return }
+            showDictionarySheet = true
+        }
         .sheet(isPresented: $showDictionarySheet,
                onDismiss: {
             playerVM.activeLookUpWordIdentifiable = nil
@@ -152,17 +156,11 @@ struct VideoDetailsView: View {
                 .ignoresSafeArea()
                 .presentationDetents(sizeClassRegular ? [.large] : [.medium, .large])
                 .presentationDragIndicator(sizeClassRegular ? .hidden : .visible)
-                .navigationTransitionCrossFadeIfAvailable()
-        }
-        .onChange(of: playerVM.activeLookUpWordIdentifiable?.id) { _, newID in
-            guard newID != nil else { return }
-            showDictionarySheet = true
         }
         .sheet(isPresented: $showSettingSheet) {
             ShadowingSettingsSheetView(playerVM: playerVM)
                 .presentationDetents(sizeClassRegular ? [.large] : [.medium, .large])
                 .presentationDragIndicator(.visible)
-                .navigationTransitionCrossFadeIfAvailable()
         }
         .sheet(item: $playerVM.activeAIQuestion, onDismiss: {
             playerVM.playPlayer()
@@ -171,11 +169,6 @@ struct VideoDetailsView: View {
                 .environment(settingsStore)
                 .environment(accountStore)
                 .presentationDetents(question.mode == .sentence ? [.large] : [.medium])
-        }
-        .onDisappear {
-            Task {
-                await playerVM.endVideo(videoID: videoID)
-            }
         }
     }
 }
@@ -307,6 +300,7 @@ struct SubtitlesContentView: View {
             .scrollTargetLayout()
             .scrollIndicatorStyle(.white)
         }
+        .environment(\.colorScheme, .dark)
         .scrollContentBackground(.hidden)
         .background(Color.clear)
         .scrollPosition($scrollPosition, anchor: .subtitleAnchor)
@@ -430,6 +424,7 @@ struct SubtitlesRowView: View, Equatable {
             .opacity(!isActive || (tapHighlight && isActive) ? 0.5 : 1.0)
             .scaleEffect(isActive ? 1.02 : 1.0, anchor: .leading)
             .animation(.spring(response: 0.35, dampingFraction: 0.7), value: isActive)
+            .opacity(isActive ? 1.0 : 0.4)
             .scaleEffect(tapHighlight ? 0.96 : 1.0, anchor: .center)
             .animation(tapHighlight ? .easeOut(duration: 0.1) : .spring(response: 0.4, dampingFraction: 0.6), value: tapHighlight)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -456,34 +451,5 @@ struct SubtitlesRowView: View, Equatable {
                 tapHighlight = false
             }
         }
-    }
-}
-
-struct AVPlayerControllerView: UIViewControllerRepresentable {
-    let player: AVPlayer
-    @Environment(SettingsStore.self) private var settingsStore
-
-    func makeUIViewController(context: Context) -> AVPlayerViewController {
-        let vc = AVPlayerViewController()
-        vc.player = player
-        player.allowsExternalPlayback = true
-        vc.showsPlaybackControls = true
-        vc.allowsPictureInPicturePlayback = settingsStore.videoAllowsPictureInPicturePlayback ? true : false
-        vc.canStartPictureInPictureAutomaticallyFromInline = false
-        vc.updatesNowPlayingInfoCenter = false
-        vc.videoGravity = .resizeAspect
-
-        return vc
-    }
-
-    func updateUIViewController(_ vc: AVPlayerViewController, context: Context) {
-        if vc.player !== player {
-            vc.player = player
-        }
-
-        vc.allowsPictureInPicturePlayback = settingsStore.videoAllowsPictureInPicturePlayback
-        vc.canStartPictureInPictureAutomaticallyFromInline = false
-        vc.updatesNowPlayingInfoCenter = false
-        vc.videoGravity = .resizeAspect
     }
 }

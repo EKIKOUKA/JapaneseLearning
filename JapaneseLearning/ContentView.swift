@@ -60,6 +60,10 @@ struct ContentView: View {
         .fullScreenCover(
             item: $nav.presentedVideo,
             onDismiss: {
+                // 動画プレイヤーの全画面切替ではなく、詳細画面を閉じた時だけ練習を終了する。
+                if let videoID = playerVM.currentVideoItem?.id {
+                    Task { await playerVM.endVideo(videoID: videoID) }
+                }
                 navigationStore.presentedVideo = nil
                 navigationStore.videoTransitionSourceID = nil
             }

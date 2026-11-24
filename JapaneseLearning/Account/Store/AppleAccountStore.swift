@@ -561,11 +561,13 @@ final class AppleAccountStore {
     }
 
     func deleteLocalAccountData() {
-        if let userID { AchieveSystemStore.removeCachedSessions(for: userID) }
+        if let userID {
+            AchieveSystemStore.removeCachedSessions(for: userID)
+            UserDefaults.standard.removeObject(forKey: "cached_videos.\(userID)")
+            UserDefaults.standard.removeObject(forKey: "cached_playlist_categories.\(userID)")
+        }
         clearLocalSession()
         accountCredits = 0
-        UserDefaults.standard.removeObject(forKey: "cached_videos")
-        UserDefaults.standard.removeObject(forKey: "cached_playlist_categories")
     }
 
     private func setCreditBalance(_ balance: Int) {

@@ -27,12 +27,11 @@ struct AppleAccountView: View {
                     }
                 }
 
-                Section("クレジット") {
-                    NavigationLink("クレジットをチャージ") {
-                        ChargeView()
-                    }
-
-                    if accountStore.isSignedIn {
+                if accountStore.isSignedIn {
+                    Section("クレジット") {
+                        NavigationLink("クレジットをチャージ") {
+                            ChargeView()
+                        }
                         NavigationLink("クレジットの利用履歴") {
                             CreditUsageHistoryView()
                         }

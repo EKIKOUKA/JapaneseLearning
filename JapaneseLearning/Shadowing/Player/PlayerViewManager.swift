@@ -24,10 +24,30 @@ protocol YouTubePlayerControlling: AnyObject {
 final class PlayerViewManager {
     // Core Components
     let player = AVPlayer()
+    @ObservationIgnored private var nativePlayerViewController: AVPlayerViewController?
+    @ObservationIgnored private var nativePlayerVideoID: String?
+
+    // 同じ動画の再表示では描画面を保持し、別動画へは操作 UI の状態を持ち越さない。
+    func nativePlayerController(for videoID: String) -> AVPlayerViewController {
+        if nativePlayerVideoID == videoID, let nativePlayerViewController {
+            return nativePlayerViewController
+        }
+
+        let controller = AVPlayerViewController()
+        controller.player = player
+        controller.view.backgroundColor = .clear
+        controller.showsPlaybackControls = true
+        controller.canStartPictureInPictureAutomaticallyFromInline = false
+        controller.updatesNowPlayingInfoCenter = false
+        controller.videoGravity = .resizeAspect
+        nativePlayerVideoID = videoID
+        nativePlayerViewController = controller
+        return controller
+    }
+
     private(set) var playerNowPlaying: PlayerNowPlaying!
     var videoStore: VideoStore!
     var settingsStore: SettingsStore?
-    private var loadStartTime: Date?
 
     let synthesizer = AVSpeechSynthesizer()
 
@@ -62,8 +82,6 @@ final class PlayerViewManager {
     private(set) var scrollToCurrentLineRequest = 0
     private var currentCaptionIndex: Int = 0
     private(set) var isLoopingSingleLine = false
-    private(set) var lockedLoopLine: CaptionLine?
-    private var currentLoopEndTime: CMTime?
 
     var hasActivePlayback: Bool = false
 
@@ -80,7 +98,7 @@ final class PlayerViewManager {
     private var playerItemStatusTask: Task<Void, Never>?
     private var presentationSizeTask: Task<Void, Never>?
     private var isSeeking = false
-    private var loopObserver: Any?
+    @ObservationIgnored private var subtitleSeekID: UUID?
     private var periodicTimeObserver: Any?
 
     // 練習タイマー
@@ -103,6 +121,14 @@ final class PlayerViewManager {
         let isDifferentVideo = currentVideoItem?.id != video.id
         let isChangingBackend = activePlaybackUsesYouTube != useYouTube
 
+        // ミニプレイヤー等から現在再生中の同一動画を展開した場合は、
+        // オーディオセッション再設定や状態再構築をスキップして高速復帰し、画面のちらつき・黒画面を防ぐ。
+        if !isDifferentVideo && !isChangingBackend && hasActivePlayback {
+            isDetailVisible = true
+            syncCaptionToCurrentPlayback()
+            return
+        }
+
         // 同じ動画を開き直す場合も、古い一覧モデルではなく再生中の位置と速度を引き継ぐ。
         var playbackVideo = video
         if !isDifferentVideo {
@@ -112,12 +138,11 @@ final class PlayerViewManager {
             playbackVideo.rate = rate
         }
 
-        if isDifferentVideo {
+        if isDifferentVideo || isChangingBackend {
             saveCurrentProgressBeforeSwitch()
         }
 
         if isChangingBackend {
-            saveCurrentProgressBeforeSwitch()
             pauseActiveBackend()
             if activePlaybackUsesYouTube {
                 youtubeController = nil
@@ -125,15 +150,7 @@ final class PlayerViewManager {
             } else {
                 player.replaceCurrentItem(with: nil)
             }
-            playerItemStatusTask?.cancel()
-            playerItemStatusTask = nil
-            presentationSizeTask?.cancel()
-            presentationSizeTask = nil
-            if let periodicTimeObserver {
-                player.removeTimeObserver(periodicTimeObserver)
-                self.periodicTimeObserver = nil
-            }
-            removeLoopObserver()
+            clearPlaybackObservers()
             isYouTubeBuffering = false
             isYouTubeSeeking = false
             pendingYouTubeSeekTarget = nil
@@ -208,7 +225,6 @@ final class PlayerViewManager {
             currentLineID = nil
             currentCaptionIndex = 0
             isLoopingSingleLine = false
-            lockedLoopLine = nil
             playerNowPlaying.nowPlayingArtwork = nil
         }
 
@@ -217,7 +233,9 @@ final class PlayerViewManager {
             playerNowPlaying.nowPlayingArtwork = image
         }
 
-        isVideoLoading = true
+        if !isSameVideo {
+            isVideoLoading = true
+        }
         hasActivePlayback = true
 
         if isYouTubePlayerReady {
@@ -232,9 +250,7 @@ final class PlayerViewManager {
                 // Only the caption URL is used. The former AVPlayer media URL
                 // returned by this endpoint is deliberately ignored.
                 let sources = try await videoStore.fetchVideoSources(video.id)
-                let captions = try await videoStore.fetchCaptions(from: sources.captionsUrl)
-                guard currentVideoItem?.id == video.id, activePlaybackUsesYouTube else { return }
-                loadCaptions(videoID: video.id, captions: captions)
+                await fetchAndApplyCaptions(videoID: video.id, url: sources.captionsUrl, usesYouTube: true)
             } catch {
                 guard currentVideoItem?.id == video.id, activePlaybackUsesYouTube else { return }
                 print("❌ Captions fetch failed: \(error.localizedDescription)")
@@ -306,18 +322,6 @@ final class PlayerViewManager {
             self.pendingYouTubeSeekTarget = nil
         }
 
-        if isLoopingSingleLine,
-           captions.indices.contains(currentCaptionIndex) {
-            let line = captions[currentCaptionIndex]
-            if time >= line.end - 0.05 {
-                seekActiveBackend(to: line.start)
-                playActiveBackend()
-                youtubeCurrentTime = line.start
-                return
-            }
-        }
-
-        guard !isSeeking, !captions.isEmpty else { return }
         updatePlaybackLogic(time)
     }
     func prepareVideo(_ video: VideoItem) {
@@ -333,8 +337,6 @@ final class PlayerViewManager {
             isVideoLoading = false
             return
         }
-
-        loadStartTime = Date()
 
         currentVideoItem = video
         playerNowPlaying.nowPlayingTitle = video.title.cleanedVideoTitle
@@ -364,9 +366,6 @@ final class PlayerViewManager {
         currentLineID = nil
         currentCaptionIndex = 0
         isLoopingSingleLine = false
-        lockedLoopLine = nil
-
-        self.currentVideoItem = item
 
         Task {
             await loadVideoProcess(for: item)
@@ -375,43 +374,27 @@ final class PlayerViewManager {
 
     // 入り口
     func loadVideoProcess(for videoItem: VideoItem) async {
-        self.currentVideoItem = videoItem
-        playerNowPlaying.nowPlayingTitle = videoItem.title.cleanedVideoTitle
-        playerNowPlaying.nowPlayingVideoID = videoItem.id
-
         do {
             let sources = try await videoStore.fetchVideoSources(videoItem.id)
             guard currentVideoItem?.id == videoItem.id, !activePlaybackUsesYouTube else { return }
 
-            print("✅ fetchVideoDataFromServer success: \(videoItem.id)")
             self.setupPlayer(with: sources.url)
             self.isProgressing = false
 
             Task { [weak self, videoItem, captionsURL = sources.captionsUrl] in
                 guard let self else { return }
 
-                do {
-                    let captions = try await self.videoStore.fetchCaptions(from: captionsURL)
-                    guard self.currentVideoItem?.id == videoItem.id, !self.activePlaybackUsesYouTube else {
-                        return
-                    }
-
-                    self.loadCaptions(videoID: videoItem.id, captions: captions)
-                } catch {
-                    print("❌ Captions fetch failed: \(error.localizedDescription)")
-                }
+                await fetchAndApplyCaptions(videoID: videoItem.id, url: captionsURL, usesYouTube: false)
             }
         } catch {
             guard currentVideoItem?.id == videoItem.id, !activePlaybackUsesYouTube else { return }
             isProgressing = true
-            print("❌ 失敗: \(error)")
             print("❌ 失敗: \(error.localizedDescription)")
         }
     }
 
     // Player Setup & Restoration
     private func setupPlayer(with url: URL) {
-        print("setupPlaye()")
         let asset = AVURLAsset(url: url)
         let playerItem = AVPlayerItem(asset: asset)
 
@@ -448,15 +431,9 @@ final class PlayerViewManager {
 
                 self.playerNowPlaying.updateNowPlayingProgress()
 
-                guard !self.isSeeking,
-                      self.player.currentItem != nil,
-                      !self.captions.isEmpty else {
-                    return
-                }
-
+                guard self.player.currentItem != nil else { return }
                 let currentTime = time.seconds
                 guard currentTime.isFinite else { return }
-                self.playerNowPlaying.updateNowPlayingProgress()
                 self.updatePlaybackLogic(currentTime)
             }
         }
@@ -491,15 +468,7 @@ final class PlayerViewManager {
 
                 switch status {
                 case .readyToPlay:
-                    print("✅ AVPlayerItem readyToPlay")
-                    if let startTime = self.loadStartTime {
-                        let duration = Date().timeIntervalSince(startTime)
-                        print("⏱️ 視頻加載耗時: \(String(format: "%.2f", duration)) 秒")
-                        self.loadStartTime = nil
-                    }
-
                     self.restorePlayProgress()
-                    self.isVideoLoading = false
                     return
 
                 case .failed:
@@ -519,6 +488,20 @@ final class PlayerViewManager {
     }
 
     // Subtitle & Ruby Logic
+    // 非同期取得の前後で対象を確認し、切り替え前の字幕が混ざるのを防ぐ。
+    private func fetchAndApplyCaptions(videoID: String, url: URL, usesYouTube: Bool) async {
+        guard currentVideoItem?.id == videoID, activePlaybackUsesYouTube == usesYouTube else { return }
+        
+        do {
+            let captions = try await videoStore.fetchCaptions(from: url)
+            guard currentVideoItem?.id == videoID, activePlaybackUsesYouTube == usesYouTube else { return }
+            loadCaptions(videoID: videoID, captions: captions)
+        } catch {
+            guard currentVideoItem?.id == videoID, activePlaybackUsesYouTube == usesYouTube else { return }
+            print("字幕の取得に失敗しました: \(error.localizedDescription)")
+        }
+    }
+
     func loadCaptions(videoID: String, captions: [CaptionLine]) {
         guard currentVideoItem?.id == videoID else { return }
 
@@ -548,6 +531,7 @@ final class PlayerViewManager {
                       !self.activePlaybackUsesYouTube,
                       self.currentVideoItem?.id == videoItem.id else { return }
 
+                self.isVideoLoading = false
                 self.updateCaptionIndexForSeek(to: videoProgress)
                 self.player.playImmediately(atRate: videoRate)
                 self.isPlaying = true
@@ -607,8 +591,17 @@ final class PlayerViewManager {
 
     @MainActor
     private func updateCaptionIndexForSeek(to time: Double) {
-        guard !captions.isEmpty else { return }
+        guard !isSeeking, !captions.isEmpty else { return }
         let epsilon = 0.05
+
+        if isLoopingSingleLine, captions.indices.contains(currentCaptionIndex) {
+            let line = captions[currentCaptionIndex]
+            if time >= line.end - epsilon {
+                seekActiveBackend(to: line.start)
+                playActiveBackend()
+                return
+            }
+        }
 
         if currentCaptionIndex >= captions.count {
             currentCaptionIndex = captions.count - 1
@@ -711,7 +704,7 @@ final class PlayerViewManager {
     }
 
     private func updatePlaybackLogic(_ time: Double) {
-        guard !captions.isEmpty else { return }
+        guard !isSeeking, !isYouTubeSeeking, !captions.isEmpty else { return }
         let epsilon = 0.05
 
         if currentCaptionIndex >= captions.count {
@@ -822,51 +815,36 @@ final class PlayerViewManager {
     }
 
     func playLine(_ line: CaptionLine, _ index: Int) async {
+        guard captions.indices.contains(index), captions[index].id == line.id else { return }
+        let requestID = UUID()
+        subtitleSeekID = requestID
         isSeeking = true
-
-        // 🟢 2️⃣ 立即同步 index（避免閃一下）,這是用戸点撃的瞬間反饋
         currentCaptionIndex = index
         currentLineID = line.id
 
-        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-
-        seekActiveBackend(to: line.start)
         if activePlaybackUsesYouTube {
+            isYouTubeSeeking = true
+            pendingYouTubeSeekTarget = line.start
+            seekActiveBackend(to: line.start)
             playActiveBackend()
+            // Web プレイヤーは既存の時刻通知でシーク完了を判定する。
         } else {
-            player.playImmediately(atRate: rate)
-        }
-
-        // 延遲一個 runloop，避免 boundary observer 在 seek 完成瞬間觸發
-        try? await Task.sleep(for: .seconds(0.1))
-        self.isSeeking = false
-    }
-
-    private func addLoopObserver(endTime: CMTime) {
-        guard !activePlaybackUsesYouTube else { return }
-        loopObserver = player.addBoundaryTimeObserver(
-            forTimes: [NSValue(time: endTime)],
-            queue: .main
-        ) { [weak self] in
-            Task { @MainActor [weak self] in
-                guard let self = self else { return }
-                guard self.isLoopingSingleLine else { return }
-
-                guard self.currentCaptionIndex < self.captions.count else { return }
-                let startSeconds = self.captions[self.currentCaptionIndex].start
-                let start = CMTime(seconds: startSeconds, preferredTimescale: 600)
-
-                self.player.seek(to: start, toleranceBefore: .zero, toleranceAfter: .zero)
-                self.playPlayer()
+            let item = player.currentItem
+            let finished = await player.seek(
+                to: CMTime(seconds: line.start, preferredTimescale: 600),
+                toleranceBefore: .zero,
+                toleranceAfter: .zero
+            )
+            guard subtitleSeekID == requestID else { return }
+            guard finished, player.currentItem === item, !activePlaybackUsesYouTube else {
+                isSeeking = false
+                return
             }
+            playActiveBackend()
         }
-    }
 
-    private func removeLoopObserver() {
-        if let observer = loopObserver {
-            player.removeTimeObserver(observer)
-            loopObserver = nil
-        }
+        guard subtitleSeekID == requestID else { return }
+        isSeeking = false
     }
 
     func playPlayer() {
@@ -907,11 +885,8 @@ final class PlayerViewManager {
     }
 
     func toggleSingleLineLoop() {
+        guard isLoopingSingleLine || captions.indices.contains(currentCaptionIndex) else { return }
         isLoopingSingleLine.toggle()
-
-        if isLoopingSingleLine {
-            guard currentCaptionIndex < captions.count else { return }
-        }
     }
 
     func seek(to seconds: Double, completion: (@Sendable (Bool) -> Void)? = nil) {
@@ -984,8 +959,21 @@ final class PlayerViewManager {
         return result
     }
 
+    // 再生方式の切り替えと終了時に、登録済みの監視をまとめて解除する。
+    private func clearPlaybackObservers() {
+        subtitleSeekID = nil
+        isSeeking = false
+        if let periodicTimeObserver {
+            player.removeTimeObserver(periodicTimeObserver)
+            self.periodicTimeObserver = nil
+        }
+        playerItemStatusTask?.cancel()
+        playerItemStatusTask = nil
+        presentationSizeTask?.cancel()
+        presentationSizeTask = nil
+    }
+
     func resetPlayer() {
-        print("🧹 reset player")
         youtubeController?.pause()
         player.pause()
         player.cancelPendingPrerolls()
@@ -993,22 +981,10 @@ final class PlayerViewManager {
 
         hasActivePlayback = false
 
-        removeLoopObserver()
-
-        if let periodic_time_observer = periodicTimeObserver {
-            player.removeTimeObserver(periodic_time_observer)
-            periodicTimeObserver = nil
-        }
-
-        playerItemStatusTask?.cancel()
-        playerItemStatusTask = nil
-
-        presentationSizeTask?.cancel()
-        presentationSizeTask = nil
+        clearPlaybackObservers()
 
         // 清循環狀態
         isLoopingSingleLine = false
-        lockedLoopLine = nil
         currentLineID = nil
         captions = []
         playerNowPlaying.nowPlayingTitle = nil
@@ -1102,7 +1078,7 @@ final class PlayerViewManager {
 
         await videoStore.reportPracticeSession(
             contentLanguage: videoItem.contentLanguage,
-            practiceDate: sqliteDateString(from: Date()),
+            practiceDate: sqliteDateString(from: start),
             startedAt: start,
             endedAt: Date(),
             durationSeconds: Int(elapsed.rounded())
