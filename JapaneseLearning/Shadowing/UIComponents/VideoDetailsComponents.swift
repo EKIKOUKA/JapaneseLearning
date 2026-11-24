@@ -90,7 +90,10 @@ struct CustomToolbarHeader: View {
                         Button {
                             playerVM.startPracticeTimingIfNeeded()
                         } label: {
-                            Label("シャドーイング開始", systemImage: "livephoto.play")
+                            Label(
+                                playerVM.practiceStartedAt != nil ? "シャドーイング中..." : "シャドーイング開始",
+                                systemImage: "livephoto.play"
+                            )
                         }
                     }
                     Divider()

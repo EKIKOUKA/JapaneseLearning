@@ -6,10 +6,8 @@
 //
 
 import Foundation
-import UIKit
-import CoreText
 
-// Captions
+// 字幕データ
 struct VideoData {
     let url: URL
     let captionsUrl: URL
@@ -20,19 +18,23 @@ struct VideoResponse: Codable {
     let captions: String
 }
 
+struct CaptionSegment: Codable, Equatable {
+    let text: String
+    let start: Double
+    let end: Double
+}
+
 struct CaptionLine: Identifiable, Equatable, Codable {
     let id: String
     let start: Double
     let end: Double
     let text: String
     let ruby: [RubyWord]?
+    let segments: [CaptionSegment]?
     var isSkip: Bool = false
 
-    // 預解析 ruby
+    // ルビの対象範囲はデコード時に確定する。
     let rubyRanges: [RubyWordRange]
-
-    // 預構建 attributed string cache
-    let cachedAttributedString: NSAttributedString
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -40,6 +42,7 @@ struct CaptionLine: Identifiable, Equatable, Codable {
         case end
         case text
         case ruby
+        case segments
     }
 
     init(from decoder: Decoder) throws {
@@ -50,6 +53,9 @@ struct CaptionLine: Identifiable, Equatable, Codable {
         end = try container.decode(Double.self, forKey: .end)
         text = try container.decode(String.self, forKey: .text)
         ruby = try container.decodeIfPresent([RubyWord].self, forKey: .ruby)
+
+        // 古い字幕に時刻付きの断片がなくても、本文はそのまま表示できる。
+        segments = try? container.decode([CaptionSegment].self, forKey: .segments)
 
         let cleanText = text.trimmingCharacters(in: .whitespacesAndNewlines)
 
@@ -78,61 +84,10 @@ struct CaptionLine: Identifiable, Equatable, Codable {
         }
 
         rubyRanges = result
-
-        cachedAttributedString = CaptionLine.buildAttributedString(
-            text: cleanText,
-            rubyRanges: result
-        )
-    }
-
-    private static func buildAttributedString(
-        text: String,
-        rubyRanges: [RubyWordRange]
-    ) -> NSAttributedString {
-        let style = NSMutableParagraphStyle()
-        style.lineSpacing = 6
-        style.alignment = .left
-
-        let baseFont = UIFont.systemFont(ofSize: 28, weight: .medium)
-        let attr = NSMutableAttributedString(
-            string: text,
-            attributes: [
-                .font: baseFont,
-                .foregroundColor: UIColor.white,
-                .paragraphStyle: style
-            ]
-        )
-
-        for ruby in rubyRanges {
-            guard let reading = ruby.reading,
-                  !reading.isEmpty,
-                  reading != ruby.surface
-            else { continue }
-
-            var rubyAnnotations: [Unmanaged<CFString>?] = [
-                Unmanaged.passRetained(reading as CFString),
-                nil, nil, nil
-            ]
-
-            let annotation = CTRubyAnnotationCreate(
-                .center,
-                .auto,
-                0.45,
-                &rubyAnnotations
-            )
-
-            attr.addAttribute(
-                kCTRubyAnnotationAttributeName as NSAttributedString.Key,
-                value: annotation,
-                range: ruby.range
-            )
-        }
-
-        return attr
     }
 }
 
-// RubyModels
+// ルビのデータ
 struct RubyWordRange: Equatable {
     let range: NSRange
     let surface: String
@@ -151,7 +106,7 @@ struct RubyWord: Codable, Equatable {
 }
 
 
-// Subtitle
+// 字幕表示用データ
 enum VideoSubtitleRubyFontStyle: String, Codable, CaseIterable {
     case system
     case HiraginoSans = "HiraginoSans-W6"

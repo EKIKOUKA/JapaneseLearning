@@ -24,7 +24,7 @@ struct AppSettings: Codable {
     var showShadowingSubtitlesRuby: Bool = true
     var videoSubtitleFontSizeScale: Double = 1.0
     var videoSubtitleFontStyle: VideoSubtitleRubyFontStyle = .system
-    var videoSubtitleDimInactiveLines: Bool = true
+    var videoSubtitleKaraokeEffects: Bool = true
     var videoAutoJumpToNextLine: Bool = false
     var videoAllowsPictureInPicturePlayback: Bool = false
     var useNativeVideoPlayer: Bool = true

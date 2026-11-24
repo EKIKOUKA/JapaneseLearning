@@ -40,11 +40,13 @@ struct ShadowingSettingsSheetView: View {
                 Section(footer: Text("字幕のサイズを調整します。")) {
                     VideoSubtitleFontSizeSliderView()
                 }
-
-                Section(footer: Text("再生中の行の話が終了すると、自動的に次の文へ移動します")) {
-                    Toggle(isOn: $settingsStoreBindable.videoAutoJumpToNextLine) {
-                        Text("次の文へ自動移動")
-                    }
+                
+                Section(footer: Text("再生に合わせて文字が左から順に明るくなり、読み終えた部分が少し浮き上がります。")) {
+                    Toggle("字幕のカラオケ効果", isOn: $settingsStoreBindable.videoSubtitleKaraokeEffects)
+                }
+                
+                Section(footer: Text("再生中の行の話が終了すると、自動的に次の文へ移動します。")) {
+                    Toggle("次の文へ自動移動", isOn: $settingsStoreBindable.videoAutoJumpToNextLine)
                 }
 
                 Section(footer: Text("字幕の色を変更します")) {
@@ -78,6 +80,12 @@ struct ShadowingSettingsSheetView: View {
                 if (settingsStoreBindable.useNativeVideoPlayer) {
                     Section(footer: Text("ビデオのピクチャ・イン・ピクチャ（PiP）を許可します。")) {
                         Toggle("ピクチャ・イン・ピクチャ", isOn: $settingsStoreBindable.videoAllowsPictureInPicturePlayback)
+                    }
+                }
+                
+                Section() {
+                    NavigationLink("カラオケ効果テスト") {
+                        SubtitleRenderingPreview()
                     }
                 }
             }
