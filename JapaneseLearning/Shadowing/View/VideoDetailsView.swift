@@ -26,8 +26,6 @@ struct VideoDetailsView: View {
     @State private var drawerOffset: CGFloat = 0
     @State private var lastDragOffset: CGFloat = 0
 
-    @State private var youtubePlayerStatus = "Loading YouTube player…"
-
     private var displayAspectRatio: CGFloat {
         guard let ratio = video?.aspectRatio, ratio > 0 else {
             return 16.0 / 9.0
@@ -62,16 +60,16 @@ struct VideoDetailsView: View {
                 } else {
                     ZStack(alignment: .top) {
                         layout {
-                            YouTubeVideoContentArea(
-                                videoID: video?.youtubeID ?? "",
-                                playerManager: playerVM,
-                                playerStatus: $youtubePlayerStatus,
+                            VideoContentArea(
+                                playerVM: playerVM,
+                                videoID: videoID,
                                 drawerOffset: $drawerOffset,
                                 lastDragOffset: $lastDragOffset,
                                 maxDrawerOffset: currentVideoHeight,
-                                containerWidth: fullWidth,
+                                containerWidth: videoWidth,
                                 aspectRatio: displayAspectRatio,
-                                isLandscape: isLandscape
+                                isLandscape: isLandscape,
+                                isPlayerReady: playerVM.currentVideoItem?.id == videoID && !playerVM.isVideoLoading
                             )
                             .simultaneousGesture(
                                 DragGesture(minimumDistance: 8, coordinateSpace: .global)
@@ -125,6 +123,10 @@ struct VideoDetailsView: View {
             guard let video else { return }
             playerVM.startVideo(video)
         }
+        .onChange(of: playerVM.activeLookUpWordIdentifiable?.id) { _, newID in
+            guard newID != nil else { return }
+            showDictionarySheet = true
+        }
         .sheet(isPresented: $showDictionarySheet,
                onDismiss: {
             playerVM.activeLookUpWordIdentifiable = nil
@@ -134,17 +136,11 @@ struct VideoDetailsView: View {
                 .ignoresSafeArea()
                 .presentationDetents(sizeClassRegular ? [.large] : [.medium, .large])
                 .presentationDragIndicator(sizeClassRegular ? .hidden : .visible)
-                .navigationTransition_crossFade_IfAvailable()
-        }
-        .onChange(of: playerVM.activeLookUpWordIdentifiable?.id) { _, newID in
-            guard newID != nil else { return }
-            showDictionarySheet = true
         }
         .sheet(isPresented: $showSettingSheet) {
             ShadowingSettingsSheetView(playerVM: playerVM)
                 .presentationDetents(sizeClassRegular ? [.large] : [.medium, .large])
                 .presentationDragIndicator(.visible)
-                .navigationTransition_crossFade_IfAvailable()
         }
         .sheet(item: $playerVM.activeAIQuestion, onDismiss: {
             playerVM.playPlayer()
@@ -153,11 +149,6 @@ struct VideoDetailsView: View {
                 .environment(settingsStore)
                 .environment(accountStore)
                 .presentationDetents(question.mode == .sentence ? [.large] : [.medium])
-        }
-        .onDisappear {
-            Task {
-                await playerVM.endVideo(videoID: videoID)
-            }
         }
     }
 }
@@ -192,15 +183,16 @@ struct VideoContentArea: View {
                         .frame(width: videoWidth, height: baseHeight)
                         .clipped()
                         .opacity(drawerOffset >= maxDrawerOffset ? 0 : 1)
+                        .allowsHitTesting(false)
                 } else {
                     Color.black.opacity(0.1)
                 }
 
-                AVPlayerControllerView(player: playerVM.player)
-                    .id(videoID)
-                    .opacity(!isPlayerReady || drawerOffset >= maxDrawerOffset ? 0 : 1)
+                AVPlayerControllerView(controller: playerVM.nativePlayerController(for: videoID))
+                    .opacity(isPlayerReady ? 1 : 0)
+                    .animation(.easeInOut(duration: 1), value: isPlayerReady)
+                    .opacity(drawerOffset >= maxDrawerOffset ? 0 : 1)
             }
-            .animation(.easeInOut(duration: 1.0), value: isPlayerReady)
             .frame(width: videoWidth, height: baseHeight)
             .frame(
                 height: isLandscape ? baseHeight : max(0, baseHeight - drawerOffset),
@@ -240,10 +232,13 @@ struct VideoContentArea: View {
     }
 }
 
+// 実際のスクロール軌跡を、字幕行ごとに時間をずらして再現する。
+
 struct SubtitlesContentView: View {
     private struct VisibleCaptionRow: Identifiable {
         let index: Int
         let line: CaptionLine
+        let position: Int
 
         var id: String { line.id }
     }
@@ -251,21 +246,41 @@ struct SubtitlesContentView: View {
     let playerVM: PlayerViewManager
     @Environment(SettingsStore.self) private var settingsStore
     @State private var scrollPosition = ScrollPosition(idType: String.self)
+    @State private var scrollPhase: ScrollPhase = .idle
+    @State private var returnToCurrentLineTask: Task<Void, Never>?
     @State private var isUserScrolling = false
     @State private var isScrollIdle = false
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    // 再生中の行より下では、スクロール方向に関係なく 1 行ごとに遅らせる。
+    @State private var scrollHistory = ScrollOffsetHistory()
+    @State private var isLagRunning = false
+    @State private var lagTask: Task<Void, Never>?
+    @State private var isLagMovingBackward = false
+
+    private let scrollDuration = 0.5 // 自動スクロールの所要時間
+    private let lagStep = 0.05       // 1 行ごとに加える遅延（秒）0.035
+    private let lagMaxRows = 8       // この行数に達したら遅延の加算を止める
+
+    private var effectiveLagStep: Double {
+        lagStep * (isLagMovingBackward ? 0.5 : 1)
+    }
 
     var body: some View {
         let showShadowingSubtitlesRuby = settingsStore.showShadowingSubtitlesRuby
         let fontSizeScale = settingsStore.videoSubtitleFontSizeScale
         let fontStyle = settingsStore.videoSubtitleFontStyle
         let fontColor = settingsStore.videoSubtitleFontUIColor
-        let blurInactiveLines = settingsStore.videoSubtitleDimInactiveLines
         let visibleCaptions = playerVM.visiableCaptions
-        let visibleRows = visibleCaptions.map { VisibleCaptionRow(index: $0.0, line: $0.1) }
+        let visibleRows = visibleCaptions.enumerated().map { position, caption in
+            VisibleCaptionRow(index: caption.0, line: caption.1, position: position)
+        }
+        let activePosition = visibleRows.firstIndex { $0.id == playerVM.currentLineID }
 
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 0) {
-                Color.clear.frame(height: 2)
+                Color.clear.frame(height: 10)
                 ForEach(visibleRows) { row in
                     SubtitlesRowView(
                         playerVM: playerVM,
@@ -275,7 +290,9 @@ struct SubtitlesContentView: View {
                         fontSizeScale: fontSizeScale,
                         fontStyle: fontStyle,
                         fontColor: fontColor,
-                        blurInactiveLines: blurInactiveLines,
+                        isUserScrolling: isUserScrolling,
+                        blurRadius: subtitleBlurRadius(for: row.position, activePosition: activePosition),
+                        karaokeEffectsEnabled: settingsStore.videoSubtitleKaraokeEffects,
                         onTapLine: {
                             Task {
                                 await playerVM.playLine(row.line, row.index)
@@ -283,18 +300,32 @@ struct SubtitlesContentView: View {
                         }
                     )
                     .equatable()
+                    .scrollLag(
+                        history: scrollHistory,
+                        delay: lagDelay(for: row.position, activePosition: activePosition),
+                        isRunning: isLagRunning
+                    )
                 }
-                Color.clear.frame(height: 250)
+                Color.clear.frame(height: 500)
             }
             .scrollTargetLayout()
-            .scrollIndicatorStyle(.white)
         }
+        .environment(\.colorScheme, .dark)
         .scrollContentBackground(.hidden)
         .background(Color.clear)
         .scrollPosition($scrollPosition, anchor: .subtitleAnchor)
+        .onScrollGeometryChange(for: CGFloat.self) { geometry in
+            geometry.contentOffset.y
+        } action: { _, newValue in
+            scrollHistory.record(newValue)
+        }
         .onScrollPhaseChange { _, newPhase in
+            scrollPhase = newPhase
+
             switch newPhase {
                 case .tracking, .interacting, .decelerating:
+                    returnToCurrentLineTask?.cancel()
+                    stopLag()
                     isUserScrolling = true
                     isScrollIdle = false
 
@@ -310,7 +341,7 @@ struct SubtitlesContentView: View {
             guard isScrollIdle, isUserScrolling else { return }
 
             try? await Task.sleep(for: .seconds(1))
-            guard !Task.isCancelled, isScrollIdle else { return }
+            guard !Task.isCancelled, isScrollIdle, scrollPhase == .idle else { return }
 
             defer { isUserScrolling = false }
             guard playerVM.isPlaying,
@@ -325,38 +356,107 @@ struct SubtitlesContentView: View {
                 scrollPosition.scrollTo(id: currentLineID, anchor: .subtitleAnchor)
             }
         }
-        .task(id: playerVM.scrollToCurrentLineRequest) {
-            guard playerVM.scrollToCurrentLineRequest > 0 else { return }
+        .onChange(of: playerVM.scrollToCurrentLineRequest) {
+            returnToCurrentLineTask?.cancel()
+            stopLag()
+            returnToCurrentLineTask = Task {
+                try? await Task.sleep(for: .seconds(0.1))
 
-            try? await Task.sleep(for: .seconds(0.1))
-            guard !Task.isCancelled,
-                  let currentLineID = playerVM.currentLineID else {
-                return
+                guard !Task.isCancelled,
+                      scrollPhase == .idle || scrollPhase == .animating,
+                      let currentLineID = playerVM.currentLineID else { return }
+
+                isUserScrolling = false
+                isScrollIdle = false
+                scroll(to: currentLineID)
             }
-
-            isUserScrolling = false
-            isScrollIdle = false
-            scroll(to: currentLineID)
         }
-        .onChange(of: playerVM.currentLineID) { _, new in
+        .onDisappear {
+            returnToCurrentLineTask?.cancel()
+            stopLag()
+        }
+        .onChange(of: reduceMotion) { _, enabled in
+            if enabled { stopLag() }
+        }
+        .onChange(of: playerVM.currentLineID) { old, new in
             guard playerVM.isPlaying,
                   !isUserScrolling,
                   let newID = new else {
                 return
             }
 
+            // 前後の隣接行への移動では、下側の字幕を順番に追従させる。
+            if let previous = visibleRows.firstIndex(where: { $0.id == old }),
+               let current = visibleRows.firstIndex(where: { $0.id == newID }),
+               abs(current - previous) == 1,
+               !reduceMotion {
+                isLagMovingBackward = current < previous
+                startLag()
+            } else {
+                stopLag()
+            }
             scroll(to: newID)
         }
     }
 
+    private func subtitleBlurRadius(for position: Int, activePosition: Int?) -> CGFloat {
+        let previousBlur: CGFloat = 2 // 現在行より上の字幕
+        let blurStep: CGFloat = 1     // 下側の字幕 1 行ごとの増加量
+        let maximumBlur: CGFloat = 4  // 下側の字幕の上限
+
+        guard let activePosition else { return 0 }
+        let distance = position - activePosition
+        if (-3 ... -1).contains(distance) { return previousBlur }
+        guard (1...10).contains(distance) else { return 0 }
+
+        return min(CGFloat(distance) * blurStep, maximumBlur)
+    }
+
+    /// 後退時は現在行と直下の行を同じ遅延にし、両者が重ならないようにする。
+    private func lagDelay(for position: Int, activePosition: Int?) -> Double {
+        guard let activePosition else { return 0 }
+
+        let distance = position - activePosition
+        let delaySteps: Int
+        if isLagMovingBackward {
+            // 上側も現在行と一緒に追従させ、下側ほど先に動かす。
+            delaySteps = min(max(lagMaxRows - distance + 1, 0), lagMaxRows)
+        } else {
+            delaySteps = min(max(distance, 0), lagMaxRows)
+        }
+
+        return Double(delaySteps) * effectiveLagStep
+    }
+
+    private func startLag() {
+        lagTask?.cancel()
+        if !isLagRunning { scrollHistory.reset() }
+        isLagRunning = true
+
+        let total = scrollDuration + effectiveLagStep * Double(lagMaxRows) + 0.15
+        lagTask = Task {
+            try? await Task.sleep(for: .seconds(total))
+            guard !Task.isCancelled else { return }
+
+            isLagRunning = false
+        }
+    }
+
+    private func stopLag() {
+        lagTask?.cancel()
+        isLagRunning = false
+    }
+
     private func scroll(to lineID: String) {
-        withAnimation(.timingCurve(0.4, 0.0, 0.2, 1.0, duration: 0.5)) {
+        withAnimation(.timingCurve(0.4, 0.0, 0.2, 1.0, duration: scrollDuration)) {
             scrollPosition.scrollTo(id: lineID, anchor: .subtitleAnchor)
         }
     }
 }
 
-struct SubtitlesRowView: View, Equatable {
+private struct SubtitlesRowView: View, Equatable {
+    @Environment(\.scenePhase) private var scenePhase
+
     static func == (lhs: SubtitlesRowView, rhs: SubtitlesRowView) -> Bool {
         lhs.line == rhs.line &&
         lhs.isActive == rhs.isActive &&
@@ -364,7 +464,9 @@ struct SubtitlesRowView: View, Equatable {
         lhs.fontSizeScale == rhs.fontSizeScale &&
         lhs.fontStyle == rhs.fontStyle &&
         lhs.fontColor == rhs.fontColor &&
-        lhs.blurInactiveLines == rhs.blurInactiveLines
+        lhs.isUserScrolling == rhs.isUserScrolling &&
+        lhs.blurRadius == rhs.blurRadius &&
+        lhs.karaokeEffectsEnabled == rhs.karaokeEffectsEnabled
     }
 
     let playerVM: PlayerViewManager
@@ -374,44 +476,64 @@ struct SubtitlesRowView: View, Equatable {
     let fontSizeScale: Double
     let fontStyle: VideoSubtitleRubyFontStyle
     let fontColor: UIColor
-    let blurInactiveLines: Bool
+    let isUserScrolling: Bool
+    let blurRadius: CGFloat
+    let karaokeEffectsEnabled: Bool
     let onTapLine: () -> Void
 
     @State private var tapHighlight = false
 
     var body: some View {
+        // 行内に異なる開始時刻がなければ、行全体を一度に強調する。
+        let timedSegments = (karaokeEffectsEnabled ? line.segments : nil)?.filter {
+            $0.start.isFinite && $0.end.isFinite && $0.end > $0.start &&
+            !$0.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        } ?? []
+        let supportsKaraokeEffects = Set(timedSegments.map(\.start)).count > 1
+        let hasFragmentTiming = isActive && supportsKaraokeEffects
+        let usesKeyframes = KaraokeLayerRenderer.isEnabled && KaraokeLayerRenderer.usesKeyframes
+
         ZStack(alignment: .leading) {
             RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .fill(Color.white.opacity(tapHighlight ? 0.15 : 0))
                 .padding(.horizontal, 10)
 
-            RubyLabel(
-                text: line.text,
-                rubyRanges: rubyRanges,
-                cachedAttributedString: line.cachedAttributedString,
-                fontSizeScale: fontSizeScale,
-                fontStyle: fontStyle,
-                fontColor: fontColor,
-                onTapWord: { word in
-                    if isActive {
-                        playerVM.handleWordLookup(word)
-                    } else {
+            // 描画更新時にプレーヤーの時刻を読み、再生速度の変更やシークに追従する。
+            TimelineView(.animation(
+                minimumInterval: usesKeyframes ? 0.1 : nil,
+                paused: scenePhase != .active || !hasFragmentTiming || (!usesKeyframes && !playerVM.isPlaying)
+            )) { _ in
+                RubyLabel(
+                    text: line.text,
+                    rubyRanges: rubyRanges,
+                    fontSizeScale: fontSizeScale,
+                    fontStyle: fontStyle,
+                    fontColor: karaokeEffectsEnabled ? fontColor : .white,
+                    karaokeSegments: hasFragmentTiming ? line.segments : nil,
+                    karaokeTime: hasFragmentTiming ? playerVM.playbackCurrentTime : 0,
+                    karaokeAnimationRate: usesKeyframes && hasFragmentTiming
+                        ? (scenePhase == .active && playerVM.isPlaying && playerVM.player.timeControlStatus == .playing ? playerVM.player.rate : 0)
+                        : nil,
+                    onTapWord: { word in
+                        if isActive {
+                            playerVM.handleWordLookup(word)
+                        } else {
+                            triggerHighlight()
+                            onTapLine()
+                        }
+                    },
+                    onTapLine: {
                         triggerHighlight()
                         onTapLine()
                     }
-                },
-                onTapLine: {
-                    triggerHighlight()
-                    onTapLine()
-                }
-            )
+                )
+            }
             .fixedSize(horizontal: false, vertical: true)
             .padding(.vertical, 10)
             .padding(.horizontal, 20)
-            .blur(radius: isActive || !blurInactiveLines ? 0 : 1.5)
-            .opacity(!isActive || (tapHighlight && isActive) ? 0.5 : 1.0)
-            .scaleEffect(isActive ? 1.02 : 1.0, anchor: .leading)
+            .blur(radius: isActive || isUserScrolling || !playerVM.isPlaying ? 0 : blurRadius)
             .animation(.spring(response: 0.35, dampingFraction: 0.7), value: isActive)
+            .opacity(isActive ? 1.0 : 0.4)
             .scaleEffect(tapHighlight ? 0.96 : 1.0, anchor: .center)
             .animation(tapHighlight ? .easeOut(duration: 0.1) : .spring(response: 0.4, dampingFraction: 0.6), value: tapHighlight)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -438,34 +560,5 @@ struct SubtitlesRowView: View, Equatable {
                 tapHighlight = false
             }
         }
-    }
-}
-
-struct AVPlayerControllerView: UIViewControllerRepresentable {
-    let player: AVPlayer
-    @Environment(SettingsStore.self) private var settingsStore
-
-    func makeUIViewController(context: Context) -> AVPlayerViewController {
-        let vc = AVPlayerViewController()
-        vc.player = player
-        player.allowsExternalPlayback = true
-        vc.showsPlaybackControls = true
-        vc.allowsPictureInPicturePlayback = settingsStore.videoAllowsPictureInPicturePlayback ? true : false
-        vc.canStartPictureInPictureAutomaticallyFromInline = false
-        vc.updatesNowPlayingInfoCenter = false
-        vc.videoGravity = .resizeAspect
-
-        return vc
-    }
-
-    func updateUIViewController(_ vc: AVPlayerViewController, context: Context) {
-        if vc.player !== player {
-            vc.player = player
-        }
-
-        vc.allowsPictureInPicturePlayback = settingsStore.videoAllowsPictureInPicturePlayback
-        vc.canStartPictureInPictureAutomaticallyFromInline = false
-        vc.updatesNowPlayingInfoCenter = false
-        vc.videoGravity = .resizeAspect
     }
 }

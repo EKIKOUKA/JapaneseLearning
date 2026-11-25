@@ -12,17 +12,16 @@ struct PodcastTranscriptView: View {
     var body: some View {
         VStack(spacing: 8) {
             HStack {
-                Link("\(episode.show)", destination: episode.source)
+                Link("Apple Podcastsで聴く", destination: episode.source)
                     .lineLimit(1)
-                if let feed = episode.feed {
-                    Link("RSS", destination: feed)
-                }
             }
             .font(.caption)
 
             if let errorMessage {
                 Text(errorMessage)
-                Button("字幕の生成を再試行") { attempt += 1 }
+                Button("字幕の生成を再試行") {
+                    attempt += 1
+                }
             }
 
             if !playerVM.captions.isEmpty, playerVM.currentVideoItem?.id == episode.id {
@@ -33,12 +32,15 @@ struct PodcastTranscriptView: View {
                     .foregroundStyle(.white)
             }
         }
-        .task(id: attempt) { await recognizeWhileOpen() }
+        .task(id: attempt) {
+            await recognizeWhileOpen()
+        }
     }
 
     private func recognizeWhileOpen() async {
         errorMessage = nil
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+
         do {
             let cache = try PodcastLibrary.shared.transcript(for: episode)
             windows = cache?.windows ?? [:]
@@ -51,6 +53,7 @@ struct PodcastTranscriptView: View {
 
             try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
             defer { try? FileManager.default.removeItem(at: folder) }
+
             async let locale = PodcastSpeechProbe.prepare(language: episode.language)
             async let url = PodcastSpeechProbe.download(audioURL: episode.audioURL, to: folder)
             let source = try await AVAudioFile(forReading: url)
@@ -76,8 +79,9 @@ struct PodcastTranscriptView: View {
                     source: source, locale: supportedLocale, language: episode.language, windowIndex: index, folder: folder
                 )
                 try Task.checkCancellation()
+
                 var updated = windows
-                updated[index] = rows.enumerated().compactMap { rowIndex, words in
+                updated[index] = rows.enumerated().compactMap { rowIndex, words -> CaptionLine? in
                     guard let start = words.compactMap(\.start).first,
                           let end = words.compactMap(\.end).last else { return nil }
                     return CaptionLine(

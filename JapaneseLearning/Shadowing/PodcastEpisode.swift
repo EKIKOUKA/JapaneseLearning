@@ -17,7 +17,7 @@ struct PodcastEpisode: Codable, Hashable, Identifiable {
     }
 
     var video: VideoItem {
-        VideoItem(id: id, youtubeID: "", title: title, durationSeconds: durationSeconds, aspectRatio: 16.0 / 9.0, contentLanguage: language)
+        VideoItem(id: id, title: title, durationSeconds: durationSeconds, aspectRatio: 16.0 / 9.0, contentLanguage: language)
     }
 
     static let sample = PodcastEpisode(

@@ -22,7 +22,7 @@ class AchieveSystemStore {
 
     @ObservationIgnored
     private var cacheKey: String {
-        "achieve_system_practice_sessions_v2.\(AppleAccountStore.savedUserID ?? "signed-out")"
+        "achieve_system_practice_sessions.\(AppleAccountStore.savedUserID ?? "signed-out")"
     }
     @ObservationIgnored private var cachedUserID: String?
     @ObservationIgnored private var syncCursor: Int64?
@@ -41,8 +41,10 @@ class AchieveSystemStore {
     }
 
     static func removeCachedSessions(for userID: String) {
-        if let url = cacheURL(for: userID) { try? FileManager.default.removeItem(at: url) }
-        UserDefaults.standard.removeObject(forKey: "achieve_system_practice_sessions_v2.\(userID)")
+        if let url = cacheURL(for: userID) {
+            try? FileManager.default.removeItem(at: url)
+        }
+        UserDefaults.standard.removeObject(forKey: "achieve_system_practice_sessions.\(userID)")
     }
 
     private var loadToken: Int = 0
@@ -75,7 +77,7 @@ class AchieveSystemStore {
 
         guard steps < 0 else { return true }
         guard let earliestPracticeDate = filteredRawSessions.compactMap({
-            PracticeDateFormat.sqliteDateTime(from: $0.started_at)
+            PracticeDateFormat.utcDateTime(from: $0.started_at)
         }).min() else {
             return false
         }
@@ -136,7 +138,7 @@ class AchieveSystemStore {
                       !page.hasMore || page.nextCursor > (page.reset ? 0 : cursor) else {
                     throw URLError(.cannotParseResponse)
                 }
-                
+
                 for change in page.changes {
                     if change.deleted {
                         rows.removeValue(forKey: change.id)
@@ -146,7 +148,7 @@ class AchieveSystemStore {
                         throw URLError(.cannotParseResponse)
                     }
                 }
-                
+
                 cursor = page.nextCursor
                 until = page.until
                 accountID = page.accountID
@@ -218,7 +220,7 @@ class AchieveSystemStore {
 
         let bounds = Self.queryBounds(for: selectedRange, referenceDate: selectedDate)
         let seconds = filteredRawSessions.reduce(into: 0) { total, row in
-            guard let date = PracticeDateFormat.sqliteDateTime(from: row.started_at) else { return }
+            guard let date = PracticeDateFormat.utcDateTime(from: row.started_at) else { return }
             let day = Self.tokyoCalendar.startOfDay(for: date)
             guard day >= bounds.start && day <= bounds.end else { return }
             total += row.duration_seconds
@@ -348,7 +350,7 @@ class AchieveSystemStore {
         anchorDate: Date
     ) -> [PracticeChartPoint] {
         let sessions: [(date: Date, row: PracticeTimingRow)] = items.compactMap { row in
-            guard let date = PracticeDateFormat.sqliteDateTime(from: row.started_at) else {
+            guard let date = PracticeDateFormat.utcDateTime(from: row.started_at) else {
                 return nil
             }
             return (date, row)

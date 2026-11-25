@@ -36,6 +36,7 @@ struct VideoContentView: View {
                         let transitionSourceID = navigationStore.videoTransitionSourceID
 
                         videoPath.removeLast()
+                        Task { await playerVM.endVideo(videoID: id) }
 
                         Task { @MainActor in
                             try? await Task.sleep(for: .seconds(1))
@@ -71,21 +72,41 @@ struct VideoContentView: View {
 
 struct VideoDetailsFullScreenSheet: View {
     @Environment(PlayerViewManager.self) private var playerVM
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     let videoID: String
     let dismissesToMiniPlayer: Bool
     let onDismiss: () -> Void
 
-    private let topCornerRadius: CGFloat = 48
     @State private var dragOffset: CGFloat = 0
+
+    private var isMac: Bool {
+        ProcessInfo.processInfo.isiOSAppOnMac
+    }
+
+    private var isRegular: Bool {
+        horizontalSizeClass == .regular || isMac
+    }
+
+    private var topCornerRadius: CGFloat {
+        if isMac {
+            return 0
+        }
+
+        switch UIDevice.current.userInterfaceIdiom {
+            case .pad:
+                return 16
+            case .phone:
+                return 48
+            default:
+                return 16
+        }
+    }
 
     var body: some View {
         GeometryReader { geometry in
-            ZStack {
-                if dragOffset == 0 {
-                    videoCoverView(playerVM: playerVM, sizeClass_regular: false)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                }
+            let safeTop = max(geometry.safeAreaInsets.top, topSafeAreaInset)
 
+            ZStack {
                 VStack(spacing: 0) {
                     Capsule()
                         .fill(.white.opacity(0.55))
@@ -94,7 +115,7 @@ struct VideoDetailsFullScreenSheet: View {
                             maxHeight: .infinity,
                             alignment: .bottom
                         )
-                        .frame(height: topSafeAreaInset + 11)
+                        .frame(height: safeTop + 11)
                         .contentShape(Rectangle())
 
                     VideoDetailsView(
@@ -111,7 +132,7 @@ struct VideoDetailsFullScreenSheet: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background {
-                    videoCoverView(playerVM: playerVM, sizeClass_regular: false)
+                    videoCoverView(playerVM: playerVM, sizeClass_regular: isRegular)
                         .ignoresSafeArea()
                 }
                 .clipShape(
@@ -122,11 +143,18 @@ struct VideoDetailsFullScreenSheet: View {
                         topTrailingRadius: topCornerRadius
                     )
                 )
+                .overlay {
+                    if playerVM.practiceStartedAt != nil {
+                        ShadowingPracticeBorder(cornerRadius: topCornerRadius)
+                            .allowsHitTesting(false)
+                            .accessibilityHidden(true)
+                    }
+                }
                 .offset(y: dragOffset)
                 .simultaneousGesture(
                     topAreaDismissGesture(
                         screenSize: geometry.size,
-                        maximumStartY: topSafeAreaInset + 84
+                        maximumStartY: safeTop + 84
                     )
                 )
             }
@@ -186,6 +214,30 @@ struct VideoDetailsFullScreenSheet: View {
             withAnimation(.spring(duration: 0.32, bounce: 0.15)) {
                 dragOffset = 0
             }
+        }
+    }
+}
+
+private struct ShadowingPracticeBorder: View {
+    let cornerRadius: CGFloat
+    @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var bright = false
+
+    private var breathes: Bool {
+        scenePhase == .active && !reduceMotion
+    }
+
+    var body: some View {
+        RoundedRectangle(cornerRadius: cornerRadius)
+        .strokeBorder(Color.accentColor, lineWidth: 6)
+        .opacity(bright ? 0.85 : 0.3)
+        .animation(
+            breathes ? .easeInOut(duration: 1.5).repeatForever(autoreverses: true) : nil,
+            value: bright
+        )
+        .onChange(of: breathes, initial: true) { _, active in
+            bright = active
         }
     }
 }

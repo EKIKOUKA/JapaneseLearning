@@ -7,11 +7,12 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-        A10203040506070809101115 /* StripePayments in Frameworks */ = {isa = PBXBuildFile; productRef = A10203040506070809101116 /* StripePayments */; };
 		0EC468F1308C4AA10028D7BC /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 0EC468F0308C4AA10028D7BC /* Localizable.xcstrings */; };
 		0EC468F2308C4AA10028D7BC /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 0EC468F0308C4AA10028D7BC /* Localizable.xcstrings */; };
 		0EEFE0292FEFD02500BFC25F /* UtilityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EEFE0282FEFD02500BFC25F /* UtilityTests.swift */; };
 		A10203040506070809101112 /* StripeApplePay in Frameworks */ = {isa = PBXBuildFile; productRef = A10203040506070809101113 /* StripeApplePay */; };
+		A10203040506070809101115 /* StripePayments in Frameworks */ = {isa = PBXBuildFile; productRef = A10203040506070809101116 /* StripePayments */; };
+		B10203040506070809101112 /* DeviceKit in Frameworks */ = {isa = PBXBuildFile; productRef = B10203040506070809101113 /* DeviceKit */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -69,7 +70,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				A10203040506070809101112 /* StripeApplePay in Frameworks */,
-                A10203040506070809101115 /* StripePayments in Frameworks */,
+				A10203040506070809101115 /* StripePayments in Frameworks */,
+				B10203040506070809101112 /* DeviceKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -148,7 +150,8 @@
 			name = JapaneseLearning;
 			packageProductDependencies = (
 				A10203040506070809101113 /* StripeApplePay */,
-                A10203040506070809101116 /* StripePayments */,
+				A10203040506070809101116 /* StripePayments */,
+				B10203040506070809101113 /* DeviceKit */,
 			);
 			productName = JapaneseGrammar;
 			productReference = 7F4336D12F70600400783EE3 /* JapaneseLearning.app */;
@@ -185,6 +188,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				A10203040506070809101114 /* XCRemoteSwiftPackageReference "stripe-ios-spm" */,
+				B10203040506070809101114 /* XCRemoteSwiftPackageReference "DeviceKit" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 7FF22E852ED7EC6600603529;
@@ -429,7 +433,7 @@
 				CODE_SIGN_ENTITLEMENTS = JapaneseLearning/JapaneseLearning.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 4;
 				DEVELOPMENT_TEAM = 8YG68RBKNK;
 				DRIVERKIT_DEPLOYMENT_TARGET = 27.0;
 				ENABLE_APP_SANDBOX = YES;
@@ -441,6 +445,7 @@
 				INFOPLIST_FILE = JapaneseLearning/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "ことね - 言語シャドーイング";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.education";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "ポッドキャストの字幕生成のためデバイス内で処理し、外部送信は行わない";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
@@ -451,7 +456,7 @@
 					"@executable_path/Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 27.0;
-				MARKETING_VERSION = 0.1.3;
+				MARKETING_VERSION = 0.0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.makoto.languagelearning.webview;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -481,7 +486,7 @@
 				CODE_SIGN_ENTITLEMENTS = JapaneseLearning/JapaneseLearning.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 4;
 				DEVELOPMENT_TEAM = 8YG68RBKNK;
 				DRIVERKIT_DEPLOYMENT_TARGET = 27.0;
 				ENABLE_APP_SANDBOX = YES;
@@ -493,6 +498,7 @@
 				INFOPLIST_FILE = JapaneseLearning/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "ことね - 言語シャドーイング";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.education";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "ポッドキャストの字幕生成のためデバイス内で処理し、外部送信は行わない";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
@@ -503,7 +509,7 @@
 					"@executable_path/Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 27.0;
-				MARKETING_VERSION = 0.1.3;
+				MARKETING_VERSION = 0.0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.makoto.languagelearning.webview;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -565,19 +571,35 @@
 				maximumVersion = 89.6.4;
 				minimumVersion = 26.9.0;
 			};
+			traits = (
+			);
+		};
+		B10203040506070809101114 /* XCRemoteSwiftPackageReference "DeviceKit" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/devicekit/DeviceKit.git";
+			requirement = {
+				kind = versionRange;
+				maximumVersion = 89.6.4;
+				minimumVersion = 5.10.0;
+			};
 		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-        A10203040506070809101116 /* StripePayments */ = {
-            isa = XCSwiftPackageProductDependency;
-            package = A10203040506070809101114;
-            productName = StripePayments;
-        };
 		A10203040506070809101113 /* StripeApplePay */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = A10203040506070809101114 /* XCRemoteSwiftPackageReference "stripe-ios-spm" */;
 			productName = StripeApplePay;
+		};
+		A10203040506070809101116 /* StripePayments */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A10203040506070809101114 /* XCRemoteSwiftPackageReference "stripe-ios-spm" */;
+			productName = StripePayments;
+		};
+		B10203040506070809101113 /* DeviceKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B10203040506070809101114 /* XCRemoteSwiftPackageReference "DeviceKit" */;
+			productName = DeviceKit;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

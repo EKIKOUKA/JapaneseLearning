@@ -93,7 +93,7 @@ struct ChargeView: View {
                     HStack(spacing: 12) {
                         Image(systemName: "arrow.trianglehead.2.clockwise.rotate.90")
                             .font(.title2)
-                        
+
                         VStack(alignment: .leading, spacing: 4) {
                             Text("自動チャージ")
                                 .font(.headline)
@@ -101,7 +101,7 @@ struct ChargeView: View {
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
-                        
+
                         Spacer()
                         Image(systemName: "chevron.right")
                             .font(.caption.weight(.semibold))

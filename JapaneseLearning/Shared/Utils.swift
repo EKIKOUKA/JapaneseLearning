@@ -82,14 +82,6 @@ extension Character {
 
 extension View {
     @ViewBuilder
-    func toolbarMinimizationBehaviorIfAvailable() -> some View {
-        if #available(iOS 27.0, *) {
-            self.toolbarMinimizationBehavior(.onScrollDown, for: .navigationBar)
-        } else {
-            self
-        }
-    }
-    @ViewBuilder
     func tabBarMinimizeBehaviorIfAvailable() -> some View {
         if #available(iOS 26.0, *) {
             self.tabBarMinimizeBehavior(.onScrollDown)
@@ -115,15 +107,7 @@ extension View {
             }
         }
     }
-    
-    @ViewBuilder
-    func pickerStyle_tabs_IfAvailable() -> some View {
-        if #available(iOS 27.0, *) {
-            self.pickerStyle(.tabs)
-        } else {
-            self
-        }
-    }
+
     @ViewBuilder
     func buttonStyle_glass_IfAvailable() -> some View {
         if #available(iOS 26.0, *) {
@@ -132,25 +116,7 @@ extension View {
             self
         }
     }
-    
-    @ViewBuilder
-    func navigationTransition_crossFade_IfAvailable() -> some View {
-        if #available(iOS 27.0, *) {
-            self.navigationTransition(.crossFade)
-        } else {
-            self
-        }
-    }
-    
-    @ViewBuilder
-    func swipeActionsContainer_IfAvailable() -> some View {
-        if #available(iOS 27.0, *) {
-            self.swipeActionsContainer()
-        } else {
-            self
-        }
-    }
-    
+
     @ViewBuilder
     func navigationTransition_Zoom_IfAvailable<ID: Hashable>(sourceID: ID, in namespace: Namespace.ID) -> some View {
         if #available(iOS 18.0, *) {
@@ -173,11 +139,38 @@ extension View {
             self
         }
     }
+
+    @ViewBuilder
+    func toolbarMinimizeNavigationBarIfAvailable() -> some View {
+        if #available(iOS 27.0, *) {
+            self.toolbarMinimizationBehavior(.onScrollDown, for: .navigationBar)
+        } else {
+            self
+        }
+    }
+
+    @ViewBuilder
+    func swipeActionsContainerIfAvailable() -> some View {
+        if #available(iOS 27.0, *) {
+            self.swipeActionsContainer()
+        } else {
+            self
+        }
+    }
+
+    @ViewBuilder
+    func pickerStyleTabsIfAvailable() -> some View {
+        if #available(iOS 27.0, *) {
+            self.pickerStyle(.tabs)
+        } else {
+            self
+        }
+    }
 }
 
-extension ForEach where Content: View {
+extension DynamicViewContent {
     @ViewBuilder
-    func LazyVGrid_reorderableIfAvailable() -> some View {
+    func reorderableIfAvailable() -> some View {
         if #available(iOS 27.0, *) {
             self.reorderable()
         } else {
@@ -195,7 +188,8 @@ func currentTimeFormatted(_ time: Int) -> String {
     return formatted
 }
 
-func sqliteDateTimeString(from date: Date) -> String {
+
+func sqliteDateTimeInJST(from date: Date) -> String {
     let dateFormatter = DateFormatter()
     dateFormatter.calendar = Calendar(identifier: .gregorian)
     dateFormatter.locale = Locale(identifier: "en_US_POSIX")
@@ -203,6 +197,35 @@ func sqliteDateTimeString(from date: Date) -> String {
     dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
     return dateFormatter.string(from: date)
 }
+
+func sqliteUTCDateTimeString(from date: Date) -> String {
+    let dateFormatter = DateFormatter()
+    dateFormatter.calendar = Calendar(identifier: .gregorian)
+    dateFormatter.locale = Locale(identifier: "en_US_POSIX")
+    dateFormatter.timeZone = TimeZone(secondsFromGMT: 0)
+    dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+    return dateFormatter.string(from: date)
+}
+
+// API の日時は ISO 8601 またはタイムゾーン表記のない UTC の SQLite 形式で届く。
+func serverDateTimeInJST(_ value: String) -> String {
+    let iso = ISO8601DateFormatter()
+    iso.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+    let fractionalDate = iso.date(from: value)
+    iso.formatOptions = [.withInternetDateTime]
+
+    let utc = DateFormatter()
+    utc.calendar = Calendar(identifier: .gregorian)
+    utc.locale = Locale(identifier: "en_US_POSIX")
+    utc.timeZone = TimeZone(secondsFromGMT: 0)
+    utc.dateFormat = "yyyy-MM-dd HH:mm:ss"
+    guard let date = fractionalDate ?? iso.date(from: value) ?? utc.date(from: value) else {
+        return value
+    }
+
+    return sqliteDateTimeInJST(from: date)
+}
+
 func sqliteDateString(from date: Date) -> String {
     let dateFormatter = DateFormatter()
     dateFormatter.calendar = Calendar(identifier: .gregorian)
@@ -213,11 +236,11 @@ func sqliteDateString(from date: Date) -> String {
 }
 
 enum PracticeDateFormat {
-    static func sqliteDateTime(from string: String) -> Date? {
+    static func utcDateTime(from string: String) -> Date? {
         let dateFormatter = DateFormatter()
         dateFormatter.calendar = Calendar(identifier: .gregorian)
         dateFormatter.locale = Locale(identifier: "en_US_POSIX")
-        dateFormatter.timeZone = TimeZone(identifier: "Asia/Tokyo")
+        dateFormatter.timeZone = TimeZone(secondsFromGMT: 0)
         dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
         return dateFormatter.date(from: string)
     }

@@ -9,16 +9,13 @@ import SwiftUI
 import Observation
 
 struct AppSettings: Codable {
-    var Nationality: String = "JP"
-
     // Shadowing
     var showShadowingSubtitlesRuby: Bool = true
     var videoSubtitleFontSizeScale: Double = 1.0
     var videoSubtitleFontStyle: VideoSubtitleRubyFontStyle = .system
-    var videoSubtitleDimInactiveLines: Bool = true
+    var videoSubtitleKaraokeEffects: Bool = true
     var videoAutoJumpToNextLine: Bool = false
     var videoAllowsPictureInPicturePlayback: Bool = false
-    var useNativeVideoPlayer: Bool = false
     var videoSubtitleFontColor: Color.Resolved?
     var AIExplanationLanguage: String = "JP"
     var AIProvider: String = "Anthropic"

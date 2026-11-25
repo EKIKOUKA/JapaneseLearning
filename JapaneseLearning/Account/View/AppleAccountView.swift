@@ -27,15 +27,17 @@ struct AppleAccountView: View {
                     }
                 }
 
-                Section("チャージ") {
-                    NavigationLink("クレジットを購入") {
-                        ChargeView()
-                    }
-                }
-
-                Section("アプリ設定") {
-                    NavigationLink("アプリ設定") {
-                        AppSettingsView()
+                if accountStore.isSignedIn {
+                    Section("クレジット") {
+                        NavigationLink("クレジットをチャージ") {
+                            ChargeView()
+                        }
+                        NavigationLink("クレジットの利用履歴") {
+                            CreditUsageHistoryView()
+                        }
+                        NavigationLink("クレジットのチャージ履歴") {
+                            CreditChargeHistoryView()
+                        }
                     }
                 }
 
@@ -47,6 +49,10 @@ struct AppleAccountView: View {
 
                 if accountStore.isSignedIn {
                     Section("アカウント管理") {
+                        NavigationLink("ログイン中の端末") {
+                            LoginSessionsView()
+                        }
+
                         Button("ログアウト", role: .confirm) {
                             Task { await accountStore.signOut() }
                         }
@@ -64,6 +70,16 @@ struct AppleAccountView: View {
             }
             .navigationTitle("メニュー")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    NavigationLink {
+                        AppSettingsView()
+                    } label: {
+                        Image(systemName: "gear")
+                    }
+                    .accessibilityLabel("アプリ設定")
+                }
+            }
             .task {
                 await accountStore.refreshCredentialState()
             }
@@ -99,7 +115,6 @@ struct AppleAccountView: View {
                 ZStack {
                     Color.black.opacity(0.2)
                         .ignoresSafeArea()
-                    
                     ProgressLoadingView()
                         .frame(minWidth: 180, minHeight: 160)
                 }

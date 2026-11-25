@@ -11,6 +11,8 @@ import Foundation
 import Observation
 import Security
 import StoreKit
+import UIKit
+import DeviceKit
 
 enum CreditPurchaseOutcome {
     case purchased(added: Int, balance: Int)
@@ -26,6 +28,8 @@ final class AppleAccountStore {
     static var savedUserID: String? { UserDefaults.standard.string(forKey: Keys.userID) }
     private enum Keys {
         static let userID = "apple.account.userID"
+        static let balanceUserID = "apple.account.balanceUserID"
+        static let balance = "apple.account.cachedBalance"
     }
 
     private(set) var userID: String?
@@ -37,6 +41,7 @@ final class AppleAccountStore {
     private(set) var isApplyingCreditTransactions = false
     private(set) var dailyPracticeGoalMinutes = 10
     private(set) var isSavingDailyPracticeGoal = false
+    // 保存中に開始済みのプロフィール取得が返っても、新しい目標を上書きしない。
     @ObservationIgnored private var goalRevision = 0
 
     // 購入確認・残高反映中はアカウントを固定し、途中のログアウトや退会を防ぐ。
@@ -45,6 +50,7 @@ final class AppleAccountStore {
     }
 
     private(set) var accountCredits: Int
+    // 購入・消費後の残高を、先に開始した取得リクエストの古い残高から守る。
     @ObservationIgnored private var balanceRevision = 0
     @ObservationIgnored private var creditTransactionTaskID: UUID?
     @ObservationIgnored private var sessionToken: String?
@@ -55,14 +61,19 @@ final class AppleAccountStore {
         userID != nil && sessionToken != nil && credentialState != .revoked && credentialState != .notFound
     }
 
-    /// Keychain には本アプリの session のみ保存する。Apple の refresh token と残高はサーバーで管理する。
+    /// Keychain には session のみ保存する。残高の正本はサーバーにあり、端末には表示用の前回値だけを保存する。
     init() {
         accountCredits = 0
 
         userID = UserDefaults.standard.string(forKey: Keys.userID)
         sessionToken = AppleSessionKeychain.read()
-        if userID != nil, sessionToken != nil {
+        if let userID, sessionToken != nil {
             credentialState = .authorized
+            // 初回表示を前回値から始め、他アカウントのキャッシュは使用しない。
+            if UserDefaults.standard.string(forKey: Keys.balanceUserID) == userID,
+               let balance = UserDefaults.standard.object(forKey: Keys.balance) as? Int {
+                accountCredits = balance
+            }
         } else if userID == nil {
             AppleSessionKeychain.delete()
             sessionToken = nil
@@ -99,7 +110,9 @@ final class AppleAccountStore {
         return AppleLoginRequest(
             identityToken: identityToken,
             authorizationCode: authorizationCode,
-            hashedNonce: hashedNonce
+            hashedNonce: hashedNonce,
+            deviceID: try AppleSessionKeychain.deviceIdentifier(),
+            deviceName: Device.current.description
         )
     }
 
@@ -144,11 +157,11 @@ final class AppleAccountStore {
         let initialRevision = balanceRevision
         let initialSession = sessionToken
         let response: AutomaticChargeSettingsResponse = try await automaticChargeAPI("settings", body: [String: String]())
-        
+
         if sessionToken == initialSession, balanceRevision == initialRevision, let balance = response.creditBalance {
             setCreditBalance(balance)
         }
-        
+
         return response
     }
 
@@ -166,7 +179,7 @@ final class AppleAccountStore {
 
     private func automaticChargeAPI<Body: Encodable, Result: Decodable>(_ path: String, body: Body) async throws -> Result {
         guard let sessionToken, isSignedIn else { throw URLError(.userAuthenticationRequired) }
-        
+
         return try await WorkersAPI.postForResponse(
             "payments/stripe/auto/\(path)",
             body: body,
@@ -534,7 +547,7 @@ final class AppleAccountStore {
             body: AIExplanationRequest(
                 question: question.text,
                 mode: question.mode,
-                request_id: question.id.uuidString,
+                id: question.id.uuidString,
                 parent_request_id: question.parentRequestID?.uuidString,
                 language: question.language,
                 provider: question.provider
@@ -542,25 +555,28 @@ final class AppleAccountStore {
             authorizationToken: sessionToken,
             onDelta: onDelta
         )
-        // 通信中にログアウト・別アカウントへの切り替えが起きた場合、その応答で残高を更新しない。
-        if self.sessionToken == sessionToken {
-            setCreditBalance(response.creditBalance)
-        }
-
+        // 消費後の残高はメニュー表示時に取得し、ここでは表示用キャッシュを更新しない。
         return response
     }
 
     func deleteLocalAccountData() {
-        if let userID { AchieveSystemStore.removeCachedSessions(for: userID) }
+        if let userID {
+            AchieveSystemStore.removeCachedSessions(for: userID)
+            UserDefaults.standard.removeObject(forKey: "cached_videos.\(userID)")
+            UserDefaults.standard.removeObject(forKey: "cached_playlist_categories.\(userID)")
+        }
         clearLocalSession()
         accountCredits = 0
-        UserDefaults.standard.removeObject(forKey: "cached_videos")
-        UserDefaults.standard.removeObject(forKey: "cached_playlist_categories")
     }
 
     private func setCreditBalance(_ balance: Int) {
         accountCredits = balance
         balanceRevision += 1
+
+        if let userID {
+            UserDefaults.standard.set(userID, forKey: Keys.balanceUserID)
+            UserDefaults.standard.set(balance, forKey: Keys.balance)
+        }
     }
 
     /// 端末の情報削除だけでは session は無効にならない。通常のログアウトは先に user/logout を呼ぶ。
@@ -580,6 +596,8 @@ final class AppleAccountStore {
 
     private func clearPersistedData() {
         UserDefaults.standard.removeObject(forKey: Keys.userID)
+        UserDefaults.standard.removeObject(forKey: Keys.balanceUserID)
+        UserDefaults.standard.removeObject(forKey: Keys.balance)
     }
 
     /// 認証のたびに新しい nonce を生成し、Apple の JWT に同じハッシュ値が含まれることを確認する。
@@ -604,6 +622,40 @@ private struct APNsDeviceTokenRequest: Encodable {
 private enum AppleSessionKeychain {
     private static let account = "apple.account.sessionToken"
     private static var service: String { Bundle.main.bundleIdentifier ?? "JapaneseLearning" }
+
+    /// ログアウトしても維持する App 固有の端末 ID。広告 ID やハードウェア ID は使用しない。
+    static func deviceIdentifier() throws -> String {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: "apple.account.deviceID"
+        ]
+
+        var result: CFTypeRef?
+        let status = SecItemCopyMatching(query.merging([
+            kSecReturnData as String: true, kSecMatchLimit as String: kSecMatchLimitOne
+        ]) { _, new in new } as CFDictionary, &result)
+        if status == errSecSuccess, let data = result as? Data,
+           let value = String(data: data, encoding: .utf8), UUID(uuidString: value) != nil {
+            return value
+        }
+        guard status == errSecItemNotFound else {
+            throw NSError(
+                domain: NSOSStatusErrorDomain,
+                code: Int(status),
+                userInfo: [NSLocalizedDescriptionKey: "端末情報を読み込めませんでした。端末のロックを解除して再度お試しください。"]
+            )
+        }
+
+        let value = UUID().uuidString
+        let attributes: [String: Any] = [kSecValueData as String: Data(value.utf8),
+            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly]
+        guard SecItemAdd(query.merging(attributes) { _, new in new } as CFDictionary, nil) == errSecSuccess else {
+            throw URLError(.cannotWriteToFile)
+        }
+
+        return value
+    }
 
     static func read() -> String? {
         let query: [String: Any] = [

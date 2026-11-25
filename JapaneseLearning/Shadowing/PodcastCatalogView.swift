@@ -63,7 +63,11 @@ struct PodcastCatalogView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("閉じる") { dismiss() }
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "xmark")
+                    }
                 }
             }
             .task(id: SearchRequest(query: query, language: language, browseIndex: browseIndex, retry: retry)) {

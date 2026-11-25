@@ -52,7 +52,7 @@ enum ApplePodcastCatalog {
             guard let url = URL(string: item.audio, relativeTo: resolvedURL)?.absoluteURL,
                   isWebURL(url), seen.insert(url).inserted else { return nil }
             return PodcastEpisode(
-                title: item.title.nonEmpty ?? show.collectionName,
+                title: item.title.isEmpty ? show.collectionName : item.title,
                 show: show.collectionName,
                 language: episodeLanguage,
                 source: show.collectionViewUrl ?? feed,

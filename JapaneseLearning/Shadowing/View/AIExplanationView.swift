@@ -16,6 +16,8 @@ struct AIExplanationView: View {
     @State private var isLoading = false
     @State private var hasStartedInitialExplanation = false
     @State private var draft = ""
+    @State private var showsScrollToBottom = false
+    @Namespace private var bottomAnchor
     @FocusState private var isInputFocused: Bool
 
     init(question: AIExplanationQuestion) {
@@ -44,6 +46,32 @@ struct AIExplanationView: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(24)
+
+                    Color.clear
+                        .frame(height: 1)
+                        .accessibilityHidden(true)
+                        .id(bottomAnchor)
+                }
+                .onScrollGeometryChange(for: Bool.self) { geometry in
+                    geometry.contentSize.height - geometry.visibleRect.maxY > 10
+                } action: { _, isAboveBottom in
+                    showsScrollToBottom = isAboveBottom
+                }
+                .overlay(alignment: .bottom) {
+                    if showsScrollToBottom {
+                        Button {
+                            withAnimation(.smooth) {
+                                proxy.scrollTo(bottomAnchor, anchor: .bottom)
+                            }
+                        } label: {
+                            Image(systemName: "arrow.down")
+                                .font(.body.weight(.medium))
+                        }
+                        .buttonStyle(.glass)
+                        .buttonBorderShape(.circle)
+                        .accessibilityLabel("一番下へ移動")
+                        .padding(.bottom, 12)
+                    }
                 }
                 .scrollDismissesKeyboard(.interactively)
                 .onChange(of: turns.count) { _, _ in
@@ -54,28 +82,37 @@ struct AIExplanationView: View {
             }
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 if question.mode == .sentence, lastCompleted != nil {
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack(alignment: .bottom, spacing: 12) {
-                            TextField("分からないところを質問する", text: $draft, axis: .vertical)
-                                .lineLimit(1...5)
-                                .focused($isInputFocused)
-                                .disabled(isLoading)
+                    VStack(spacing: 6) {
+                        HStack(alignment: .center, spacing: 8) {
+                            TextField(
+                                "分からないところを質問する",
+                                text: $draft,
+                                prompt: Text("分からないところを質問する")
+                                    .foregroundStyle(Color.primary.opacity(0.7)),
+                                axis: .vertical
+                            )
+                            .lineLimit(1...5)
+                            .focused($isInputFocused)
+                            .disabled(isLoading)
 
                             Button(action: sendFollowUp) {
-                                Image(systemName: "arrow.up.circle.fill").font(.title)
+                                Image(systemName: "arrow.up")
+                                    .font(.body.weight(.semibold))
+                                    .foregroundStyle(canSend ? Color.white : Color.primary.opacity(0.7))
+                                    .frame(width: 36, height: 36)
+                                    .background(canSend ? Color.accentColor : Color.primary.opacity(0.5), in: .circle)
                             }
+                            .buttonStyle(.plain)
                             .accessibilityLabel("質問を送信する")
                             .disabled(!canSend)
                         }
-
-                        Text(draft.count > 1000 ? "質問は 1,000 文字以内で入力してください。" : "送信ごとに 1 クレジット・残り \(accountStore.accountCredits.formatted())")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .contentTransition(.numericText())
-                            .animation(.smooth(duration: 0.5), value: accountStore.accountCredits)
+                        .padding(.leading, 18)
+                        .padding(.trailing, 6)
+                        .padding(.vertical, 6)
+                        .background(Color(uiColor: .systemBackground).opacity(0.64), in: .rect(cornerRadius: 28))
+                        .glassEffect(.regular, in: .rect(cornerRadius: 28))
                     }
-                    .padding()
-                    .background(.bar)
+                    .padding(.horizontal, 22)
                 }
             }
             .navigationTitle(question.mode == .word ? question.text : "字幕の AI 解説")
@@ -93,19 +130,18 @@ struct AIExplanationView: View {
     @ViewBuilder
     private func turnView(_ turn: AIExplanationTurn, index: Int) -> some View {
         VStack(alignment: .leading, spacing: 16) {
-            if index > 0 { Divider() }
-
             if question.mode == .sentence || index > 0 {
-                Text(index == 0 ? "解説するテキスト" : "あなたの質問")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
                 Text(turn.question.text)
-                    .font(.title3.bold())
                     .textSelection(.enabled)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                    .background(.fill.tertiary, in: .rect(cornerRadius: 20))
+                    .frame(maxWidth: .infinity, alignment: .trailing)
             }
 
             if !turn.streamingText.isEmpty || turn.response != nil {
                 Text(formattedAnswer(turn.response?.answer ?? turn.streamingText))
+                    .font(.title3)
                     .textSelection(.enabled)
             }
             if isLoading && index == turns.count - 1 {
@@ -147,17 +183,17 @@ struct AIExplanationView: View {
 
     private func sendFollowUp() {
         guard canSend, let parent = lastCompleted else { return }
-        
+
         let followUp = AIExplanationQuestion(
             text: draft.trimmingCharacters(in: .whitespacesAndNewlines),
             mode: question.mode,
             parentRequestID: parent.id
         )
-        
+
         draft = ""
         isInputFocused = false
         turns.append(AIExplanationTurn(question: followUp))
-        
+
         let index = turns.count - 1
         Task { await explain(at: index) }
     }

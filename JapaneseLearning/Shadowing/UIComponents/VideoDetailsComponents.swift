@@ -24,7 +24,20 @@ struct videoCoverView: View {
             .blur(radius: sizeClass_regular ? 100 : 64, opaque: true)
             .overlay(Color.black.opacity(0.2))
         } else {
-            Color.black.opacity(0.1)
+            LinearGradient(
+                stops: [
+                    .init(
+                        color: Color(red: 38.0 / 255, green: 52.0 / 255, blue: 71.0 / 255),
+                        location: 0
+                    ),
+                    .init(
+                        color: Color(red: 16.0 / 255, green: 20.0 / 255, blue: 27.0 / 255),
+                        location: 0.55
+                    )
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
         }
     }
 }
@@ -86,7 +99,10 @@ struct CustomToolbarHeader: View {
                         Button {
                             playerVM.startPracticeTimingIfNeeded()
                         } label: {
-                            Label("シャドーイング開始", systemImage: "livephoto.play")
+                            Label(
+                                playerVM.practiceStartedAt != nil ? "シャドーイング中..." : "シャドーイング開始",
+                                systemImage: "livephoto.play"
+                            )
                         }
                     }
                     Divider()
@@ -108,12 +124,6 @@ struct CustomToolbarHeader: View {
                         }
                     }
                     Divider()
-
-                    Button {
-                    } label: {
-                        Label("AIで字幕を再生成", systemImage: "sparkles")
-                        Text("クレジットを消費します")
-                    }
 
                     Menu {
                         Picker("字幕のフォント", selection: $settingsStoreBindable.videoSubtitleFontStyle) {

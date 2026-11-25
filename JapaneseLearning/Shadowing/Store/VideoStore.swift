@@ -14,19 +14,11 @@ class VideoStore {
     var videos: [VideoItem] = []
     var isLoading: Bool = false
     var playlistCategories: [PlaylistCategory] = []
-
     var videoSubtitleSkipWords: VideoSubtitleSkipWords?
-    var videoList: [PlaylistListItem] = []
-    var videoListIsReady: Bool = false
-
-    var videoListVideos: [PlayListVideoItem] = []
-    var videoListVideosIsReady: Bool = false
 
     private var cacheOwnerID: String?
-    private var videoCacheKey: String { "cached_videos_v2.\(cacheOwnerID ?? "signed-out")" }
-    private var playlistCategoriesCacheKey: String { "cached_playlist_categories_v2.\(cacheOwnerID ?? "signed-out")" }
-
-    init() {}
+    private var videoCacheKey: String { "cached_videos.\(cacheOwnerID ?? "signed-out")" }
+    private var playlistCategoriesCacheKey: String { "cached_playlist_categories.\(cacheOwnerID ?? "signed-out")" }
 
     @MainActor
     func accountChanged(to userID: String?) async {
@@ -36,15 +28,13 @@ class VideoStore {
         }
         cacheOwnerID = userID
         videos = []
-        videoList = []
-        videoListVideos = []
         playlistCategories = []
         videoSubtitleSkipWords = nil
         QuickActionManager.shared.clearResumeVideo()
         guard userID != nil else { return }
         loadVideoCache()
         loadPlaylistCategoriesCache()
-        await fetchVideos()
+//        await fetchVideos()
     }
 
     // MARK: - Local Cache (UserDefaults)
@@ -95,33 +85,6 @@ class VideoStore {
         saveVideoCache()
     }
 
-    private func syncAddedVideoToServer(
-        _ video: VideoItem,
-        createCaptionByAi: Bool,
-        liveActivityToken: String?,
-        sessionToken: String
-    ) async -> Bool {
-        guard !sessionToken.isEmpty else { return false }
-
-        do {
-            try await WorkersAPI.post(
-                "add_video_captions_only",
-                body: VideoItemAddRequest(
-                    video: video,
-                    createCaptionByAi: createCaptionByAi,
-                    liveActivityToken: liveActivityToken
-                ),
-                authorizationToken: sessionToken,
-                requiresAuthentication: true
-            )
-
-            return true
-        } catch {
-            print("❌ Save add Error: \(error)")
-            return false
-        }
-    }
-
     // MARK: - Video CRUD Operations (Server Sync with WorkersAPI)
     @MainActor
     func fetchVideos() async {
@@ -145,8 +108,8 @@ class VideoStore {
                 self.videos = freshVideos
             }
 
-            LocalThumbnailStorage.removeOrphanedThumbnails(
-                keeping: Set(freshVideos.map(\.id))
+            AppGroupThumbnailStorage.removeOrphanedThumbnails(
+                keeping: Set(self.videos.map(\.id))
             )
 
             if let currentResumeVideoID = QuickActionManager.shared.currentResumeVideoID(),
@@ -156,59 +119,12 @@ class VideoStore {
 
             saveVideoCache()
 
-            Task(priority: .utility) {
-                await Self.cacheMissingThumbnails(for: freshVideos)
-            }
         } catch {
             if !videos.isEmpty {
                 print("❌ Fetch Error (using cache)：\(error)")
             } else {
                 isLoading = true
                 print("❌ Fetch Error：\(error)")
-            }
-        }
-    }
-
-    @MainActor
-    func addVideo(_ video: VideoItem, thumbnailURL: URL, createCaptionByAi: Bool = true) {
-        guard let sessionToken = AppleAccountStore.savedSessionToken else { return }
-
-        guard let sessionToken = AppleAccountStore.savedSessionToken else {
-            print("動画を追加するには Apple でログインしてください。")
-
-            return
-        }
-
-        let owner = cacheOwnerID
-        Task(priority: .utility) {
-            var thumbnailSaved = false
-
-            do {
-                let data = try await WorkersAPI.getData(from: thumbnailURL)
-                try LocalThumbnailStorage.save(data, for: video.id)
-                thumbnailSaved = true
-            } catch {
-                print("❌ Thumbnail download failed: \(error)")
-            }
-
-            guard self.cacheOwnerID == owner else { return }
-            if thumbnailSaved {
-                await MainActor.run {
-                    self.upsertVideoLocally(video)
-                }
-            }
-
-            let saved = await self.syncAddedVideoToServer(
-                video,
-                createCaptionByAi: createCaptionByAi,
-                liveActivityToken: nil,
-                sessionToken: sessionToken
-            )
-            guard self.cacheOwnerID == owner else { return }
-            if !saved {
-                self.videos.removeAll { $0.id == video.id }
-                self.saveVideoCache()
-                await self.fetchVideos()
             }
         }
     }
@@ -242,83 +158,6 @@ class VideoStore {
         }
     }
 
-    @MainActor
-    func deleteVideo(_ id: String) async {
-        do {
-            try await WorkersAPI.post("delete_video", body: ["id": id], requiresAuthentication: true)
-
-            if let index = videos.firstIndex(where: { $0.id == id }) {
-                videos.remove(at: index)
-                saveVideoCache()
-            }
-
-            if QuickActionManager.shared.currentResumeVideoID() == id {
-                QuickActionManager.shared.clearResumeVideo()
-            }
-
-            LocalThumbnailStorage.remove(for: id)
-        } catch {
-            print("❌ 刪除エラー:", error)
-        }
-    }
-
-    // MARK: - Playlist Operations (Server Sync with WorkersAPI)
-    @MainActor
-    func fetchVideoPlaylist() async {
-        let owner = cacheOwnerID
-        guard owner != nil, let sessionToken = AppleAccountStore.savedSessionToken else { return }
-        videoListIsReady = false
-
-        do {
-            let playlists: [PlaylistListItem] = try await WorkersAPI.get("fetch_video_playlist", authorizationToken: sessionToken, requiresAuthentication: true)
-            guard cacheOwnerID == owner, !Task.isCancelled else { return }
-            self.videoList = playlists
-            try? await Task.sleep(for: .seconds(0.1))
-            guard cacheOwnerID == owner, !Task.isCancelled else { return }
-            withAnimation(.easeIn(duration: 0.25)) {
-                videoListIsReady = true
-            }
-        } catch {
-            print("❌ Fetch Error：\(error)")
-        }
-    }
-
-    @MainActor
-    func addVideoPlaylist(_ video: PlaylistListItem) async {
-        do {
-            try await WorkersAPI.post("add_video_playlist", body: video, requiresAuthentication: true)
-            await fetchVideoPlaylist()
-            print("✅ Insert Success: \(video.id)")
-        } catch {
-            print("❌ Insert Error: \(error)")
-        }
-    }
-
-    @MainActor
-    func deleteVideoPlaylist(_ id: String) async {
-        do {
-            try await WorkersAPI.post("delete_video_playlist", body: ["id": id], requiresAuthentication: true)
-            await fetchVideoPlaylist()
-        } catch {
-            print("❌ Delete Error:", error)
-        }
-    }
-
-    @MainActor
-    func reorderVideos(_ reorderedVideos: [VideoItem], for category: PlaylistCategory) {
-        var iterator = reorderedVideos.makeIterator()
-
-        videos = videos.map { video in
-            if belongsToCategory(video, category: category) {
-                return iterator.next() ?? video
-            }
-
-            return video
-        }
-
-        saveVideoCache()
-    }
-
     // MARK: - Video Details & Captions Fetching
     func fetchVideoSources(_ videoID: String) async throws -> VideoData {
         let video_decoded: VideoResponse = try await WorkersAPI.get(
@@ -344,305 +183,7 @@ class VideoStore {
     }
 
     func fetchCaptions(from url: URL) async throws -> [CaptionLine] {
-        let (captionData, _) = try await URLSession.shared.data(from: url)
-        return try JSONDecoder().decode([CaptionLine].self, from: captionData)
-    }
-
-    // MARK: - Business Logic: Adding Videos with High Quality Thumbnails
-    /// 1. 再生リスト選択画面から追加
-    func addVideoFromPlaylist(
-        _ item: PlayListVideoItem,
-        playlistID: String,
-        contentLanguage: VideoContentLanguage,
-        createCaptionByAi: Bool = true,
-        playbackRate: Float,
-        videoTitle: String = "",
-        categoryID: String? = nil
-    ) async {
-        guard AppleAccountStore.savedSessionToken != nil else { return }
-        let owner = cacheOwnerID
-        let title = videoTitle.isWhitespaceOrNewLine
-            ? item.title.cleanedVideoTitle
-            : videoTitle.trimmingCharacters(in: .whitespacesAndNewlines)
-        let categoryID = resolvedCategoryID(categoryID: categoryID, playlistID: playlistID)
-        let recordID = UUID().uuidString
-        let immediateVideo = VideoItem(
-            id: recordID,
-            youtubeID: item.id,
-            title: title,
-            rate: playbackRate,
-            playlistID: playlistID,
-            categoryID: categoryID,
-            aspectRatio: -1,
-            contentLanguage: contentLanguage
-        )
-        upsertVideoLocally(immediateVideo)
-
-        let highQualityThumbURL = await YouTubeService.fetchBestThumbnailURL(for: item.id)
-
-        guard cacheOwnerID == owner else { return }
-        let syncedVideo = VideoItem(
-            id: recordID,
-            youtubeID: item.id,
-            title: title,
-            rate: playbackRate,
-            playlistID: playlistID,
-            categoryID: categoryID,
-            aspectRatio: -1,
-            contentLanguage: contentLanguage
-        )
-        addVideo(syncedVideo, thumbnailURL: highQualityThumbURL, createCaptionByAi: createCaptionByAi)
-    }
-
-    /// 2. リンクから直接追加
-    @MainActor
-    func handleYouTubeURL(
-        _ url: String,
-        contentLanguage: VideoContentLanguage,
-        createCaptionByAi: Bool = true,
-        playbackRate: Float = 1.0,
-        videoTitle: String = "",
-        categoryID: String? = nil
-    ) async -> AddYouTubeResult {
-        guard AppleAccountStore.savedSessionToken != nil else { return .invalid }
-        let owner = cacheOwnerID
-        let type = youtubeURLType(from: url)
-
-        switch type {
-            case .single:
-                guard let videoID = extractVideoID(from: url) else {
-                    return .invalid
-                }
-                if videos.contains(where: { $0.youtubeID == videoID }) {
-                    return .invalid
-                }
-
-                let resolvedCategoryID = resolvedCategoryID(categoryID: categoryID)
-
-                let recordID = UUID().uuidString
-                let immediateVideo = VideoItem(
-                    id: recordID,
-                    youtubeID: videoID,
-                    title: videoID,
-                    rate: playbackRate,
-                    playlistID: nil,
-                    categoryID: resolvedCategoryID,
-                    aspectRatio: -1,
-                    contentLanguage: contentLanguage
-                )
-                upsertVideoLocally(immediateVideo)
-
-                Task {
-                    let fetchedTitle = await YouTubeService.fetchTitle(videoID)
-                    let title = videoTitle.isWhitespaceOrNewLine
-                        ? fetchedTitle.cleanedVideoTitle
-                        : videoTitle.trimmingCharacters(in: .whitespacesAndNewlines)
-                    let highQualityThumbURL = await YouTubeService.fetchBestThumbnailURL(for: videoID)
-
-                    guard cacheOwnerID == owner else { return }
-                    let syncedVideo = VideoItem(
-                        id: recordID,
-                        youtubeID: videoID,
-                        title: title,
-                        rate: playbackRate,
-                        playlistID: nil,
-                        categoryID: resolvedCategoryID,
-                        aspectRatio: -1,
-                        contentLanguage: contentLanguage
-                    )
-                    addVideo(syncedVideo, thumbnailURL: highQualityThumbURL, createCaptionByAi: createCaptionByAi)
-                }
-
-                return .addedVideo(immediateVideo)
-            case .playlist:
-                guard let listID = extractPlaylistID(from: url) else {
-                    return .invalid
-                }
-                if videoList.contains(where: { $0.id == listID }) {
-                    return .invalid
-                }
-
-                let immediatePlaylist = await fetchPlaylistMeta(playlistID: listID)
-                guard cacheOwnerID == owner else { return .invalid }
-                await addVideoPlaylist(immediatePlaylist)
-
-                Task {
-                    await fetchVideoPlaylist()
-                }
-
-                return .addedPlaylist
-            case .unknown:
-                return .invalid
-        }
-    }
-
-    // MARK: - Progressive UI Loading: YouTube Playlist Selection View
-    func fetchPlaylistVideos(playlistID: String) async {
-        videoListVideos.removeAll()
-        videoListVideosIsReady = false
-
-        var nextPageToken: String? = nil
-
-        do {
-            repeat {
-                // YouTubeService から対象ページの全情報を取得
-                let response = try await YouTubeService.fetchPlaylistPage(playlistID: playlistID, pageToken: nextPageToken)
-
-                let pageVideos = response.items.compactMap { item -> PlayListVideoItem? in
-                    guard let id = item.snippet.resourceId.videoId else { return nil }
-
-                    let title = item.snippet.title
-                    // 非公開動画(Private video)や、削除済み動画(Deleted video)は表示させないため除外
-                    guard title != "Private video", title != "Deleted video", !title.isEmpty else {
-                        return nil
-                    }
-
-                    // サムネイル群が存在しない無効なデータも除外
-                    guard let thumbnails = item.snippet.thumbnails else {
-                        return nil
-                    }
-
-                    // 一覧表示用（YouTubePlayListVideoSelectView）には標準画質（medium）を使用
-                    let thumbURL: URL?
-                    if let thumbString = thumbnails.medium?.url {
-                        thumbURL = URL(string: thumbString)
-                    } else {
-                        thumbURL = URL(string: "https://i.ytimg.com/vi/\(id)/mqdefault.jpg")
-                    }
-
-                    return PlayListVideoItem(
-                        id: id,
-                        title: title,
-                        thumbnailURL: thumbURL
-                    )
-                }
-
-                await MainActor.run {
-                    videoListVideos.append(contentsOf: pageVideos)
-
-                    if !videoListVideosIsReady {
-                        videoListVideosIsReady = true
-                    }
-                }
-
-                nextPageToken = response.nextPageToken
-            } while nextPageToken != nil
-        } catch {
-            print("❌ fetchPlaylistVideos error:", error)
-        }
-    }
-
-    @MainActor
-    func fetchPlaylistMeta(playlistID: String) async -> PlaylistListItem {
-        do {
-            let response = try await YouTubeService.fetchPlaylistMeta(playlistID: playlistID)
-            guard let item = response.items.first else {
-                throw URLError(.badServerResponse)
-            }
-
-            let thumbURL: URL?
-            if let thumbString = item.snippet.thumbnails?.medium?.url {
-                thumbURL = URL(string: thumbString)
-            } else {
-                thumbURL = nil
-            }
-
-            return PlaylistListItem(
-                id: playlistID,
-                title: item.snippet.title,
-                author: item.snippet.channelTitle,
-                thumbnailURL: thumbURL
-            )
-        } catch {
-            print("❌ fetchPlaylistMeta error:", error)
-            return PlaylistListItem(
-                id: playlistID,
-                title: "Unknown Playlist",
-                author: "",
-                thumbnailURL: nil
-            )
-        }
-    }
-
-    // MARK: - YouTube Service Forwarders (Helper Facades)
-    // 外部のビューが直接 Store のメソッドを叩いている場合に備え、YouTubeService へのエイリアスとして残します
-    func youtubeURLType(from url: String) -> YouTubeURLType {
-        return YouTubeService.youtubeURLType(from: url)
-    }
-
-    private func extractVideoID(from url: String) -> String? {
-        return YouTubeService.extractVideoID(from: url)
-    }
-
-    private func extractPlaylistID(from url: String) -> String? {
-        return YouTubeService.extractPlaylistID(from: url)
-    }
-
-    func getExistingVideoIDs() -> Set<String> {
-        return Set(videos.map { $0.youtubeID })
-    }
-
-    func getExistingVideoListIDs() -> Set<String> {
-        return Set(videoList.map { $0.id })
-    }
-
-    func belongsToCategory(_ video: VideoItem, category: PlaylistCategory) -> Bool {
-        resolvedCategoryID(categoryID: video.categoryID, playlistID: video.playlistID) == category.id
-    }
-
-    func handleCategory(_ result: AddYouTubeResult) -> PlaylistCategory? {
-        switch result {
-            case .addedVideo(let video):
-                return playlistCategories.first { $0.id == resolvedCategoryID(
-                    categoryID: video.categoryID,
-                    playlistID: video.playlistID
-                ) }
-            case .addedVideoFromPlaylist(let categoryID):
-                return playlistCategories.first { $0.id == categoryID }
-            default:
-                return playlistCategories.first
-        }
-    }
-
-    func resolvedCategoryID(categoryID: String? = nil, playlistID: String? = nil) -> String {
-        if let categoryID, playlistCategories.contains(where: { $0.id == categoryID }) {
-            return categoryID
-        }
-
-        if let playlistID,
-           let category = playlistCategories.first(where: { $0.playlistIDs.contains(playlistID) }) {
-            return category.id
-        }
-
-        return "listening"
-    }
-
-    // MARK: - Local Thumbnail Storage
-    private static func thumbnailSourceURL(for video: VideoItem) async -> URL {
-        await YouTubeService.fetchBestThumbnailURL(for: video.youtubeID)
-    }
-    private static func cacheThumbnail(for video: VideoItem) async {
-        guard LocalThumbnailStorage.existingFileURL(for: video.id) == nil else {
-            return
-        }
-
-        let sourceURL = await thumbnailSourceURL(for: video)
-
-        do {
-            let data = try await WorkersAPI.getData(from: sourceURL)
-            try LocalThumbnailStorage.save(data, for: video.id)
-        } catch {
-            print("❌ Thumbnail download failed (\(video.id)): \(error)")
-        }
-    }
-    private static func cacheMissingThumbnails(for videos: [VideoItem]) async {
-        await withTaskGroup(of: Void.self) { group in
-            for video in videos {
-                group.addTask {
-                    await Self.cacheThumbnail(for: video)
-                }
-            }
-        }
+        try await WorkersAPI.getExternalJSON(from: url, failureMessage: "字幕を読み込めませんでした。")
     }
 
     // MARK: - Analytics & Study Practice Session Sync
@@ -655,12 +196,13 @@ class VideoStore {
         durationSeconds: Int
     ) async {
         guard let sessionToken = AppleAccountStore.savedSessionToken else { return }
+
         let payload = PracticeSessionPayload(
             id: UUID().uuidString,
             contentLanguage: contentLanguage,
             practiceDate: practiceDate,
-            startedAt: sqliteDateTimeString(from: startedAt),
-            endedAt: sqliteDateTimeString(from: endedAt),
+            startedAt: sqliteUTCDateTimeString(from: startedAt),
+            endedAt: sqliteUTCDateTimeString(from: endedAt),
             durationSeconds: durationSeconds
         )
 

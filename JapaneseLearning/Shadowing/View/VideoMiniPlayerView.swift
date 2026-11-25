@@ -9,29 +9,16 @@ import SwiftUI
 import AVFoundation
 
 struct VideoMiniPlayerView: View {
-    var body: some View {
-        if #available(iOS 26.0, *) {
-            ModernVideoMiniPlayerView()
-        } else {
-            VideoMiniPlayerContent(isExpanded: true)
-        }
-    }
-}
-
-@available(iOS 26.0, *)
-private struct ModernVideoMiniPlayerView: View {
-    @Environment(\.tabViewBottomAccessoryPlacement) private var placement
-
-    var body: some View {
-        VideoMiniPlayerContent(isExpanded: placement == .expanded)
-    }
-}
-
-private struct VideoMiniPlayerContent: View {
-    let isExpanded: Bool
+    @GestureState private var reachedOpenThreshold = false
     @Environment(AppNavigationStore.self) private var navigationStore
     @Environment(PlayerViewManager.self) private var playerVM
     @Environment(\.transitionNamespace) private var transitionNamespace
+
+    @Environment(\.tabViewBottomAccessoryPlacement) private var placement
+
+    private var isExpanded: Bool {
+        placement == .expanded
+    }
 
     var body: some View {
         if let video = playerVM.currentVideoItem, playerVM.player.currentItem != nil {
@@ -84,20 +71,30 @@ private struct VideoMiniPlayerContent: View {
             }
             .simultaneousGesture(
                 DragGesture(minimumDistance: 12)
-                    .onEnded { value in
-                        guard value.translation.height < -32,
+                    .updating($reachedOpenThreshold) { value, state, _ in
+                        guard value.translation.height < -30,
                               abs(value.translation.height) > abs(value.translation.width) else {
                             return
                         }
 
-                        presentVideo(video.id)
+                        state = true
                     }
             )
+            .onChange(of: reachedOpenThreshold) { _, newValue in
+                if newValue {
+                    presentVideo(video.id)
+                }
+            }
         }
     }
 
     private func presentVideo(_ videoID: String) {
-        navigationStore.videoTransitionSourceID = "mini-\(videoID)"
-        navigationStore.quickActionTarget = .resumeVideo(id: videoID)
+        let sourceID = "mini-\(videoID)"
+        navigationStore.videoTransitionSourceID = sourceID
+        navigationStore.presentedVideo = VideoSheetDestination(
+            id: videoID,
+            sourceID: sourceID,
+            dismissesToMiniPlayer: true
+        )
     }
 }
