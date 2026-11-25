@@ -99,7 +99,7 @@ final class PlayerViewManager {
     }
 
     func startVideo(_ video: VideoItem) {
-        let useYouTube = !(settingsStore?.useNativeVideoPlayer ?? false)
+        let useYouTube = PodcastLibrary.shared.episode(id: video.id) == nil && !(settingsStore?.useNativeVideoPlayer ?? false)
         let isDifferentVideo = currentVideoItem?.id != video.id
         let isChangingBackend = activePlaybackUsesYouTube != useYouTube
 
@@ -379,6 +379,12 @@ final class PlayerViewManager {
         playerNowPlaying.nowPlayingTitle = videoItem.title.cleanedVideoTitle
         playerNowPlaying.nowPlayingVideoID = videoItem.id
 
+        if let episode = PodcastLibrary.shared.episode(id: videoItem.id) {
+            setupPlayer(with: episode.audioURL)
+            isProgressing = false
+            return
+        }
+
         do {
             let sources = try await videoStore.fetchVideoSources(videoItem.id)
             guard currentVideoItem?.id == videoItem.id, !activePlaybackUsesYouTube else { return }
@@ -519,6 +525,14 @@ final class PlayerViewManager {
     }
 
     // Subtitle & Ruby Logic
+    func updatePodcastCaptions(_ lines: [CaptionLine], episodeID: String) {
+        guard currentVideoItem?.id == episodeID else { return }
+        let activeID = currentLineID
+        captions = lines
+        currentCaptionIndex = lines.firstIndex { $0.id == activeID } ?? 0
+        syncCaptionToCurrentPlayback()
+    }
+
     func loadCaptions(videoID: String, captions: [CaptionLine]) {
         guard currentVideoItem?.id == videoID else { return }
 
@@ -581,6 +595,7 @@ final class PlayerViewManager {
     }
 
     private func saveProgress(videoItem: VideoItem, currentTime: Double, rate: Float) async {
+        guard PodcastLibrary.shared.episode(id: videoItem.id) == nil else { return }
         guard currentTime.isFinite else { return }
 
         var updatedVideo = videoItem

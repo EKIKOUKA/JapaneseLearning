@@ -19,7 +19,7 @@ struct VideoDetailsView: View {
     var onDismissDragChanged: (CGFloat) -> Void = { _ in }
     var onDismissDragEnded: (CGFloat, CGFloat) -> Void = { _, _ in }
     var video: VideoItem? {
-        videoStore.videos.first { $0.id == videoID }
+        podcast?.video ?? videoStore.videos.first { $0.id == videoID }
     }
     @State private var showSettingSheet = false
     @State private var showDictionarySheet = false
@@ -35,6 +35,8 @@ struct VideoDetailsView: View {
 
         return ratio
     }
+
+    private var podcast: PodcastEpisode? { PodcastLibrary.shared.episode(id: videoID) }
 
     var body: some View {
         @Bindable var playerVM = playerVM
@@ -85,7 +87,9 @@ struct VideoDetailsView: View {
                                     }
                             )
 
-                            if playerVM.isProgressing {
+                            if let podcast {
+                                PodcastTranscriptView(playerVM: playerVM, episode: podcast)
+                            } else if playerVM.isProgressing {
                                 Spacer()
                                 ProgressLoadingView()
                                 Spacer()

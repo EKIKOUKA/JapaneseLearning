@@ -61,10 +61,59 @@ struct VideoListView: View {
         return Array(repeating: GridItem(.flexible(), spacing: 16), count: count)
     }
 
+    @State private var podcastLibrary = PodcastLibrary.shared
+    @State private var showPodcastCatalog = false
+    @State private var podcastListError: String?
+
+    @ViewBuilder
+    private var podcastList: some View {
+        if let error = podcastLibrary.readError {
+            Text("Podcast 一覧を読み込めませんでした。\n\(error)")
+                .font(.caption)
+        }
+
+        if !podcastLibrary.episodes.isEmpty {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Podcast")
+                    .font(.headline)
+                ForEach(podcastLibrary.episodes) { episode in
+                    Button {
+                        onSelectVideo(episode.id)
+                    } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: "waveform")
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(episode.title)
+                                    .font(.subheadline.weight(.semibold))
+                                Text("\(episode.show) · \(episode.language.displayName)")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.caption)
+                        }
+                        .padding(12)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+                    }
+                    .buttonStyle(.plain)
+                    .matchedTransitionSourceIfAvailable(id: "list-\(episode.id)", in: transitionNamespace)
+                    .contextMenu {
+                        Button("一覧から削除", systemImage: "trash", role: .destructive) {
+                            do { try podcastLibrary.remove(episode) }
+                            catch { podcastListError = error.localizedDescription }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     var body: some View {
         Group {
             GeometryReader { geo in
-                if videoStore.videos.isEmpty {
+                if videoStore.videos.isEmpty && podcastLibrary.episodes.isEmpty && podcastLibrary.readError == nil {
                     ContentUnavailableView(
                         "動画がありません",
                         systemImage: "video",
@@ -75,6 +124,7 @@ struct VideoListView: View {
 
                     ScrollView {
                         VStack {
+                            podcastList
                             videoItemGrid(columns: columns)
                         }
                         .animation(.easeInOut(duration: 0.35), value: selectedCategory?.id)
@@ -97,6 +147,9 @@ struct VideoListView: View {
         .toolbarMinimizationBehaviorIfAvailable()
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
+                Button { showPodcastCatalog = true } label: {
+                    Label("Podcast を探す", systemImage: "waveform")
+                }
                 Button {
                     showAddSheet = true
                 } label: {
@@ -109,6 +162,17 @@ struct VideoListView: View {
                     Image(systemName: "ellipsis")
                 }
             }
+        }
+        .sheet(isPresented: $showPodcastCatalog) {
+            PodcastCatalogView { showPodcastCatalog = false }
+        }
+        .alert("Podcast", isPresented: Binding(
+            get: { podcastListError != nil },
+            set: { if !$0 { podcastListError = nil } }
+        )) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(podcastListError ?? "")
         }
         .sheet(isPresented: $showAddSheet) {
             AddVideoSheetView { result in
