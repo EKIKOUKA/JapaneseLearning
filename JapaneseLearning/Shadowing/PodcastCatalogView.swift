@@ -2,7 +2,7 @@ import SwiftUI
 
 struct PodcastCatalogView: View {
     @Environment(\.dismiss) private var dismiss
-    let onComplete: () -> Void
+    let onPlay: (PodcastEpisode) -> Void
     @State private var language: VideoContentLanguage = .ja
     @State private var browseIndex = 0
     @State private var shows: [ApplePodcastCatalog.Show] = []
@@ -25,14 +25,17 @@ struct PodcastCatalogView: View {
 
                 ForEach(shows) { show in
                     NavigationLink {
-                        PodcastChapterList(title: show.collectionName, onComplete: onComplete) {
+                        PodcastChapterList(title: show.collectionName, onPlay: onPlay) {
                             try await ApplePodcastCatalog.episodes(for: show, language: language)
                         }
                     } label: {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(show.collectionName)
-                            if let author = show.artistName {
-                                Text(author).font(.subheadline).foregroundStyle(.secondary)
+                        HStack(spacing: 12) {
+                            PodcastArtwork(url: show.artworkURL, size: 52)
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(show.collectionName)
+                                if let author = show.artistName {
+                                    Text(author).font(.subheadline).foregroundStyle(.secondary)
+                                }
                             }
                         }
                     }
@@ -122,13 +125,11 @@ struct PodcastCatalogView: View {
 
 private struct PodcastChapterList: View {
     let title: String
-    let onComplete: () -> Void
+    let onPlay: (PodcastEpisode) -> Void
     let loadEpisodes: () async throws -> [PodcastEpisode]
     @State private var episodes: [PodcastEpisode] = []
-    @State private var selectedEpisodeIDs = Set<String>()
     @State private var loading = true
     @State private var errorMessage: String?
-    @State private var addError: String?
     @State private var retry = 0
 
     var body: some View {
@@ -142,47 +143,15 @@ private struct PodcastChapterList: View {
                 Text("再生できるエピソードが見つかりません").foregroundStyle(.secondary)
             }
             ForEach(episodes) { episode in
-                let added = PodcastLibrary.shared.episode(id: episode.id) != nil
-                let selected = selectedEpisodeIDs.contains(episode.id)
-                Button {
-                    guard !added else { return }
-                    if selected { selectedEpisodeIDs.remove(episode.id) }
-                    else { selectedEpisodeIDs.insert(episode.id) }
+                NavigationLink {
+                    PodcastEpisodeDetails(episode: episode) { onPlay(episode) }
                 } label: {
-                    HStack(spacing: 12) {
-                        Image(systemName: added ? "checkmark.circle.fill" : (selected ? "checkmark.circle.fill" : "circle"))
-                            .foregroundStyle(added ? Color.secondary : (selected ? Color.accentColor : Color.secondary))
-                            .font(.title3)
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(episode.title).foregroundStyle(.primary)
-                            if let reader = episode.reader {
-                                Text(reader).font(.caption).foregroundStyle(.secondary)
-                            }
-                        }
-                        Spacer()
-                        if let duration = episode.durationSeconds {
-                            Text(Duration.seconds(duration).formatted(.time(pattern: .hourMinuteSecond)))
-                                .font(.caption.monospacedDigit())
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                    .contentShape(Rectangle())
+                    PodcastEpisodeLabel(episode: episode)
                 }
-                .buttonStyle(.plain)
             }
         }
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .confirmationAction) {
-                Button {
-                    addSelectedEpisodes()
-                } label: {
-                    Image(systemName: "checkmark")
-                }
-                .disabled(selectedEpisodeIDs.isEmpty || loading)
-            }
-        }
         .task(id: retry) {
             loading = true
             errorMessage = nil
@@ -195,25 +164,6 @@ private struct PodcastChapterList: View {
                 errorMessage = error.localizedDescription
             }
             loading = false
-        }
-        .alert("追加できませんでした", isPresented: Binding(
-            get: { addError != nil }, set: { if !$0 { addError = nil } }
-        )) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text(addError ?? "")
-        }
-    }
-
-    private func addSelectedEpisodes() {
-        let selectedEpisodes = episodes.filter { selectedEpisodeIDs.contains($0.id) }
-        do {
-            for episode in selectedEpisodes {
-                try PodcastLibrary.shared.add(episode)
-            }
-            onComplete()
-        } catch {
-            addError = error.localizedDescription
         }
     }
 }

@@ -10,6 +10,11 @@ struct PodcastEpisode: Codable, Hashable, Identifiable {
     let audioURL: URL
     var reader: String?
     var durationSeconds: Double?
+    var artworkURL: URL?
+    var showArtworkURL: URL?
+    var summary: String?
+    var showSummary: String?
+    var publishedDate: Date?
 
     var id: String {
         let bytes = SHA256.hash(data: Data(audioURL.absoluteString.utf8))

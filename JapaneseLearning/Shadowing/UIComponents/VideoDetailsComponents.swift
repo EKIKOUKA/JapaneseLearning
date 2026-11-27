@@ -8,11 +8,12 @@
 import SwiftUI
 
 struct videoCoverView: View {
-    let playerVM: PlayerViewManager
+    let artwork: UIImage?
     let sizeClass_regular: Bool
+    var usesNeutralFallback = false
 
     var body: some View {
-        if let image = playerVM.playerNowPlaying.nowPlayingArtwork {
+        if let image = artwork {
             Canvas { context, size in
                 context.draw(
                     Image(uiImage: image)
@@ -23,6 +24,8 @@ struct videoCoverView: View {
             .ignoresSafeArea()
             .blur(radius: sizeClass_regular ? 100 : 64, opaque: true)
             .overlay(Color.black.opacity(0.2))
+        } else if usesNeutralFallback {
+            Color.black
         } else {
             LinearGradient(
                 stops: [
@@ -75,6 +78,7 @@ struct playResumeVideoView: View {
 }
 
 struct CustomToolbarHeader: View {
+    static let height: CGFloat = 54
     @Environment(SettingsStore.self) private var settingsStore
     let title: String
     let playerVM: PlayerViewManager
@@ -151,7 +155,7 @@ struct CustomToolbarHeader: View {
             }
             .padding(.horizontal, 4)
         }
-        .frame(height: 54)
+        .frame(height: Self.height)
         .background(Color.clear)
     }
 }

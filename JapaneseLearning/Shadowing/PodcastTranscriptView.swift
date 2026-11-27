@@ -11,12 +11,6 @@ struct PodcastTranscriptView: View {
 
     var body: some View {
         VStack(spacing: 8) {
-            HStack {
-                Link("Apple Podcastsで聴く", destination: episode.source)
-                    .lineLimit(1)
-            }
-            .font(.caption)
-
             if let errorMessage {
                 Text(errorMessage)
                 Button("字幕の生成を再試行") {

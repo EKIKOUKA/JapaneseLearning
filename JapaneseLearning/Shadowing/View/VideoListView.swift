@@ -14,6 +14,7 @@ struct VideoListView: View {
     @State private var showSettingSheet = false
     @State private var podcastLibrary = PodcastLibrary.shared
     @State private var showPodcastCatalog = false
+    @State private var pendingPodcastID: String?
     @State private var podcastListError: String?
 
     @ViewBuilder
@@ -26,22 +27,12 @@ struct VideoListView: View {
         if !podcastLibrary.episodes.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
                 ForEach(podcastLibrary.episodes) { episode in
-                    Button {
-                        onSelectVideo(episode.id)
-                    } label: {
-                        HStack(spacing: 12) {
-                            Image(systemName: "waveform")
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(episode.title)
-                                    .font(.subheadline.weight(.semibold))
-                                Text("\(episode.show) · \(episode.language.displayName)")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                            Spacer()
-                            Image(systemName: "chevron.right")
-                                .font(.caption)
+                    NavigationLink {
+                        PodcastEpisodeDetails(episode: episode) {
+                            onSelectVideo(episode.id)
                         }
+                    } label: {
+                        PodcastEpisodeLabel(episode: episode)
                         .padding(12)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
@@ -92,20 +83,41 @@ struct VideoListView: View {
                 }
             }
         }
-        .sheet(isPresented: $showPodcastCatalog) {
-            PodcastCatalogView { showPodcastCatalog = false }
+        .sheet(isPresented: $showPodcastCatalog, onDismiss: {
+            guard let pendingPodcastID else { return }
+            self.pendingPodcastID = nil
+            onSelectVideo(pendingPodcastID)
+        }) {
+            PodcastCatalogView { episode in
+                do {
+                    try podcastLibrary.add(episode)
+                    pendingPodcastID = episode.id
+                    showPodcastCatalog = false
+                } catch {
+                    podcastListError = error.localizedDescription
+                }
+            }
+            .alert("Podcast", isPresented: podcastErrorPresented(inCatalog: true)) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(podcastListError ?? "")
+            }
         }
         .sheet(isPresented: $showSettingSheet) {
             ShadowingSettingsSheetView(playerVM: nil)
                 .presentationDetents([.medium, .large])
         }
-        .alert("Podcast", isPresented: Binding(
-            get: { podcastListError != nil },
-            set: { if !$0 { podcastListError = nil } }
-        )) {
+        .alert("Podcast", isPresented: podcastErrorPresented(inCatalog: false)) {
             Button("OK", role: .cancel) {}
         } message: {
             Text(podcastListError ?? "")
         }
+    }
+
+    private func podcastErrorPresented(inCatalog: Bool) -> Binding<Bool> {
+        Binding(
+            get: { showPodcastCatalog == inCatalog && podcastListError != nil },
+            set: { if !$0 { podcastListError = nil } }
+        )
     }
 }

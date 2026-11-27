@@ -1,4 +1,6 @@
 import Foundation
+import CryptoKit
+import UIKit
 
 /// Stores thumbnails in the main app's private container.
 enum LocalThumbnailStorage {
@@ -39,6 +41,32 @@ enum LocalThumbnailStorage {
         }
 
         try data.write(to: url, options: .atomic)
+    }
+
+    static func podcastArtwork(url: URL?, fallbackURL: URL?) -> UIImage? {
+        [url, fallbackURL].compactMap { $0 }.lazy.compactMap { url in
+            existingFileURL(for: podcastArtworkID(url)).flatMap { UIImage(contentsOfFile: $0.path) }
+        }.first
+    }
+
+    static func loadPodcastArtwork(url: URL?, fallbackURL: URL?) async -> UIImage? {
+        let candidates = [url, fallbackURL == url ? nil : fallbackURL].compactMap { $0 }
+        for candidate in candidates {
+            guard !Task.isCancelled else { return nil }
+            if let cached = podcastArtwork(url: candidate, fallbackURL: nil) { return cached }
+            let request = URLRequest(url: candidate, timeoutInterval: 8)
+            guard let (data, response) = try? await URLSession.shared.data(for: request),
+                  let response = response as? HTTPURLResponse, (200..<300).contains(response.statusCode),
+                  let image = UIImage(data: data) else { continue }
+            try? save(data, for: podcastArtworkID(candidate))
+            return image
+        }
+        return nil
+    }
+
+    private static func podcastArtworkID(_ url: URL) -> String {
+        let digest = SHA256.hash(data: Data(url.absoluteString.utf8))
+        return "podcast-artwork-" + digest.map { String(format: "%02x", $0) }.joined()
     }
 
     static func remove(for videoID: String) {

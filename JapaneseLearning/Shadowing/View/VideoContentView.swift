@@ -77,7 +77,21 @@ struct VideoDetailsFullScreenSheet: View {
     let dismissesToMiniPlayer: Bool
     let onDismiss: () -> Void
 
+    let podcastCover: UIImage?
     @State private var dragOffset: CGFloat = 0
+
+    init(videoID: String, dismissesToMiniPlayer: Bool, onDismiss: @escaping () -> Void) {
+        self.videoID = videoID
+        self.dismissesToMiniPlayer = dismissesToMiniPlayer
+        self.onDismiss = onDismiss
+        if let episode = PodcastLibrary.shared.episode(id: videoID) {
+            podcastCover = LocalThumbnailStorage.existingFileURL(for: videoID)
+                .flatMap { UIImage(contentsOfFile: $0.path) }
+                ?? LocalThumbnailStorage.podcastArtwork(url: episode.artworkURL, fallbackURL: episode.showArtworkURL)
+        } else {
+            podcastCover = nil
+        }
+    }
 
     private var isMac: Bool {
         ProcessInfo.processInfo.isiOSAppOnMac
@@ -106,20 +120,18 @@ struct VideoDetailsFullScreenSheet: View {
         GeometryReader { geometry in
             let safeTop = max(geometry.safeAreaInsets.top, topSafeAreaInset)
 
+            let isPodcast = PodcastLibrary.shared.episode(id: videoID) != nil
+
             ZStack {
                 VStack(spacing: 0) {
-                    Capsule()
-                        .fill(.white.opacity(0.55))
-                        .frame(width: 60, height: 4)
-                        .frame(
-                            maxHeight: .infinity,
-                            alignment: .bottom
-                        )
-                        .frame(height: safeTop + 11)
-                        .contentShape(Rectangle())
+                    if !isPodcast {
+                        dragHandle(safeTop: safeTop)
+                    }
 
                     VideoDetailsView(
                         videoID: videoID,
+                        podcastStatusBarHeight: safeTop,
+                        podcastCover: podcastCover,
                         onDismissDragChanged: updateDrag,
                         onDismissDragEnded: { translation, predictedTranslation in
                             finishDrag(
@@ -131,9 +143,19 @@ struct VideoDetailsFullScreenSheet: View {
                     )
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .overlay(alignment: .top) {
+                    if isPodcast {
+                        dragHandle(safeTop: safeTop)
+                            .allowsHitTesting(false)
+                    }
+                }
                 .background {
-                    videoCoverView(playerVM: playerVM, sizeClass_regular: isRegular)
-                        .ignoresSafeArea()
+                    videoCoverView(
+                        artwork: isPodcast ? podcastCover : playerVM.playerNowPlaying.nowPlayingArtwork,
+                        sizeClass_regular: isRegular,
+                        usesNeutralFallback: isPodcast
+                    )
+                    .ignoresSafeArea()
                 }
                 .clipShape(
                     UnevenRoundedRectangle(
@@ -162,6 +184,14 @@ struct VideoDetailsFullScreenSheet: View {
         .ignoresSafeArea()
         .statusBarHidden(false)
         .persistentSystemOverlays(.visible)
+    }
+
+    private func dragHandle(safeTop: CGFloat) -> some View {
+        Capsule()
+            .fill(.white.opacity(0.55))
+            .frame(width: 60, height: 4)
+            .frame(height: safeTop + 11, alignment: .bottom)
+            .contentShape(Rectangle())
     }
 
     private var topSafeAreaInset: CGFloat {

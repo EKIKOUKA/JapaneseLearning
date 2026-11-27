@@ -16,6 +16,8 @@ struct VideoDetailsView: View {
     @Environment(\.horizontalSizeClass) var sizeClass
 
     let videoID: String
+    var podcastStatusBarHeight: CGFloat = 0
+    let podcastCover: UIImage?
     var onDismissDragChanged: (CGFloat) -> Void = { _ in }
     var onDismissDragEnded: (CGFloat, CGFloat) -> Void = { _, _ in }
     var video: VideoItem? {
@@ -27,6 +29,11 @@ struct VideoDetailsView: View {
     @State private var lastDragOffset: CGFloat = 0
 
     private var displayAspectRatio: CGFloat {
+        if podcast != nil {
+            guard let size = podcastCover?.size, size.width > 0, size.height > 0 else { return 1 }
+            return size.width / size.height
+        }
+
         guard let ratio = video?.aspectRatio, ratio > 0 else {
             return 16.0 / 9.0
         }
@@ -39,6 +46,7 @@ struct VideoDetailsView: View {
     var body: some View {
         @Bindable var playerVM = playerVM
         let sizeClassRegular = sizeClass == .regular
+        let floatingHeaderBottom = 11 + CustomToolbarHeader.height
 
         GeometryReader { geo in
             let fullWidth = geo.size.width
@@ -63,6 +71,8 @@ struct VideoDetailsView: View {
                             VideoContentArea(
                                 playerVM: playerVM,
                                 videoID: videoID,
+                                isPodcast: podcast != nil,
+                                podcastCover: podcastCover,
                                 drawerOffset: $drawerOffset,
                                 lastDragOffset: $lastDragOffset,
                                 maxDrawerOffset: currentVideoHeight,
@@ -87,6 +97,8 @@ struct VideoDetailsView: View {
 
                             if let podcast {
                                 PodcastTranscriptView(playerVM: playerVM, episode: podcast)
+                                    .padding(.top, usesSideBySide ? floatingHeaderBottom :
+                                        max(0, floatingHeaderBottom - (currentVideoHeight - drawerOffset)))
                             } else if playerVM.isProgressing {
                                 Spacer()
                                 ProgressLoadingView()
@@ -104,17 +116,65 @@ struct VideoDetailsView: View {
                                 lastDragOffset: $lastDragOffset,
                                 maxDrawerOffset: currentVideoHeight
                             )
+                            .padding(.top, podcast == nil ? 0 : floatingHeaderBottom)
                         }
                     }
                 }
             }
+            .onChange(of: currentVideoHeight) { oldHeight, newHeight in
+                guard oldHeight > 0, lastDragOffset >= oldHeight else { return }
+                drawerOffset = newHeight
+                lastDragOffset = newHeight
+            }
         }
         .safeAreaInset(edge: .top, spacing: 0) {
-            CustomToolbarHeader(
-                title: video?.title.cleanedVideoTitle ?? "読み込み中...",
-                playerVM: playerVM,
-                showSettingSheet: $showSettingSheet
-            )
+            if podcast == nil {
+                toolbarHeader
+            } else if podcastStatusBarHeight > 0 {
+                Color.clear.frame(height: podcastStatusBarHeight)
+            }
+        }
+        .overlay(alignment: .top) {
+            if podcast != nil, podcastStatusBarHeight > 0, let podcastCover {
+                GeometryReader { geometry in
+                    let width = geometry.size.width
+                    let coverHeight = width / displayAspectRatio
+                    let isPortrait = width <= geometry.size.height
+                    if !isPortrait || drawerOffset < coverHeight {
+                        let blendHeight = isPortrait ? min(coverHeight * 0.1, coverHeight - drawerOffset) : 0
+                        let height = podcastStatusBarHeight + blendHeight
+
+                        PodcastArtworkEdge(
+                            image: Image(uiImage: podcastCover),
+                            width: width,
+                            imageHeight: coverHeight,
+                            height: height,
+                            alignment: .top
+                        )
+                        .mask {
+                            if blendHeight > 0 {
+                                LinearGradient(
+                                    stops: [
+                                        .init(color: .black, location: podcastStatusBarHeight / height),
+                                        .init(color: .clear, location: 1)
+                                    ],
+                                    startPoint: .top,
+                                    endPoint: .bottom
+                                )
+                            } else {
+                                Color.black
+                            }
+                        }
+                    }
+                }
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+            }
+        }
+        .overlay(alignment: .top) {
+            if podcast != nil {
+                toolbarHeader.padding(.top, podcastStatusBarHeight + 11)
+            }
         }
         .toolbarColorScheme(.dark, for: .navigationBar)
         .toolbarVisibility(.hidden, for: .navigationBar)
@@ -151,6 +211,14 @@ struct VideoDetailsView: View {
                 .presentationDetents(question.mode == .sentence ? [.large] : [.medium])
         }
     }
+
+    private var toolbarHeader: some View {
+        CustomToolbarHeader(
+            title: video?.title.cleanedVideoTitle ?? "読み込み中...",
+            playerVM: playerVM,
+            showSettingSheet: $showSettingSheet
+        )
+    }
 }
 
 struct VideoContentArea: View {
@@ -158,6 +226,8 @@ struct VideoContentArea: View {
     @Environment(SettingsStore.self) private var settingsStore
     let playerVM: PlayerViewManager
     let videoID: String
+    let isPodcast: Bool
+    let podcastCover: UIImage?
     @Binding var drawerOffset: CGFloat
     @Binding var lastDragOffset: CGFloat
     let maxDrawerOffset: CGFloat
@@ -171,27 +241,44 @@ struct VideoContentArea: View {
         let baseHeight = max(0, videoWidth / aspectRatio)
 
         VStack(spacing: 0) {
-            if isLandscape {
+            if isLandscape && !isPodcast {
                 Spacer()
             }
 
             ZStack {
-                if let image = playerVM.playerNowPlaying.nowPlayingArtwork {
-                    Image(uiImage: image)
-                        .resizable()
-                        .scaledToFill()
-                        .frame(width: videoWidth, height: baseHeight)
-                        .clipped()
-                        .opacity(drawerOffset >= maxDrawerOffset ? 0 : 1)
-                        .allowsHitTesting(false)
+                if isPodcast {
+                    Color.black.overlay {
+                        if let podcastCover {
+                            Image(uiImage: podcastCover).resizable().scaledToFit()
+                        } else {
+                            Image(systemName: "waveform")
+                                .font(.largeTitle)
+                                .foregroundStyle(.white.opacity(0.7))
+                        }
+                    }
+                    .allowsHitTesting(false)
                 } else {
-                    Color.black.opacity(0.1)
+                    if let image = playerVM.playerNowPlaying.nowPlayingArtwork {
+                        Image(uiImage: image)
+                            .resizable()
+                            .scaledToFill()
+                            .frame(width: videoWidth, height: baseHeight)
+                            .clipped()
+                            .opacity(drawerOffset >= maxDrawerOffset ? 0 : 1)
+                            .allowsHitTesting(false)
+                    } else {
+                        Color.black.opacity(0.1)
+                    }
+
                 }
 
-                AVPlayerControllerView(controller: playerVM.nativePlayerController(for: videoID))
-                    .opacity(isPlayerReady ? 1 : 0)
-                    .animation(.easeInOut(duration: 1), value: isPlayerReady)
-                    .opacity(drawerOffset >= maxDrawerOffset ? 0 : 1)
+                AVPlayerControllerView(
+                    controller: playerVM.nativePlayerController(for: videoID),
+                    usesPodcastArtwork: isPodcast,
+                    podcastArtwork: podcastCover
+                )
+                .opacity(isPodcast || isPlayerReady ? 1 : 0)
+                .animation(.easeInOut(duration: 1), value: isPlayerReady)
             }
             .frame(width: videoWidth, height: baseHeight)
             .frame(

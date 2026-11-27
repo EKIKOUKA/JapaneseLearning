@@ -7,6 +7,10 @@ enum ApplePodcastCatalog {
         let artistName: String?
         let collectionViewUrl: URL?
         let feedUrl: URL?
+        let artworkUrl600: URL?
+        let artworkUrl100: URL?
+
+        var artworkURL: URL? { artworkUrl600 ?? artworkUrl100 }
 
         var id: Int { collectionId }
     }
@@ -47,6 +51,15 @@ enum ApplePodcastCatalog {
         case "en", "eng": .en
         default: language
         }
+        func artwork(_ value: String) -> URL? {
+            let url = URL(string: value, relativeTo: resolvedURL)?.absoluteURL
+            return !value.isEmpty && isWebURL(url) ? url : nil
+        }
+
+        let showArtwork = artwork(delegate.artwork) ?? show.artworkURL
+        let dateParser = DateFormatter()
+        dateParser.locale = Locale(identifier: "en_US_POSIX")
+        dateParser.dateFormat = "EEE, dd MMM yyyy HH:mm:ss Z"
         var seen = Set<URL>()
         return delegate.items.compactMap { item in
             guard let url = URL(string: item.audio, relativeTo: resolvedURL)?.absoluteURL,
@@ -59,7 +72,12 @@ enum ApplePodcastCatalog {
                 feed: feed,
                 audioURL: url,
                 reader: show.artistName,
-                durationSeconds: item.duration
+                durationSeconds: item.duration,
+                artworkURL: artwork(item.artwork),
+                showArtworkURL: showArtwork,
+                summary: item.summary,
+                showSummary: delegate.summary,
+                publishedDate: dateParser.date(from: item.published)
             )
         }
     }
@@ -81,18 +99,28 @@ enum ApplePodcastCatalog {
             var title = ""
             var audio = ""
             var duration: Double?
+            var artwork = ""
+            var summary: String?
+            var published = ""
         }
 
         var language = ""
+        var artwork = ""
+        var summary: String?
         var items: [Item] = []
         private var item: Item?
         private var path: [String] = []
-        private var text = ""
+        private var fragments: [String] = []
 
         func parser(_ parser: XMLParser, didStartElement name: String,
                     namespaceURI: String?, qualifiedName: String?, attributes: [String: String]) {
             path.append(name)
-            text = ""
+            fragments.append("")
+            if path == ["rss", "channel", "itunes:image"] {
+                artwork = attributes["href"] ?? artwork
+            } else if path == ["rss", "channel", "item", "itunes:image"] {
+                item?.artwork = attributes["href"] ?? ""
+            }
             if path == ["rss", "channel", "item"] {
                 item = Item()
             } else if path == ["rss", "channel", "item", "enclosure"],
@@ -105,17 +133,31 @@ enum ApplePodcastCatalog {
         }
 
         func parser(_ parser: XMLParser, foundCharacters string: String) {
-            text += string
+            append(string)
         }
 
         func parser(_ parser: XMLParser, foundCDATA data: Data) {
-            text += String(decoding: data, as: UTF8.self)
+            append(String(decoding: data, as: UTF8.self))
+        }
+
+        private func append(_ text: String) {
+            guard !fragments.isEmpty else { return }
+            fragments[fragments.count - 1] += text
         }
 
         func parser(_ parser: XMLParser, didEndElement name: String,
                     namespaceURI: String?, qualifiedName: String?) {
+            let text = fragments.removeLast()
             let value = text.trimmingCharacters(in: .whitespacesAndNewlines)
             switch path {
+            case ["rss", "channel", "image", "url"]:
+                if artwork.isEmpty { artwork = value }
+            case ["rss", "channel", "description"], ["rss", "channel", "itunes:summary"]:
+                if !value.isEmpty, summary == nil { summary = value }
+            case ["rss", "channel", "item", "description"], ["rss", "channel", "item", "itunes:summary"]:
+                if !value.isEmpty, item?.summary == nil { item?.summary = value }
+            case ["rss", "channel", "item", "pubDate"]:
+                item?.published = value
             case ["rss", "channel", "language"]:
                 language = value
             case ["rss", "channel", "item", "title"]:
@@ -135,7 +177,9 @@ enum ApplePodcastCatalog {
                 break
             }
             path.removeLast()
-            text = ""
+            if path.contains("description") || path.contains("itunes:summary") {
+                append(text)
+            }
         }
     }
 }
